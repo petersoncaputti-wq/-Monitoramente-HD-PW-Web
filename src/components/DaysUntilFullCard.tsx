@@ -5,6 +5,36 @@ interface DaysUntilFullCardProps {
   daysUntilFull: DaysUntilFullResult;
 }
 
+function getYearsEstimateLabel(value: string): string | null {
+  const match = value.match(/([\d.,]+)\s*dias/i);
+
+  if (!match) {
+    return null;
+  }
+
+  const numericValue = Number(match[1].replace(/\./g, '').replace(',', '.'));
+
+  if (!Number.isFinite(numericValue) || numericValue < 365) {
+    return null;
+  }
+
+  const totalMonths = Math.round((numericValue / 365) * 12);
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+
+  if (years <= 0) {
+    return null;
+  }
+
+  if (months === 0) {
+    return `~ ${years} ${years === 1 ? 'ano' : 'anos'}`;
+  }
+
+  return `~ ${years} ${years === 1 ? 'ano' : 'anos'} e ${months} ${
+    months === 1 ? 'mes' : 'meses'
+  }`;
+}
+
 const TONE_STYLES: Record<DaysUntilFullResult['tone'], string> = {
   neutral: 'bg-surface-100 text-surface-700 border-surface-200',
   attention: 'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -13,6 +43,7 @@ const TONE_STYLES: Record<DaysUntilFullResult['tone'], string> = {
 };
 
 export function DaysUntilFullCard({ daysUntilFull }: DaysUntilFullCardProps) {
+  const yearsEstimateLabel = getYearsEstimateLabel(daysUntilFull.value);
   const statusStyles =
     daysUntilFull.status === 'invalid'
       ? 'border-amber-200 bg-amber-50'
@@ -45,6 +76,9 @@ export function DaysUntilFullCard({ daysUntilFull }: DaysUntilFullCardProps) {
       <p className="kpi-card-value text-brand-700">
         {daysUntilFull.value}
       </p>
+      {yearsEstimateLabel ? (
+        <p className="mt-2 text-sm font-medium text-surface-700">{yearsEstimateLabel}</p>
+      ) : null}
       <p className="kpi-card-helper">{daysUntilFull.helperText}</p>
     </article>
   );
