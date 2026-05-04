@@ -4,8 +4,6 @@ import { DaysUntilFullCard } from '@/components/DaysUntilFullCard';
 import { ExcelUploader } from '@/components/ExcelUploader';
 import { FreeSpaceCard } from '@/components/FreeSpaceCard';
 import { LastUpdateCard } from '@/components/LastUpdateCard';
-import { LowestFreeSpaceCard } from '@/components/LowestFreeSpaceCard';
-import { PeakUsageCard } from '@/components/PeakUsageCard';
 import { PeriodVariationCard } from '@/components/PeriodVariationCard';
 import { TwelveMonthForecastCard } from '@/components/TwelveMonthForecastCard';
 import { TotalCapacityCard } from '@/components/TotalCapacityCard';
@@ -17,8 +15,6 @@ import {
   getDaysUntilFullKpi,
   getFreeSpaceKpi,
   getLatestUpdateKpi,
-  getLowestFreeSpaceKpi,
-  getPeakUsageKpi,
   getPeriodVariationKpi,
   getTwelveMonthForecastKpi,
   getTotalCapacityKpi,
@@ -35,8 +31,6 @@ export function DashboardPage() {
   const usagePercentage = getUsagePercentageKpi(importedData?.rows ?? []);
   const periodVariation = getPeriodVariationKpi(importedData?.rows ?? []);
   const averageGrowthRate = getAverageGrowthRateKpi(importedData?.rows ?? []);
-  const peakUsage = getPeakUsageKpi(importedData?.rows ?? []);
-  const lowestFreeSpace = getLowestFreeSpaceKpi(importedData?.rows ?? []);
   const twelveMonthForecast = getTwelveMonthForecastKpi(importedData?.rows ?? []);
   const daysUntilFull = getDaysUntilFullKpi(importedData?.rows ?? []);
 
@@ -76,8 +70,6 @@ export function DashboardPage() {
           <UsagePercentageCard usagePercentage={usagePercentage} />
           <PeriodVariationCard periodVariation={periodVariation} />
           <AverageGrowthRateCard averageGrowthRate={averageGrowthRate} />
-          <PeakUsageCard peakUsage={peakUsage} />
-          <LowestFreeSpaceCard lowestFreeSpace={lowestFreeSpace} />
           <TwelveMonthForecastCard forecast={twelveMonthForecast} />
           <DaysUntilFullCard daysUntilFull={daysUntilFull} />
         </section>
