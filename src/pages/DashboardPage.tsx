@@ -206,7 +206,7 @@ export function DashboardPage() {
               Painel institucional
             </p>
             <h1 className="mt-2 text-2xl font-semibold text-surface-900 md:text-3xl">
-              Monitoramento de Armazenamento em Disco
+              Painel Operacional ProjectWise
             </h1>
           </div>
 
