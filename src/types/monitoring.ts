@@ -11,10 +11,79 @@ export interface MonitoringRow {
   [key: string]: string | number | null | undefined;
 }
 
+export interface ProjectWiseUserRow {
+  Nome: string;
+  Email: string;
+  ID: number | string;
+  Ultimoacesso: string;
+  Status: string;
+  Statusacesso: string;
+  StatusProjectWise: string;
+  Elegivelexclusao: string;
+  Motivo: string;
+  Acaoexecutada: string;
+  Resultado: string;
+  [key: string]: string | number | null | undefined;
+}
+
+export interface ProjectWiseWebUserRow {
+  Email: string;
+  CommunicationEmail: string;
+  FirstName: string;
+  MiddleName: string;
+  LastName: string;
+  ProfileCountry: string;
+  Language: string;
+  EntitlementCountry: string;
+  'EntitlementGroup(s)': string;
+  CostAllocationGroup: string;
+  'UserManagementGroup(s)': string;
+  'Role(s)': string;
+  GlobalFulfillmentContact: string;
+  'FulfillmentContactCountry(s)': string;
+  City: string;
+  CompanyName: string;
+  JobTitle: string;
+  Locked: string;
+  ProfileCreationDate: string;
+  LastLoginDate: string;
+  MFA: string;
+  [key: string]: string | number | null | undefined;
+}
+
+export interface TicketRow {
+  'Cason.º': string;
+  Status: string;
+  Motivo: string;
+  Resumo: string;
+  Abertoem: string;
+  Atualizado: string;
+  Prioridade: string;
+  Solicitante: string;
+  Organizaçãodosolicitante: string;
+  Atribuído: string;
+  Grupoatribuído: string;
+  Tipodeticket: string;
+  Resolverem: string;
+  StatusdoSLA: string;
+  Organizaçãodobeneficiário: string;
+  Solicitadopara: string;
+  Categorização: string;
+  [key: string]: string | number | null | undefined;
+}
+
+export type WorkbookKind =
+  | 'storage'
+  | 'projectWiseUsers'
+  | 'projectWiseWebUsers'
+  | 'tickets'
+  | 'unknown';
+
 export interface ImportedWorkbookData {
   fileName: string;
-  rows: MonitoringRow[];
+  rows: Array<MonitoringRow | ProjectWiseUserRow | ProjectWiseWebUserRow | TicketRow>;
   headers: string[];
+  kind: WorkbookKind;
 }
 
 export interface LatestUpdateResult {

@@ -12,6 +12,41 @@ const EXPECTED_HEADERS = [
   'PercentualLivre',
 ];
 
+const PROJECT_WISE_USER_HEADERS = [
+  'Nome',
+  'Email',
+  'ID',
+  'Ultimoacesso',
+  'Status',
+  'Statusacesso',
+  'StatusProjectWise',
+  'Elegivelexclusao',
+];
+
+const PROJECT_WISE_WEB_USER_HEADERS = [
+  'Email',
+  'FirstName',
+  'LastName',
+  'EntitlementGroup(s)',
+  'Locked',
+  'ProfileCreationDate',
+  'LastLoginDate',
+  'MFA',
+];
+
+const TICKET_HEADERS = [
+  'Status',
+  'Resumo',
+  'Abertoem',
+  'Atualizado',
+  'Prioridade',
+  'Grupoatribuído',
+  'Tipodeticket',
+  'StatusdoSLA',
+  'Organizaçãodobeneficiário',
+  'Categorização',
+];
+
 const DISPLAY_HEADER_LABELS: Record<string, string> = {
   Data: 'Data',
   Hora: 'Hora',
@@ -22,6 +57,52 @@ const DISPLAY_HEADER_LABELS: Record<string, string> = {
   LivreGB: 'Espaço Livre',
   PercentualUsado: 'Percentual Utilizado',
   PercentualLivre: 'Percentual Livre',
+  Nome: 'Nome',
+  Email: 'Email',
+  ID: 'ID',
+  Ultimoacesso: 'Último acesso',
+  Status: 'Status',
+  Statusacesso: 'Status acesso',
+  StatusProjectWise: 'Status ProjectWise',
+  Elegivelexclusao: 'Elegível exclusão',
+  Motivo: 'Motivo',
+  Acaoexecutada: 'Ação executada',
+  Resultado: 'Resultado',
+  CommunicationEmail: 'Email de comunicação',
+  FirstName: 'Nome',
+  MiddleName: 'Nome do meio',
+  LastName: 'Sobrenome',
+  ProfileCountry: 'País do perfil',
+  Language: 'Idioma',
+  EntitlementCountry: 'País do entitlement',
+  'EntitlementGroup(s)': 'Grupo de entitlement',
+  CostAllocationGroup: 'Grupo de custo',
+  'UserManagementGroup(s)': 'Grupo de gestão',
+  'Role(s)': 'Roles',
+  GlobalFulfillmentContact: 'Contato global',
+  'FulfillmentContactCountry(s)': 'País do contato',
+  City: 'Cidade',
+  CompanyName: 'Empresa',
+  JobTitle: 'Cargo',
+  Locked: 'Bloqueado',
+  ProfileCreationDate: 'Criação do perfil',
+  LastLoginDate: 'Último login',
+  MFA: 'MFA',
+  'Cason.º': 'Caso n.º',
+  Resumo: 'Resumo',
+  Abertoem: 'Aberto em',
+  Atualizado: 'Atualizado',
+  Prioridade: 'Prioridade',
+  Solicitante: 'Solicitante',
+  Organizaçãodosolicitante: 'Organização do solicitante',
+  Atribuído: 'Atribuído',
+  Grupoatribuído: 'Grupo atribuído',
+  Tipodeticket: 'Tipo de ticket',
+  Resolverem: 'Resolver em',
+  StatusdoSLA: 'Status do SLA',
+  Organizaçãodobeneficiário: 'Organização do beneficiário',
+  Solicitadopara: 'Solicitado para',
+  Categorização: 'Categorização',
 };
 
 export function normalizeHeader(value: string): string {
@@ -40,6 +121,21 @@ export function mapHeaders(headers: string[]): string[] {
 export function hasMonitoringHeaders(headers: string[]): boolean {
   const normalized = new Set(mapHeaders(headers));
   return EXPECTED_HEADERS.every((header) => normalized.has(header));
+}
+
+export function hasProjectWiseUserHeaders(headers: string[]): boolean {
+  const normalized = new Set(mapHeaders(headers));
+  return PROJECT_WISE_USER_HEADERS.every((header) => normalized.has(header));
+}
+
+export function hasProjectWiseWebUserHeaders(headers: string[]): boolean {
+  const normalized = new Set(mapHeaders(headers));
+  return PROJECT_WISE_WEB_USER_HEADERS.every((header) => normalized.has(header));
+}
+
+export function hasTicketHeaders(headers: string[]): boolean {
+  const normalized = new Set(mapHeaders(headers));
+  return TICKET_HEADERS.every((header) => normalized.has(header));
 }
 
 export function getDisplayHeaderLabel(header: string): string {
@@ -95,6 +191,26 @@ function formatExcelTime(value: number): string {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
+function formatGenericDate(value: string): string {
+  const trimmed = value.trim();
+
+  if (!trimmed || trimmed.toLowerCase() === 'sem registro') {
+    return trimmed || '-';
+  }
+
+  const date = new Date(trimmed);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
 export function formatStorageValue(value: number): string {
   if (Math.abs(value) >= 1024) {
     return `${formatNumber(value / 1024, {
@@ -133,6 +249,13 @@ export function formatPreviewValue(header: string, value: unknown): string {
             maximumFractionDigits: 2,
           })}%`
         : String(value);
+    case 'Ultimoacesso':
+    case 'Abertoem':
+    case 'Atualizado':
+    case 'Resolverem':
+    case 'ProfileCreationDate':
+    case 'LastLoginDate':
+      return typeof value === 'string' ? formatGenericDate(value) : String(value);
     default:
       return formatCellValue(value);
   }

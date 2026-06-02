@@ -43,12 +43,12 @@ export function ExcelUploader({ onDataLoaded }: ExcelUploaderProps) {
             Importação de planilha
           </p>
           <h3 className="mt-4 text-2xl font-semibold text-surface-900">
-            Selecione o arquivo Excel com o histórico de armazenamento
+            Selecione a planilha de monitoramento
           </h3>
           <p className="mt-3 max-w-xl text-sm leading-7 text-surface-700">
-            O sistema lê a primeira aba da planilha, converte os dados para JSON e
-            exibe uma prévia imediata na tela. São aceitos arquivos `.xlsx`, `.xls`,
-            `.csv` e `.xml` compatíveis com o Excel.
+            O sistema identifica planilhas de armazenamento ou de usuários ProjectWise,
+            converte os dados para indicadores e direciona automaticamente para a aba
+            correspondente. São aceitos arquivos `.xlsx`, `.xls`, `.csv` e `.xml`.
           </p>
         </div>
 
