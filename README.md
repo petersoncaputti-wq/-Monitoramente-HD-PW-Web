@@ -1,6 +1,6 @@
-# Painel de Monitoramento de Armazenamento
+# Painel Operacional ProjectWise
 
-Base inicial de um painel front-end para importar planilhas de monitoramento de disco e visualizar uma previa dos dados.
+Base inicial de um painel front-end para importar planilhas operacionais do ProjectWise e visualizar uma previa dos dados.
 
 ## Stack
 
