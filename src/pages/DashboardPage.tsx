@@ -5,11 +5,19 @@ import { FreeSpaceCard } from '@/components/FreeSpaceCard';
 import { LastUpdateCard } from '@/components/LastUpdateCard';
 import { PeriodFilter } from '@/components/PeriodFilter';
 import { PeriodVariationCard } from '@/components/PeriodVariationCard';
+import { ProjectWiseUsersTab } from '@/components/ProjectWiseUsersTab';
+import { TicketsTab } from '@/components/TicketsTab';
 import { TwelveMonthForecastCard } from '@/components/TwelveMonthForecastCard';
 import { TotalCapacityCard } from '@/components/TotalCapacityCard';
 import { UsagePercentageCard } from '@/components/UsagePercentageCard';
 import { UsedSpaceCard } from '@/components/UsedSpaceCard';
-import type { ImportedWorkbookData, MonitoringRow } from '@/types/monitoring';
+import type {
+  ImportedWorkbookData,
+  MonitoringRow,
+  ProjectWiseWebUserRow,
+  ProjectWiseUserRow,
+  TicketRow,
+} from '@/types/monitoring';
 import {
   combineRowDateTime,
   getAverageGrowthRateKpi,
@@ -94,11 +102,54 @@ function filterRowsByPeriod(
   });
 }
 
+type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets';
+
+function isMonitoringRow(row: ImportedWorkbookData['rows'][number]): row is MonitoringRow {
+  return 'TotalGB' in row && 'UsadoGB' in row && 'LivreGB' in row;
+}
+
+function isProjectWiseUserRow(
+  row: ImportedWorkbookData['rows'][number],
+): row is ProjectWiseUserRow {
+  return 'Ultimoacesso' in row && 'Elegivelexclusao' in row;
+}
+
+function isProjectWiseWebUserRow(
+  row: ImportedWorkbookData['rows'][number],
+): row is ProjectWiseWebUserRow {
+  return 'LastLoginDate' in row && 'ProfileCreationDate' in row && 'Locked' in row;
+}
+
+function isTicketRow(row: ImportedWorkbookData['rows'][number]): row is TicketRow {
+  return 'StatusdoSLA' in row && 'Categorização' in row && 'Abertoem' in row;
+}
+
 export function DashboardPage() {
-  const [importedData, setImportedData] = useState<ImportedWorkbookData | null>(null);
+  const [activeTab, setActiveTab] = useState<DashboardTab>('storage');
+  const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
+  const [projectWiseUsersData, setProjectWiseUsersData] =
+    useState<ImportedWorkbookData | null>(null);
+  const [projectWiseWebUsersData, setProjectWiseWebUsersData] =
+    useState<ImportedWorkbookData | null>(null);
+  const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
   const [periodStartDate, setPeriodStartDate] = useState('');
   const [periodEndDate, setPeriodEndDate] = useState('');
-  const rows = importedData?.rows ?? [];
+  const rows = useMemo(
+    () => (storageData?.rows.filter(isMonitoringRow) ?? []),
+    [storageData],
+  );
+  const projectWiseUserRows = useMemo(
+    () => (projectWiseUsersData?.rows.filter(isProjectWiseUserRow) ?? []),
+    [projectWiseUsersData],
+  );
+  const projectWiseWebUserRows = useMemo(
+    () => (projectWiseWebUsersData?.rows.filter(isProjectWiseWebUserRow) ?? []),
+    [projectWiseWebUsersData],
+  );
+  const ticketRows = useMemo(
+    () => (ticketsData?.rows.filter(isTicketRow) ?? []),
+    [ticketsData],
+  );
   const dateRange = useMemo(() => getRowsDateRange(rows), [rows]);
   const filteredRows = useMemo(
     () => filterRowsByPeriod(rows, periodStartDate, periodEndDate),
@@ -114,9 +165,29 @@ export function DashboardPage() {
   const twelveMonthForecast = getTwelveMonthForecastKpi(filteredRows);
 
   function handleDataLoaded(data: ImportedWorkbookData) {
-    const range = getRowsDateRange(data.rows);
+    if (data.kind === 'projectWiseUsers') {
+      setProjectWiseUsersData(data);
+      setActiveTab('projectWiseUsers');
+      return;
+    }
 
-    setImportedData(data);
+    if (data.kind === 'projectWiseWebUsers') {
+      setProjectWiseWebUsersData(data);
+      setActiveTab('projectWiseUsers');
+      return;
+    }
+
+    if (data.kind === 'tickets') {
+      setTicketsData(data);
+      setActiveTab('tickets');
+      return;
+    }
+
+    const monitoringRows = data.rows.filter(isMonitoringRow);
+    const range = getRowsDateRange(monitoringRows);
+
+    setStorageData(data);
+    setActiveTab('storage');
     setPeriodStartDate(range?.minDate ?? '');
     setPeriodEndDate(range?.maxDate ?? '');
   }
@@ -154,30 +225,87 @@ export function DashboardPage() {
           <ExcelUploader onDataLoaded={handleDataLoaded} />
         </section>
 
-        <section className="mt-6">
-          <PeriodFilter
-            endDate={periodEndDate}
-            filteredRowsCount={filteredRows.length}
-            maxDate={dateRange?.maxDate}
-            minDate={dateRange?.minDate}
-            onClear={clearPeriodFilter}
-            onEndDateChange={setPeriodEndDate}
-            onStartDateChange={setPeriodStartDate}
-            startDate={periodStartDate}
-            totalRowsCount={rows.length}
-          />
-        </section>
+        <nav className="mt-6 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
+          <button
+            type="button"
+            onClick={() => setActiveTab('storage')}
+            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+              activeTab === 'storage'
+                ? 'bg-brand-700 text-white shadow-soft'
+                : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
+            }`}
+          >
+            Armazenamento
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('projectWiseUsers')}
+            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+              activeTab === 'projectWiseUsers'
+                ? 'bg-brand-700 text-white shadow-soft'
+                : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
+            }`}
+          >
+            Usuários PW
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('tickets')}
+            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+              activeTab === 'tickets'
+                ? 'bg-brand-700 text-white shadow-soft'
+                : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
+            }`}
+          >
+            Chamados
+          </button>
+        </nav>
 
-        <section className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          <LastUpdateCard latestUpdate={latestUpdate} />
-          <TotalCapacityCard totalCapacity={totalCapacity} />
-          <UsedSpaceCard usedSpace={usedSpace} />
-          <FreeSpaceCard freeSpace={freeSpace} />
-          <UsagePercentageCard usagePercentage={usagePercentage} />
-          <PeriodVariationCard periodVariation={periodVariation} />
-          <AverageGrowthRateCard averageGrowthRate={averageGrowthRate} />
-          <TwelveMonthForecastCard forecast={twelveMonthForecast} />
-        </section>
+        {activeTab === 'storage' ? (
+          <>
+            <section className="mt-6">
+              <PeriodFilter
+                endDate={periodEndDate}
+                filteredRowsCount={filteredRows.length}
+                maxDate={dateRange?.maxDate}
+                minDate={dateRange?.minDate}
+                onClear={clearPeriodFilter}
+                onEndDateChange={setPeriodEndDate}
+                onStartDateChange={setPeriodStartDate}
+                startDate={periodStartDate}
+                totalRowsCount={rows.length}
+              />
+            </section>
+
+            <section className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <LastUpdateCard latestUpdate={latestUpdate} />
+              <TotalCapacityCard totalCapacity={totalCapacity} />
+              <UsedSpaceCard usedSpace={usedSpace} />
+              <FreeSpaceCard freeSpace={freeSpace} />
+              <UsagePercentageCard usagePercentage={usagePercentage} />
+              <PeriodVariationCard periodVariation={periodVariation} />
+              <AverageGrowthRateCard averageGrowthRate={averageGrowthRate} />
+              <TwelveMonthForecastCard forecast={twelveMonthForecast} />
+            </section>
+          </>
+        ) : null}
+
+        {activeTab === 'projectWiseUsers' ? (
+          <section className="mt-6">
+            <ProjectWiseUsersTab
+              explorerFileName={projectWiseUsersData?.fileName}
+              explorerRows={projectWiseUserRows}
+              webFileName={projectWiseWebUsersData?.fileName}
+              webRows={projectWiseWebUserRows}
+            />
+          </section>
+        ) : null}
+
+        {activeTab === 'tickets' ? (
+          <section className="mt-6">
+            <TicketsTab fileName={ticketsData?.fileName} rows={ticketRows} />
+          </section>
+        ) : null}
       </div>
     </main>
   );
