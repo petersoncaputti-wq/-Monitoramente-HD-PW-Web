@@ -133,18 +133,6 @@ function getBusinessHoursBetween(start: Date, end: Date): number {
   return totalMilliseconds / 3600000;
 }
 
-function getBusinessHoursForPeriod(startDateValue: string, endDateValue: string): number {
-  const startDate = parseInputDate(startDateValue);
-  const endDate = parseInputDate(endDateValue);
-
-  if (!startDate || !endDate) {
-    return 0;
-  }
-
-  endDate.setHours(23, 59, 59, 999);
-  return getBusinessHoursBetween(startDate, endDate);
-}
-
 function parseTicketDate(value: unknown): Date | null {
   const text = normalizeText(value);
 
@@ -385,13 +373,8 @@ export function getTicketsSummary(
       ? resolutionDurations.reduce((total, value) => total + value, 0) /
         resolutionDurations.length
       : null;
-  const periodBusinessHours = getBusinessHoursForPeriod(startDate, endDate);
   const averageResolutionHours =
-    closedRows.length === 0 || periodBusinessHours === 0
-      ? averageResolution === null
-        ? null
-        : averageResolution / 3600000
-      : periodBusinessHours / closedRows.length;
+    averageResolution === null ? null : averageResolution / 3600000;
   const medianResolution = getMedian(resolutionDurations);
   const selectedServiceRows =
     selectedService && selectedService !== 'Todos os servicos'
