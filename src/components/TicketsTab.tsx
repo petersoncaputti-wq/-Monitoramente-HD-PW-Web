@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PanelShell } from '@/components/PanelShell';
 import { TicketKpiCard } from '@/components/TicketKpiCard';
-import { TicketsTable } from '@/components/TicketsTable';
 import type { TicketRow } from '@/types/monitoring';
 import { getTicketDateRange, getTicketServices, getTicketsSummary } from '@/utils/ticketsKpis';
 
@@ -47,26 +46,6 @@ function RankingList({
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function MetricStrip({
-  items,
-}: {
-  items: Array<{ label: string; value: string | number; helper: string }>;
-}) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {items.map((item) => (
-        <div key={item.label} className="rounded-2xl border border-brand-100 bg-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-            {item.label}
-          </p>
-          <p className="mt-3 text-3xl font-semibold text-surface-900">{item.value}</p>
-          <p className="mt-3 text-sm leading-6 text-surface-700">{item.helper}</p>
-        </div>
-      ))}
     </div>
   );
 }
@@ -174,13 +153,13 @@ function AverageResolutionCard({ value }: { value: string }) {
   return (
     <article className="flex h-full min-h-[220px] flex-col rounded-[28px] border border-brand-100 bg-white p-6 shadow-soft">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-        Tempo medio de primeira resposta
+        Tempo medio de solucao
       </p>
       <p className="mt-4 break-words text-[1.75rem] font-semibold leading-tight text-brand-700 md:text-[2.05rem]">
         {value}
       </p>
       <p className="mt-auto pt-4 text-sm leading-6 text-surface-700">
-        Tempo medio de primeira resposta do atendimento em horas uteis.
+        Media em horas uteis entre abertura e encerramento dos chamados no periodo.
       </p>
     </article>
   );
@@ -222,7 +201,7 @@ export function TicketsTab({ rows, fileName }: TicketsTabProps) {
   return (
     <div className="flex flex-col gap-6">
       <PanelShell
-        title="Chamados ProjectWise"
+        title="Chamados"
         description="Indicadores de atendimento, SLA, categorias e distribuicao por organizacao."
         actions={
           fileName ? (
@@ -320,8 +299,8 @@ export function TicketsTab({ rows, fileName }: TicketsTabProps) {
       </PanelShell>
 
       <PanelShell
-        title="Servico selecionado"
-        description="Chamados abertos por empresa e principais solicitantes no periodo."
+        title="Detalhamento do servico selecionado"
+        description="Chamados abertos por empresa e principais solicitantes para o filtro atual."
         tone="soft"
       >
         <div className="mb-5 rounded-2xl border border-brand-100 bg-white p-5">
@@ -357,79 +336,13 @@ export function TicketsTab({ rows, fileName }: TicketsTabProps) {
         </div>
       </PanelShell>
 
-      <PanelShell title="Backlog" description="Leitura rapida dos chamados pendentes." tone="soft">
-        <MetricStrip
-          items={[
-            {
-              label: 'Total em aberto',
-              value: summary.openTickets,
-              helper: `${summary.newTickets} novos e ${summary.queuedTickets} na fila`,
-            },
-            {
-              label: 'Atendidos',
-              value: summary.attendedTickets,
-              helper: `${summary.attendedPercentage} da base importada`,
-            },
-            {
-              label: 'SLA violado',
-              value: summary.violatedSla,
-              helper: `${summary.violatedSlaPercentage} dos abertos no periodo`,
-            },
-            {
-              label: 'Total importado',
-              value: summary.totalTickets,
-              helper: 'Registros lidos na planilha',
-            },
-          ]}
+      <PanelShell title="Servicos" description="Maiores tipos de demanda registrados." tone="soft">
+        <RankingList
+          emptyText="Nenhuma categoria informada na planilha."
+          items={summary.topCategories}
+          limit={10}
         />
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <div>
-            <h3 className="mb-4 text-base font-semibold text-surface-900">Pendentes por idade</h3>
-            <RankingList emptyText="Nenhum chamado pendente." items={summary.pendingAging} />
-          </div>
-          <div>
-            <h3 className="mb-4 text-base font-semibold text-surface-900">Pendentes por prioridade</h3>
-            <RankingList emptyText="Nenhuma prioridade pendente." items={summary.pendingByPriority} />
-          </div>
-        </div>
       </PanelShell>
-
-      <div className="grid gap-6 xl:grid-cols-3">
-        <PanelShell title="Servicos" description="Maiores tipos de demanda registrados." tone="soft">
-          <RankingList
-            emptyText="Nenhuma categoria informada na planilha."
-            items={summary.topCategories}
-            limit={10}
-          />
-        </PanelShell>
-
-        <PanelShell
-          title="Empresas"
-          description="Distribuicao dos chamados por organizacao beneficiaria."
-          tone="soft"
-        >
-          <RankingList
-            emptyText="Nenhuma organizacao informada na planilha."
-            items={summary.topOrganizations}
-            limit={10}
-          />
-        </PanelShell>
-
-        <PanelShell
-          title="Solicitantes"
-          description="Top 10 pessoas solicitantes no periodo."
-          tone="soft"
-        >
-          <RankingList
-            emptyText="Nenhum solicitante informado na planilha."
-            items={summary.topRequesters}
-            limit={10}
-          />
-        </PanelShell>
-      </div>
-
-      <TicketsTable rows={rows} />
     </div>
   );
 }
