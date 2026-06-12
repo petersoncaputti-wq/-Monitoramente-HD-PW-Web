@@ -53,9 +53,10 @@ param(
     [switch]$IncludeDiagnostics
 )
 
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+Import-Module pwps_dab -DisableNameChecking -WarningAction SilentlyContinue
 $ErrorActionPreference = 'Stop'
-
-Import-Module pwps_dab
 Set-StrictMode -Version Latest
 
 function ConvertTo-NormalizedKey {
