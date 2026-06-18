@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import type { ProjectWiseWebUserRow } from '@/types/monitoring';
 import {
   formatProjectWiseDate,
@@ -41,17 +42,64 @@ function getFullName(row: ProjectWiseWebUserRow): string {
     .join(' ');
 }
 
-export function ProjectWiseWebUsersTable({ rows }: ProjectWiseWebUsersTableProps) {
-  const sortedRows = [...rows].sort((a, b) => {
-    const aInactive = isProjectWiseWebUserActiveWithin180Days(a) ? 1 : 0;
-    const bInactive = isProjectWiseWebUserActiveWithin180Days(b) ? 1 : 0;
+function normalizeSearchValue(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR');
+}
 
-    if (aInactive !== bInactive) {
-      return aInactive - bInactive;
-    }
+function getSearchFields(row: ProjectWiseWebUserRow) {
+  return [
+    row.Email,
+    getFullName(row),
+    row['EntitlementGroup(s)'],
+    row.ProfileCreationDate,
+    formatProjectWiseDate(row.ProfileCreationDate),
+    row.LastLoginDate,
+    formatProjectWiseDate(row.LastLoginDate),
+    isProjectWiseWebUserActiveWithin180Days(row) ? 'Ativo 180d' : 'Inativo 180d',
+    row.Locked,
+    normalizeSearchValue(row.Locked) === 'true' ? 'Sim' : 'Nao',
+    row.MFA,
+    normalizeSearchValue(row.MFA) === 'true' ? 'Ativo' : 'Inativo',
+  ];
+}
 
-    return String(a.Email ?? '').localeCompare(String(b.Email ?? ''), 'pt-BR');
+function matchesSearchTerm(row: ProjectWiseWebUserRow, searchTerm: string, exactMatch: boolean) {
+  const normalizedTerm = normalizeSearchValue(searchTerm);
+
+  if (!normalizedTerm) {
+    return true;
+  }
+
+  return getSearchFields(row).some((field) => {
+    const normalizedField = normalizeSearchValue(field);
+    return exactMatch
+      ? normalizedField === normalizedTerm
+      : normalizedField.includes(normalizedTerm);
   });
+}
+
+export function ProjectWiseWebUsersTable({ rows }: ProjectWiseWebUsersTableProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [exactMatch, setExactMatch] = useState(false);
+
+  const sortedRows = useMemo(() => {
+    const visibleRows = rows.filter((row) => matchesSearchTerm(row, searchTerm, exactMatch));
+
+    return visibleRows.sort((a, b) => {
+      const aInactive = isProjectWiseWebUserActiveWithin180Days(a) ? 1 : 0;
+      const bInactive = isProjectWiseWebUserActiveWithin180Days(b) ? 1 : 0;
+
+      if (aInactive !== bInactive) {
+        return aInactive - bInactive;
+      }
+
+      return String(a.Email ?? '').localeCompare(String(b.Email ?? ''), 'pt-BR');
+    });
+  }, [exactMatch, rows, searchTerm]);
 
   if (rows.length === 0) {
     return (
@@ -70,6 +118,46 @@ export function ProjectWiseWebUsersTable({ rows }: ProjectWiseWebUsersTableProps
         <p className="mt-2 text-sm text-surface-700">
           Usuários sem login recente nos últimos 180 dias aparecem primeiro para validação.
         </p>
+        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
+          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
+            Pesquisar
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Email, nome, entitlement ou situacao"
+              className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => setExactMatch((current) => !current)}
+            aria-pressed={exactMatch}
+            className={`h-11 rounded-2xl border px-4 text-sm font-semibold transition ${
+              exactMatch
+                ? 'border-brand-700 bg-brand-700 text-white shadow-soft'
+                : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'
+            }`}
+          >
+            Termo exato
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm('');
+              setExactMatch(false);
+            }}
+            disabled={!searchTerm && !exactMatch}
+            className="h-11 rounded-2xl border border-brand-100 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Limpar
+          </button>
+        </div>
+        {searchTerm ? (
+          <p className="mt-3 text-xs font-medium text-surface-600">
+            {sortedRows.length} de {rows.length} registros encontrados
+          </p>
+        ) : null}
       </div>
 
       <div className="max-h-[520px] overflow-auto">
