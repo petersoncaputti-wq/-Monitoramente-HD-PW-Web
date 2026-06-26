@@ -218,17 +218,34 @@ function formatGenericDate(value: string): string {
 }
 
 export function formatStorageValue(value: number): string {
-  if (Math.abs(value) >= 1024) {
-    return `${formatNumber(value / 1024, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })} TB`;
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'];
+  let normalizedValue = Math.abs(value) * 1024 ** 3;
+  let unitIndex = 0;
+
+  while (normalizedValue >= 1024 && unitIndex < units.length - 1) {
+    normalizedValue /= 1024;
+    unitIndex += 1;
   }
 
-  return `${formatNumber(value, {
+  if (normalizedValue === 0) {
+    return `0 ${units[unitIndex]}`;
+  }
+
+  return `${formatNumber(Math.sign(value) * normalizedValue, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} GB`;
+  })} ${units[unitIndex]}`;
+}
+
+export function formatStorageRateValue(valueInGb: number, period: string): string {
+  return `${formatStorageValue(valueInGb)}/${period}`;
+}
+
+export function formatGigabytesValue(value: number): string {
+  return `${formatNumber(value, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} GB`;
 }
 
 export function formatPreviewValue(header: string, value: unknown): string {
@@ -265,13 +282,6 @@ export function formatPreviewValue(header: string, value: unknown): string {
     default:
       return formatCellValue(value);
   }
-}
-
-export function formatGigabytesValue(value: number): string {
-  return `${formatNumber(value, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })} GB`;
 }
 
 export function normalizePercentageValue(value: number): number {

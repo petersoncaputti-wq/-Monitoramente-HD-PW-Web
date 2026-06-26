@@ -60,6 +60,12 @@ export function ProjectWiseUsersTab({
             helperText={`${webSummary.inactiveOver180Percentage} sem login em 180 dias e fora da excecao de 30 dias`}
             tone="warning"
           />
+          <ProjectWiseUserKpiCard
+            title="Criados em 30 dias"
+            value={String(explorerSummary.recentlyCreatedExceptions)}
+            helperText={`${explorerSummary.recentlyCreatedExceptionsPercentage} mantidos ativos por excecao`}
+            tone="good"
+          />
         </div>
       </PanelShell>
     </div>

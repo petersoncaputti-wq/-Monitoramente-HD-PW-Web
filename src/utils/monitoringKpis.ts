@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+﻿import * as XLSX from 'xlsx';
 import type {
   AverageGrowthRateResult,
   DaysUntilFullResult,
@@ -14,9 +14,9 @@ import type {
   UsedSpaceResult,
 } from '@/types/monitoring';
 import {
-  formatGigabytesValue,
   formatPercentageValue,
   formatNumber,
+  formatStorageRateValue,
   formatStorageValue,
   normalizePercentageValue,
   parseSpreadsheetNumber,
@@ -212,7 +212,7 @@ export function getLatestUpdateKpi(rows: MonitoringRow[]): LatestUpdateResult {
     return {
       status: 'invalid',
       value: '--/--/---- --:--',
-      helperText: 'Data e hora indisponíveis na planilha',
+      helperText: 'Data e hora indisponÃ­veis na planilha',
     };
   }
 
@@ -222,7 +222,7 @@ export function getLatestUpdateKpi(rows: MonitoringRow[]): LatestUpdateResult {
     return {
       status: 'invalid',
       value: '--/--/---- --:--',
-      helperText: 'Data e hora indisponíveis na planilha',
+      helperText: 'Data e hora indisponÃ­veis na planilha',
     };
   }
 
@@ -250,7 +250,7 @@ export function getTotalCapacityKpi(rows: MonitoringRow[]): TotalCapacityResult 
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'TotalGB indisponível na planilha',
+      helperText: 'TotalGB indisponÃ­vel na planilha',
     };
   }
 
@@ -293,7 +293,7 @@ export function getUsedSpaceKpi(rows: MonitoringRow[]): UsedSpaceResult {
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'Data e hora indisponíveis na planilha',
+      helperText: 'Data e hora indisponÃ­veis na planilha',
     };
   }
 
@@ -303,7 +303,7 @@ export function getUsedSpaceKpi(rows: MonitoringRow[]): UsedSpaceResult {
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'UsadoGB indisponível no registro mais recente',
+      helperText: 'UsadoGB indisponÃ­vel no registro mais recente',
     };
   }
 
@@ -329,7 +329,7 @@ export function getFreeSpaceKpi(rows: MonitoringRow[]): FreeSpaceResult {
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'Data e hora indisponíveis na planilha',
+      helperText: 'Data e hora indisponÃ­veis na planilha',
     };
   }
 
@@ -339,7 +339,7 @@ export function getFreeSpaceKpi(rows: MonitoringRow[]): FreeSpaceResult {
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'LivreGB indisponível no registro mais recente',
+      helperText: 'LivreGB indisponÃ­vel no registro mais recente',
     };
   }
 
@@ -386,7 +386,7 @@ export function getUsagePercentageKpi(rows: MonitoringRow[]): UsagePercentageRes
     return {
       status: 'invalid',
       value: '-- %',
-      helperText: 'Data e hora indisponíveis na planilha',
+      helperText: 'Data e hora indisponÃ­veis na planilha',
       tone: 'neutral',
     };
   }
@@ -411,7 +411,7 @@ export function getUsagePercentageKpi(rows: MonitoringRow[]): UsagePercentageRes
     return {
       status: 'invalid',
       value: '-- %',
-      helperText: 'PercentualUsado indisponível e não foi possível calcular',
+      helperText: 'PercentualUsado indisponÃ­vel e nÃ£o foi possÃ­vel calcular',
       tone: 'neutral',
     };
   }
@@ -442,7 +442,7 @@ export function getPeriodVariationKpi(rows: MonitoringRow[]): PeriodVariationRes
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'Registros insuficientes para comparar o período',
+      helperText: 'Registros insuficientes para comparar o perÃ­odo',
       tone: 'neutral',
     };
   }
@@ -456,8 +456,8 @@ export function getPeriodVariationKpi(rows: MonitoringRow[]): PeriodVariationRes
 
   return {
     status: 'ready',
-    value: `${sign}${formatGigabytesValue(Math.abs(variation))}`,
-    helperText: 'Comparação entre o primeiro e o último registro',
+    value: `${sign}${formatStorageValue(Math.abs(variation))}`,
+    helperText: 'ComparaÃ§Ã£o entre o primeiro e o Ãºltimo registro',
     tone,
   };
 }
@@ -478,7 +478,7 @@ export function getAverageGrowthRateKpi(rows: MonitoringRow[]): AverageGrowthRat
     return {
       status: 'invalid',
       value: '-- GB/h',
-      helperText: 'Registros insuficientes para calcular a taxa média',
+      helperText: 'Registros insuficientes para calcular a taxa mÃ©dia',
       tone: 'neutral',
     };
   }
@@ -491,14 +491,8 @@ export function getAverageGrowthRateKpi(rows: MonitoringRow[]): AverageGrowthRat
 
   return {
     status: 'ready',
-    value: `${sign}${formatNumber(Math.abs(ratePerHour), {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })} GB/h`,
-    helperText: `${sign}${formatNumber(Math.abs(ratePerDay), {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })} GB/dia em média`,
+    value: `${sign}${formatStorageRateValue(Math.abs(ratePerHour), 'h')}`,
+    helperText: `${sign}${formatStorageRateValue(Math.abs(ratePerDay), 'dia')} em media`,
     tone,
   };
 }
@@ -533,8 +527,8 @@ export function getTwelveMonthForecastKpi(rows: MonitoringRow[]): TwelveMonthFor
     value: formatStorageValue(projectedUsedSpace),
     helperText:
       totalCapacity !== null && projectedUsedSpace > totalCapacity
-        ? 'Projeção linear acima da capacidade atual'
-        : 'Projeção linear com base no histórico importado',
+        ? 'ProjeÃ§Ã£o linear acima da capacidade atual'
+        : 'ProjeÃ§Ã£o linear com base no histÃ³rico importado',
     tone:
       totalCapacity !== null && projectedUsedSpace > totalCapacity ? 'attention' : 'neutral',
   };
@@ -568,7 +562,7 @@ export function getDaysUntilFullKpi(rows: MonitoringRow[]): DaysUntilFullResult 
     return {
       status: 'invalid',
       value: '-- dias',
-      helperText: 'LivreGB indisponível no registro mais recente',
+      helperText: 'LivreGB indisponÃ­vel no registro mais recente',
       tone: 'neutral',
     };
   }
@@ -579,7 +573,7 @@ export function getDaysUntilFullKpi(rows: MonitoringRow[]): DaysUntilFullResult 
     return {
       status: 'invalid',
       value: '-- dias',
-      helperText: 'Não foi possível calcular o ritmo médio de crescimento',
+      helperText: 'NÃ£o foi possÃ­vel calcular o ritmo mÃ©dio de crescimento',
       tone: 'neutral',
     };
   }
@@ -587,8 +581,8 @@ export function getDaysUntilFullKpi(rows: MonitoringRow[]): DaysUntilFullResult 
   if (growthPerDay === 0) {
     return {
       status: 'ready',
-      value: 'Sem previsão',
-      helperText: 'Não houve crescimento no período importado',
+      value: 'Sem previsÃ£o',
+      helperText: 'NÃ£o houve crescimento no perÃ­odo importado',
       tone: 'neutral',
     };
   }
@@ -608,7 +602,7 @@ export function getDaysUntilFullKpi(rows: MonitoringRow[]): DaysUntilFullResult 
     return {
       status: 'invalid',
       value: '-- dias',
-      helperText: 'Não foi possível estimar os dias restantes',
+      helperText: 'NÃ£o foi possÃ­vel estimar os dias restantes',
       tone: 'neutral',
     };
   }
@@ -619,7 +613,7 @@ export function getDaysUntilFullKpi(rows: MonitoringRow[]): DaysUntilFullResult 
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
     })} dias`,
-    helperText: 'Estimativa com base no espaço livre atual e no ritmo médio',
+    helperText: 'Estimativa com base no espaÃ§o livre atual e no ritmo mÃ©dio',
     tone: getDaysUntilFullTone(daysUntilFull),
   };
 }
@@ -650,7 +644,7 @@ export function getPeakUsageKpi(rows: MonitoringRow[]): PeakUsageResult {
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'UsadoGB indisponível nos registros importados',
+      helperText: 'UsadoGB indisponÃ­vel nos registros importados',
       tone: 'neutral',
     };
   }
@@ -693,7 +687,7 @@ export function getLowestFreeSpaceKpi(rows: MonitoringRow[]): LowestFreeSpaceRes
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'LivreGB indisponível nos registros importados',
+      helperText: 'LivreGB indisponÃ­vel nos registros importados',
       tone: 'neutral',
     };
   }
