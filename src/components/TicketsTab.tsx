@@ -204,7 +204,7 @@ export function TicketsTab({ rows }: TicketsTabProps) {
     <div className="flex flex-col gap-6">
       <PanelShell
         title="Chamados"
-        description="Indicadores de atendimento, SLA, categorias e distribuicao por organizacao."
+        description="Indicadores de atendimento, SLA, categorias e distribuição por organização."
       >
         <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)_96px] sm:items-end">
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
@@ -247,18 +247,18 @@ export function TicketsTab({ rows }: TicketsTabProps) {
           <TicketKpiCard
             title="Chamados abertos"
             value={String(summary.openedInPeriod)}
-            helperText="Abertos dentro do periodo selecionado"
+            helperText="Abertos dentro do período selecionado"
           />
           <TicketKpiCard
             title="Chamados encerrados"
             value={String(summary.closedInPeriod)}
-            helperText="Fechados ou resolvidos dentro do periodo"
+            helperText="Fechados ou resolvidos dentro do período"
             tone="good"
           />
           <TicketKpiCard
             title="Chamados pendentes"
             value={String(summary.pendingTickets)}
-            helperText="Status ainda nao finalizados"
+            helperText="Status ainda não finalizados"
             tone="attention"
           />
           <GaugeCard
@@ -266,7 +266,7 @@ export function TicketsTab({ rows }: TicketsTabProps) {
             value={summary.slaComplianceValue}
             valueLabel={summary.slaCompliancePercentage}
             maxLabel="100%"
-            helperText={`${summary.inSla} dentro do SLA em ${summary.slaApplicableTickets} chamados aplicaveis`}
+            helperText={`${summary.inSla} dentro do SLA em ${summary.slaApplicableTickets} chamados aplicáveis`}
             variant="segmented"
             tone={summary.violatedSla > 0 ? 'warning' : 'good'}
           />
@@ -287,7 +287,7 @@ export function TicketsTab({ rows }: TicketsTabProps) {
             {summary.selectedServiceOpenTickets}
           </p>
           <p className="mt-2 text-sm text-surface-700">
-            Chamados abertos no periodo selecionado.
+            Chamados abertos no período selecionado.
           </p>
         </div>
 
@@ -322,3 +322,4 @@ export function TicketsTab({ rows }: TicketsTabProps) {
     </div>
   );
 }
+

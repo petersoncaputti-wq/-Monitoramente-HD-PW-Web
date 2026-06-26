@@ -93,7 +93,7 @@ export async function readMonitoringWorkbookFromUrl(
   });
 
   if (!response.ok) {
-    throw new Error(`Fonte nao encontrada: ${url}`);
+    throw new Error(`Fonte não encontrada: ${url}`);
   }
 
   const contentType = response.headers.get('content-type') ?? '';

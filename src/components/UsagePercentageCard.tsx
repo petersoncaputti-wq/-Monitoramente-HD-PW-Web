@@ -53,3 +53,4 @@ export function UsagePercentageCard({ usagePercentage }: UsagePercentageCardProp
     </article>
   );
 }
+

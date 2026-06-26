@@ -61,7 +61,7 @@ function getSearchFields(row: ProjectWiseWebUserRow) {
     formatProjectWiseDate(row.LastLoginDate),
     isProjectWiseWebUserActiveWithin180Days(row) ? 'Ativo 180d' : 'Inativo 180d',
     row.Locked,
-    normalizeSearchValue(row.Locked) === 'true' ? 'Sim' : 'Nao',
+    normalizeSearchValue(row.Locked) === 'true' ? 'Sim' : 'Não',
     row.MFA,
     normalizeSearchValue(row.MFA) === 'true' ? 'Ativo' : 'Inativo',
   ];
@@ -221,3 +221,4 @@ export function ProjectWiseWebUsersTable({ rows }: ProjectWiseWebUsersTableProps
     </div>
   );
 }
+

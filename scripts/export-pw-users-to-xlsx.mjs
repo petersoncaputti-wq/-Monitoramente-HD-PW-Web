@@ -101,7 +101,7 @@ try {
   }
 
   if (!existsSync(tempCsvPath)) {
-    console.error('[pw-users-export] A extracao nao gerou o CSV temporario esperado.');
+    console.error('[pw-users-export] A extração não gerou o CSV temporário esperado.');
     process.exit(1);
   }
 
@@ -149,3 +149,4 @@ try {
     recursive: true,
   });
 }
+

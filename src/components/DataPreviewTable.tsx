@@ -74,3 +74,4 @@ export function DataPreviewTable({ data }: DataPreviewTableProps) {
     </div>
   );
 }
+

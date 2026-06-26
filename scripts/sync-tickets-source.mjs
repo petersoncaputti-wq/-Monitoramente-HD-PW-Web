@@ -87,7 +87,7 @@ const sourcePath =
 
 if (!sourcePath) {
   console.log(
-    '[tickets-sync] TICKETS_SYNC_SOURCE_PATH nao configurado e fonte padrao nao encontrada; mantendo fonte atual.',
+    '[tickets-sync] TICKETS_SYNC_SOURCE_PATH não configurado e fonte padrão não encontrada; mantendo fonte atual.',
   );
   process.exit(0);
 }
@@ -95,12 +95,12 @@ if (!sourcePath) {
 const resolvedSourcePath = resolve(sourcePath);
 
 if (!existsSync(resolvedSourcePath)) {
-  console.error(`[tickets-sync] Arquivo nao encontrado: ${resolvedSourcePath}`);
+  console.error(`[tickets-sync] Arquivo não encontrado: ${resolvedSourcePath}`);
   process.exit(1);
 }
 
 if (!statSync(resolvedSourcePath).isFile()) {
-  console.error(`[tickets-sync] O caminho configurado nao e um arquivo: ${resolvedSourcePath}`);
+  console.error(`[tickets-sync] O caminho configurado não é um arquivo: ${resolvedSourcePath}`);
   process.exit(1);
 }
 
@@ -108,7 +108,7 @@ const extension = extname(resolvedSourcePath).toLowerCase();
 
 if (!['.xlsx', '.xls', '.csv', '.xml'].includes(extension)) {
   console.error(
-    `[tickets-sync] Formato nao suportado: ${extension}. Use .xlsx, .xls, .csv ou .xml.`,
+    `[tickets-sync] Formato não suportado: ${extension}. Use .xlsx, .xls, .csv ou .xml.`,
   );
   process.exit(1);
 }

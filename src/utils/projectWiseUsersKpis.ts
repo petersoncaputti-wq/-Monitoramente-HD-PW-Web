@@ -47,6 +47,13 @@ function normalizeText(value: unknown): string {
   return String(value ?? '').trim();
 }
 
+function normalizeComparableText(value: unknown): string {
+  return normalizeText(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
 function normalizeEmail(value: unknown): string {
   return normalizeText(value).toLowerCase();
 }
@@ -156,8 +163,7 @@ export function getProjectWiseUsersSummary(
     (row) => normalizeText(row.Ultimoacesso).toLowerCase() === 'sem registro',
   ).length;
   const recentlyCreatedExceptions = rows.filter((row) =>
-    normalizeText(row.Motivo)
-      .toLowerCase()
+    normalizeComparableText(row.Motivo)
       .includes('usuario criado ha menos de 30 dias'),
   ).length;
   const reasonMap = new Map<string, number>();

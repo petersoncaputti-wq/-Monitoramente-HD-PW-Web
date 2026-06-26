@@ -58,3 +58,4 @@ export function PeriodVariationCard({ periodVariation }: PeriodVariationCardProp
     </article>
   );
 }
+

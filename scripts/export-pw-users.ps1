@@ -308,50 +308,50 @@ try {
             "Ativo"
         }
 
-        $elegivelExclusao = "Nao"
+        $elegivelExclusao = "Não"
         $motivo = ""
 
         if ($statusAcesso -eq "Inativo" -and $possuiExcecaoInatividade) {
             $motivosExcecao = @()
 
             if ($usuarioNovo) {
-                $motivosExcecao += "usuario criado ha menos de 30 dias"
+                $motivosExcecao += "usuário criado há menos de 30 dias"
             }
 
             if ($descricaoEcs) {
-                $motivosExcecao += "descricao contem ECS"
+                $motivosExcecao += "descrição contém ECS"
             }
 
-            $motivo = "Excecao de inatividade: " + ($motivosExcecao -join " e ")
+            $motivo = "Exceção de inatividade: " + ($motivosExcecao -join " e ")
         }
 
         if ($statusFinal -eq "Inativo" -and $consultaAcesso.Consulta -eq "OK") {
             $elegivelExclusao = "Sim"
             if ($statusAcesso -eq "Inativo" -and $estaDesabilitado) {
-                $motivo = "Usuario sem login nos ultimos $inactiveDays dias e ja inativo/desabilitado no ProjectWise"
+                $motivo = "Usuário sem login nos últimos $inactiveDays dias e já inativo/desabilitado no ProjectWise"
             }
             elseif ($statusAcesso -eq "Inativo") {
-                $motivo = "Usuario sem login nos ultimos $inactiveDays dias"
+                $motivo = "Usuário sem login nos últimos $inactiveDays dias"
             }
             else {
-                $motivo = "Usuario ja inativo/desabilitado no ProjectWise"
+                $motivo = "Usuário já inativo/desabilitado no ProjectWise"
             }
         }
 
         if ($consultaAcesso.Consulta -eq "Erro") {
-            $motivo = "Nao elegivel: erro ao consultar Audit Trail - $($consultaAcesso.Mensagem)"
+            $motivo = "Não elegível: erro ao consultar Audit Trail - $($consultaAcesso.Mensagem)"
         }
 
         if (($id -ne "" -and $idUsuarioAtual -ne "" -and $id -eq $idUsuarioAtual) -or ($nome -ne "" -and $nomeUsuarioAtual -ne "" -and $nome -ieq $nomeUsuarioAtual)) {
-            $elegivelExclusao = "Nao"
-            $motivo = "Nao elegivel: usuario conectado na sessao atual"
+            $elegivelExclusao = "Não"
+            $motivo = "Não elegível: usuário conectado na sessão atual"
         }
 
         $resultados.Add([PSCustomObject]@{
             Nome                 = $nome
             Email                = $email
             ID                   = $id
-            "Data criacao"       = Format-DataProjetoWise $dataCriacao
+            "Data criação"       = Format-DataProjetoWise $dataCriacao
             Descricao            = $descricao
             "Ultimo acesso"      = $consultaAcesso.UltimoAcesso
             Status               = $statusFinal
@@ -359,7 +359,7 @@ try {
             "Status ProjectWise" = $statusProjectWise
             "Elegivel exclusao"  = $elegivelExclusao
             Motivo               = $motivo
-            "Acao executada"     = ""
+            "Ação executada"     = ""
             Resultado            = ""
         })
     }

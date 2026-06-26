@@ -27,3 +27,4 @@ export function UsedSpaceCard({ usedSpace }: UsedSpaceCardProps) {
     </article>
   );
 }
+

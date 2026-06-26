@@ -18,12 +18,12 @@ function sourceSyncPlugin() {
                     scriptPath: fileURLToPath(new URL('./scripts/sync-tickets-source.mjs', import.meta.url)),
                 },
                 {
-                    fallbackMessage: 'Fonte de usuarios PW atualizada.',
+                    fallbackMessage: 'Fonte de usuários PW atualizada.',
                     route: '/api/sync-pw-users',
                     scriptPath: fileURLToPath(new URL('./scripts/export-pw-users-to-xlsx.mjs', import.meta.url)),
                 },
                 {
-                    fallbackMessage: 'Fonte de usuarios do Portal Bentley atualizada.',
+                    fallbackMessage: 'Fonte de usuários do Portal Bentley atualizada.',
                     route: '/api/sync-portal-users',
                     scriptPath: fileURLToPath(new URL('./scripts/sync-portal-users-source.mjs', import.meta.url)),
                 },
@@ -34,7 +34,7 @@ function sourceSyncPlugin() {
                     if (request.method !== 'POST') {
                         response.statusCode = 405;
                         response.setHeader('Content-Type', 'application/json');
-                        response.end(JSON.stringify({ error: 'Metodo nao permitido.' }));
+                        response.end(JSON.stringify({ error: 'Método não permitido.' }));
                         return;
                     }
                     execFile(process.execPath, [config.scriptPath], function (error, stdout, stderr) {
