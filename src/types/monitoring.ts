@@ -160,3 +160,4 @@ export interface DaysUntilFullResult {
   helperText: string;
   tone: 'neutral' | 'attention' | 'warning' | 'critical';
 }
+

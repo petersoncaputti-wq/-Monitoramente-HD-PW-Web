@@ -105,7 +105,7 @@ function writeNormalizedPortalWorkbook(sourcePath, targetPath) {
   const firstSheetName = workbook.SheetNames[0];
 
   if (!firstSheetName) {
-    throw new Error('A fonte do Portal Bentley nao possui abas disponiveis.');
+    throw new Error('A fonte do Portal Bentley não possui abas disponíveis.');
   }
 
   const worksheet = workbook.Sheets[firstSheetName];
@@ -136,7 +136,7 @@ const sourcePath =
 
 if (!sourcePath) {
   console.log(
-    '[portal-users-sync] PORTAL_USERS_SOURCE_PATH nao configurado e fonte padrao nao encontrada; mantendo fonte atual.',
+    '[portal-users-sync] PORTAL_USERS_SOURCE_PATH não configurado e fonte padrão não encontrada; mantendo fonte atual.',
   );
   process.exit(0);
 }
@@ -144,12 +144,12 @@ if (!sourcePath) {
 const resolvedSourcePath = resolve(sourcePath);
 
 if (!existsSync(resolvedSourcePath)) {
-  console.error(`[portal-users-sync] Arquivo nao encontrado: ${resolvedSourcePath}`);
+  console.error(`[portal-users-sync] Arquivo não encontrado: ${resolvedSourcePath}`);
   process.exit(1);
 }
 
 if (!statSync(resolvedSourcePath).isFile()) {
-  console.error(`[portal-users-sync] O caminho configurado nao e um arquivo: ${resolvedSourcePath}`);
+  console.error(`[portal-users-sync] O caminho configurado não é um arquivo: ${resolvedSourcePath}`);
   process.exit(1);
 }
 
@@ -157,7 +157,7 @@ const extension = extname(resolvedSourcePath).toLowerCase();
 
 if (!['.xlsx', '.xls', '.csv'].includes(extension)) {
   console.error(
-    `[portal-users-sync] Formato nao suportado: ${extension}. Use .xlsx, .xls ou .csv.`,
+    `[portal-users-sync] Formato não suportado: ${extension}. Use .xlsx, .xls ou .csv.`,
   );
   process.exit(1);
 }

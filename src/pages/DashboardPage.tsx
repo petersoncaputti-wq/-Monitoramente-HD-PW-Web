@@ -149,18 +149,18 @@ const TICKETS_UPDATE_STEPS = [
 
 const PROJECT_WISE_USERS_UPDATE_STEPS = [
   'Conectando ao ProjectWise',
-  'Consultando usuarios do PW Explorer',
+  'Consultando usuários do PW Explorer',
   'Consultando registros de acesso no Audit Trail',
   'Aplicando regras de inatividade e excecoes',
   'Gerando planilha Excel',
-  'Recarregando indicadores de usuarios',
+  'Recarregando indicadores de usuários',
 ];
 
 const PORTAL_USERS_UPDATE_STEPS = [
   'Lendo arquivo do PW Web no OneDrive',
   'Copiando fonte para a pasta publica',
-  'Normalizando cabecalhos do Portal Bentley',
-  'Recarregando comparativo de usuarios',
+  'Normalizando cabeçalhos do Portal Bentley',
+  'Recarregando comparativo de usuários',
 ];
 
 type AutoStorageStatus =
@@ -255,6 +255,10 @@ function formatShortHash(value: string) {
   return value ? value.slice(0, 10) : '-';
 }
 
+function hasHeaderError(message: string) {
+  return message.includes('cabeçalhos') || message.includes('cabecalhos');
+}
+
 async function syncLocalStorageSource(): Promise<StorageSyncInfo | undefined> {
   const response = await fetch('/api/sync-storage', {
     method: 'POST',
@@ -267,7 +271,7 @@ async function syncLocalStorageSource(): Promise<StorageSyncInfo | undefined> {
   const result = (await response.json().catch(() => null)) as StorageSyncResponse | null;
 
   if (!response.ok) {
-    throw new Error(result?.error ?? 'Nao foi possivel sincronizar a fonte local.');
+    throw new Error(result?.error ?? 'Não foi possível sincronizar a fonte local.');
   }
 
   return result?.sync;
@@ -285,7 +289,7 @@ async function syncLocalTicketsSource(): Promise<StorageSyncInfo | undefined> {
   const result = (await response.json().catch(() => null)) as StorageSyncResponse | null;
 
   if (!response.ok) {
-    throw new Error(result?.error ?? 'Nao foi possivel sincronizar a fonte local de chamados.');
+    throw new Error(result?.error ?? 'Não foi possível sincronizar a fonte local de chamados.');
   }
 
   return result?.sync;
@@ -303,7 +307,7 @@ async function syncLocalProjectWiseUsersSource(): Promise<StorageSyncInfo | unde
   const result = (await response.json().catch(() => null)) as StorageSyncResponse | null;
 
   if (!response.ok) {
-    throw new Error(result?.error ?? 'Nao foi possivel atualizar a fonte de usuarios PW.');
+    throw new Error(result?.error ?? 'Não foi possível atualizar a fonte de usuários PW.');
   }
 
   return result?.sync;
@@ -322,7 +326,7 @@ async function syncLocalProjectWisePortalUsersSource(): Promise<StorageSyncInfo 
 
   if (!response.ok) {
     throw new Error(
-      result?.error ?? 'Nao foi possivel atualizar a fonte de usuarios do Portal Bentley.',
+      result?.error ?? 'Não foi possível atualizar a fonte de usuários do Portal Bentley.',
     );
   }
 
@@ -438,7 +442,7 @@ export function DashboardPage() {
         const message =
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel sincronizar a fonte local.';
+            : 'Não foi possível sincronizar a fonte local.';
 
         setAutoStorageStatus({ state: 'error', message });
         return;
@@ -453,7 +457,7 @@ export function DashboardPage() {
         const data = await readMonitoringWorkbookFromUrl(source.url, source.fileName);
 
         if (data.kind !== 'storage') {
-          throw new Error('A fonte encontrada nao possui os cabecalhos de armazenamento.');
+          throw new Error('A fonte encontrada não possui os cabeçalhos de armazenamento.');
         }
 
         applyStorageData(data, false);
@@ -479,10 +483,10 @@ export function DashboardPage() {
         ? externalSourceError.message
         : lastError instanceof Error
           ? lastError.message
-          : 'Nao foi possivel carregar a fonte automatica de armazenamento.';
+          : 'Não foi possível carregar a fonte automática de armazenamento.';
 
     setAutoStorageStatus(
-      EXTERNAL_STORAGE_SOURCE_URL || message?.includes('cabecalhos')
+      EXTERNAL_STORAGE_SOURCE_URL || hasHeaderError(message)
         ? { state: 'error', message }
         : { state: 'missing' },
     );
@@ -502,7 +506,7 @@ export function DashboardPage() {
         const message =
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel sincronizar a fonte local de chamados.';
+            : 'Não foi possível sincronizar a fonte local de chamados.';
 
         setAutoTicketsStatus({ state: 'error', message });
         return;
@@ -517,7 +521,7 @@ export function DashboardPage() {
         const data = await readMonitoringWorkbookFromUrl(source.url, source.fileName);
 
         if (data.kind !== 'tickets') {
-          throw new Error('A fonte encontrada nao possui os cabecalhos de chamados.');
+          throw new Error('A fonte encontrada não possui os cabeçalhos de chamados.');
         }
 
         applyTicketsData(data);
@@ -537,10 +541,10 @@ export function DashboardPage() {
     const message =
       lastError instanceof Error
         ? lastError.message
-        : 'Nao foi possivel carregar a fonte automatica de chamados.';
+        : 'Não foi possível carregar a fonte automática de chamados.';
 
     setAutoTicketsStatus(
-      message.includes('cabecalhos') ? { state: 'error', message } : { state: 'missing' },
+      hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' },
     );
   }
 
@@ -558,7 +562,7 @@ export function DashboardPage() {
         const message =
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel atualizar a fonte de usuarios PW.';
+            : 'Não foi possível atualizar a fonte de usuários PW.';
 
         setAutoProjectWiseUsersStatus({ state: 'error', message });
         return;
@@ -573,7 +577,7 @@ export function DashboardPage() {
         const data = await readMonitoringWorkbookFromUrl(source.url, source.fileName);
 
         if (data.kind !== 'projectWiseUsers') {
-          throw new Error('A fonte encontrada nao possui os cabecalhos de usuarios PW.');
+          throw new Error('A fonte encontrada não possui os cabeçalhos de usuários PW.');
         }
 
         applyProjectWiseUsersData(data);
@@ -593,10 +597,10 @@ export function DashboardPage() {
     const message =
       lastError instanceof Error
         ? lastError.message
-        : 'Nao foi possivel carregar a fonte automatica de usuarios PW.';
+        : 'Não foi possível carregar a fonte automática de usuários PW.';
 
     setAutoProjectWiseUsersStatus(
-      message.includes('cabecalhos') ? { state: 'error', message } : { state: 'missing' },
+      hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' },
     );
   }
 
@@ -614,7 +618,7 @@ export function DashboardPage() {
         const message =
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel atualizar a fonte de usuarios do Portal Bentley.';
+            : 'Não foi possível atualizar a fonte de usuários do Portal Bentley.';
 
         setAutoProjectWisePortalUsersStatus({ state: 'error', message });
         return;
@@ -630,7 +634,7 @@ export function DashboardPage() {
 
         if (data.kind !== 'projectWiseWebUsers') {
           throw new Error(
-            'A fonte encontrada nao possui os cabecalhos de usuarios do Portal Bentley.',
+            'A fonte encontrada não possui os cabeçalhos de usuários do Portal Bentley.',
           );
         }
 
@@ -651,10 +655,10 @@ export function DashboardPage() {
     const message =
       lastError instanceof Error
         ? lastError.message
-        : 'Nao foi possivel carregar a fonte automatica de usuarios do Portal Bentley.';
+        : 'Não foi possível carregar a fonte automática de usuários do Portal Bentley.';
 
     setAutoProjectWisePortalUsersStatus(
-      message.includes('cabecalhos') ? { state: 'error', message } : { state: 'missing' },
+      hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' },
     );
   }
 
@@ -740,7 +744,7 @@ export function DashboardPage() {
                   </p>
                   <p className="mt-2 text-sm text-surface-700">
                     {autoStorageStatus.state === 'loading'
-                      ? 'Atualizando a leitura da planilha padrao...'
+                      ? 'Atualizando a leitura da planilha padrão...'
                       : autoStorageStatus.state === 'ready'
                         ? `Fonte carregada: ${autoStorageStatus.fileName} as ${autoStorageStatus.loadedAt.toLocaleTimeString('pt-BR', {
                             hour: '2-digit',
@@ -750,7 +754,7 @@ export function DashboardPage() {
                           ? 'Configure VITE_STORAGE_SOURCE_URL ou coloque o Excel diario em public/dados/armazenamento.xlsx.'
                           : autoStorageStatus.state === 'error'
                             ? autoStorageStatus.message
-                            : 'O painel vai tentar carregar a planilha padrao automaticamente.'}
+                            : 'O painel vai tentar carregar a planilha padrão automaticamente.'}
                   </p>
                 </div>
 
@@ -775,7 +779,7 @@ export function DashboardPage() {
                 <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Sincronizacao
+                      Sincronização
                     </p>
                     <p className="mt-1">
                       {formatTechnicalDate(autoStorageStatus.syncInfo.syncedAt)}
@@ -862,11 +866,11 @@ export function DashboardPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                    Fonte de usuarios PW
+                    Fonte de usuários PW
                   </p>
                   <p className="mt-2 text-sm text-surface-700">
                     {autoProjectWiseUsersStatus.state === 'loading'
-                      ? 'Atualizando a extracao de usuarios ProjectWise...'
+                      ? 'Atualizando a extração de usuários ProjectWise...'
                       : autoProjectWiseUsersStatus.state === 'ready'
                         ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} as ${autoProjectWiseUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
                             hour: '2-digit',
@@ -876,7 +880,7 @@ export function DashboardPage() {
                           ? 'Atualize a fonte para gerar public/dados/usuarios-pw-explorer.xlsx.'
                           : autoProjectWiseUsersStatus.state === 'error'
                             ? autoProjectWiseUsersStatus.message
-                            : 'O painel vai tentar carregar a planilha de usuarios PW automaticamente.'}
+                            : 'O painel vai tentar carregar a planilha de usuários PW automaticamente.'}
                   </p>
                 </div>
 
@@ -902,7 +906,7 @@ export function DashboardPage() {
                 <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Sincronizacao
+                      Sincronização
                     </p>
                     <p className="mt-1">
                       {formatTechnicalDate(autoProjectWiseUsersStatus.syncInfo.syncedAt)}
@@ -997,7 +1001,7 @@ export function DashboardPage() {
                 <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Sincronizacao
+                      Sincronização
                     </p>
                     <p className="mt-1">
                       {formatTechnicalDate(autoProjectWisePortalUsersStatus.syncInfo.syncedAt)}
@@ -1108,7 +1112,7 @@ export function DashboardPage() {
                 <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Sincronizacao
+                      Sincronização
                     </p>
                     <p className="mt-1">
                       {formatTechnicalDate(autoTicketsStatus.syncInfo.syncedAt)}

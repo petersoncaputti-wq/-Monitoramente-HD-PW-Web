@@ -84,3 +84,4 @@ export function ExcelUploader({ onDataLoaded }: ExcelUploaderProps) {
     </div>
   );
 }
+

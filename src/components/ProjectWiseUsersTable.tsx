@@ -220,3 +220,4 @@ export function ProjectWiseUsersTable({ rows }: ProjectWiseUsersTableProps) {
     </div>
   );
 }
+

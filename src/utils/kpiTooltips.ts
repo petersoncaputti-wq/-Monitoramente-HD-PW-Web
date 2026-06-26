@@ -85,3 +85,4 @@ export function getKpiTooltipText(key: KpiTooltipKey) {
 
   return `O que este indicador mostra: ${tooltip.meaning}\n\nComo o cálculo é feito: ${tooltip.calculation}`;
 }
+

@@ -133,3 +133,4 @@ export function TicketsTable({ rows }: TicketsTableProps) {
     </div>
   );
 }
+

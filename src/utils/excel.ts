@@ -109,7 +109,11 @@ export function normalizeHeader(value: string): string {
     email: 'Email',
     emailaddress: 'Email',
     emai: 'Email',
+    acaoexecutada: 'Acaoexecutada',
+    datacriacao: 'Datacriacao',
+    elegivelexclusao: 'Elegivelexclusao',
     ultimologin: 'LastLoginDate',
+    ultimoacesso: 'Ultimoacesso',
   };
 
   return aliases[aliasKey] ?? compactHeader;
@@ -298,3 +302,4 @@ export function formatPercentageValue(value: number): string {
     maximumFractionDigits: 2,
   })}%`;
 }
+

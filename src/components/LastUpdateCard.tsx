@@ -27,3 +27,4 @@ export function LastUpdateCard({ latestUpdate }: LastUpdateCardProps) {
     </article>
   );
 }
+
