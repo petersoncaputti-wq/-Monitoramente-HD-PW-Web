@@ -15,6 +15,8 @@ export interface ProjectWiseUserRow {
   Nome: string;
   Email: string;
   ID: number | string;
+  Datacriacao: string;
+  Descricao: string;
   Ultimoacesso: string;
   Status: string;
   Statusacesso: string;
@@ -58,17 +60,17 @@ export interface TicketRow {
   Resumo: string;
   Abertoem: string;
   Atualizado: string;
+  Fechadoem: string;
   Prioridade: string;
   Solicitante: string;
   Organizaçãodosolicitante: string;
+  AgenteAtribuído: string;
   Atribuído: string;
   Grupoatribuído: string;
   Tipodeticket: string;
-  Resolverem: string;
   StatusdoSLA: string;
   Organizaçãodobeneficiário: string;
   Solicitadopara: string;
-  Categorização: string;
   [key: string]: string | number | null | undefined;
 }
 

@@ -49,6 +49,8 @@ function getSearchFields(row: ProjectWiseUserRow) {
     row.ID,
     row.Nome,
     row.Email,
+    row.Datacriacao,
+    row.Descricao,
     row.Ultimoacesso,
     formatProjectWiseDate(row.Ultimoacesso),
     row.Status,
@@ -152,7 +154,7 @@ export function ProjectWiseUsersTable({ rows }: ProjectWiseUsersTableProps) {
       </div>
 
       <div className="max-h-[520px] overflow-auto">
-        <table className="w-full min-w-[980px] divide-y divide-brand-100 text-left text-sm">
+        <table className="w-full min-w-[1180px] divide-y divide-brand-100 text-left text-sm">
           <thead className="sticky top-0 z-10 bg-brand-50">
             <tr>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 first:pl-6">
@@ -160,6 +162,12 @@ export function ProjectWiseUsersTable({ rows }: ProjectWiseUsersTableProps) {
               </th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
                 Email
+              </th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
+                Criado em
+              </th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
+                Descricao
               </th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
                 Último acesso
@@ -186,6 +194,12 @@ export function ProjectWiseUsersTable({ rows }: ProjectWiseUsersTableProps) {
                 </td>
                 <td className="max-w-[260px] px-4 py-4 text-surface-700">
                   <span className="line-clamp-2">{row.Email || '-'}</span>
+                </td>
+                <td className="whitespace-nowrap px-4 py-4 text-surface-900">
+                  {formatProjectWiseDate(row.Datacriacao)}
+                </td>
+                <td className="max-w-[220px] px-4 py-4 text-surface-700">
+                  <span className="line-clamp-2">{row.Descricao || '-'}</span>
                 </td>
                 <td className="whitespace-nowrap px-4 py-4 text-surface-900">
                   {formatProjectWiseDate(row.Ultimoacesso)}

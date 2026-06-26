@@ -50,6 +50,20 @@ body::before {
   background: rgba(114, 210, 22, 0.32);
 }
 
+@keyframes source-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  50% {
+    transform: translateX(55%);
+  }
+
+  100% {
+    transform: translateX(210%);
+  }
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

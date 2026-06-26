@@ -120,7 +120,7 @@ export function TicketsTable({ rows }: TicketsTableProps) {
                   <span className="line-clamp-2">{row.Solicitante || '-'}</span>
                 </td>
                 <td className="max-w-[300px] px-4 py-4 text-surface-700">
-                  <span className="line-clamp-2">{row.Categorização || '-'}</span>
+                  <span className="line-clamp-2">{row.Tipodeticket || '-'}</span>
                 </td>
                 <td className="max-w-[320px] px-4 py-4 text-surface-700 last:pr-6">
                   <span className="line-clamp-2">{row.Resumo || '-'}</span>

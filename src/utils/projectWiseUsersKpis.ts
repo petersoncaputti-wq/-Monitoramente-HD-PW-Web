@@ -18,6 +18,7 @@ export interface ProjectWiseWebUsersSummary {
   withLastLogin: number;
   withoutLastLogin: number;
   recentLastLogin: number;
+  recentlyCreatedUsers: number;
   inactiveOver180Days: number;
   lockedUsers: number;
   mfaEnabled: number;
@@ -68,6 +69,19 @@ function formatPercentage(count: number, total: number): string {
 }
 
 function parseDate(value: unknown): Date | null {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^\d+(?:[.,]\d+)?$/.test(value.trim())
+        ? Number(value.trim().replace(',', '.'))
+        : null;
+
+  if (numericValue !== null && Number.isFinite(numericValue)) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const date = new Date(excelEpoch.getTime() + numericValue * 24 * 60 * 60 * 1000);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
   const text = normalizeText(value);
 
   if (!text) {
@@ -85,6 +99,13 @@ function getInactiveCutoffDate(referenceDate = new Date()): Date {
   return cutoffDate;
 }
 
+function getRecentlyCreatedCutoffDate(referenceDate = new Date()): Date {
+  const cutoffDate = new Date(referenceDate);
+  cutoffDate.setDate(cutoffDate.getDate() - 30);
+  cutoffDate.setHours(0, 0, 0, 0);
+  return cutoffDate;
+}
+
 export function isProjectWiseWebUserActiveWithin180Days(
   row: ProjectWiseWebUserRow,
   referenceDate = new Date(),
@@ -96,6 +117,29 @@ export function isProjectWiseWebUserActiveWithin180Days(
   }
 
   return lastLoginDate >= getInactiveCutoffDate(referenceDate);
+}
+
+export function isProjectWiseWebUserRecentlyCreated(
+  row: ProjectWiseWebUserRow,
+  referenceDate = new Date(),
+): boolean {
+  const creationDate = parseDate(row.ProfileCreationDate);
+
+  if (!creationDate) {
+    return false;
+  }
+
+  return creationDate >= getRecentlyCreatedCutoffDate(referenceDate);
+}
+
+export function isProjectWiseWebUserActive(
+  row: ProjectWiseWebUserRow,
+  referenceDate = new Date(),
+): boolean {
+  return (
+    isProjectWiseWebUserActiveWithin180Days(row, referenceDate) ||
+    isProjectWiseWebUserRecentlyCreated(row, referenceDate)
+  );
 }
 
 export function getProjectWiseUsersSummary(
@@ -144,7 +188,11 @@ export function getProjectWiseWebUsersSummary(
   const recentLastLogin = rows.filter((row) =>
     isProjectWiseWebUserActiveWithin180Days(row),
   ).length;
-  const inactiveOver180Days = totalUsers - recentLastLogin;
+  const recentlyCreatedUsers = rows.filter((row) =>
+    isProjectWiseWebUserRecentlyCreated(row),
+  ).length;
+  const activeUsers = rows.filter((row) => isProjectWiseWebUserActive(row)).length;
+  const inactiveOver180Days = totalUsers - activeUsers;
   const lockedUsers = rows.filter((row) => isTrue(row.Locked)).length;
   const mfaEnabled = rows.filter((row) => isTrue(row.MFA)).length;
   const explorerEntitlements = rows.filter((row) =>
@@ -156,6 +204,7 @@ export function getProjectWiseWebUsersSummary(
     withLastLogin,
     withoutLastLogin,
     recentLastLogin,
+    recentlyCreatedUsers,
     inactiveOver180Days,
     lockedUsers,
     mfaEnabled,
@@ -211,6 +260,26 @@ export function getProjectWiseUsersComparison(
 }
 
 export function formatProjectWiseDate(value: unknown): string {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^\d+(?:[.,]\d+)?$/.test(value.trim())
+        ? Number(value.trim().replace(',', '.'))
+        : null;
+
+  if (numericValue !== null && Number.isFinite(numericValue)) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const date = new Date(excelEpoch.getTime() + numericValue * 24 * 60 * 60 * 1000);
+
+    if (!Number.isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(date);
+    }
+  }
+
   const text = normalizeText(value);
 
   if (!text) {
