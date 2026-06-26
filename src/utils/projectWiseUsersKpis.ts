@@ -7,9 +7,12 @@ export interface ProjectWiseUsersSummary {
   inactiveUsers: number;
   eligibleForRemoval: number;
   withoutAccessRecord: number;
+  recentlyCreatedExceptions: number;
   activePercentage: string;
   inactivePercentage: string;
   removalPercentage: string;
+  withoutAccessPercentage: string;
+  recentlyCreatedExceptionsPercentage: string;
   topReasons: Array<{ reason: string; count: number }>;
 }
 
@@ -152,6 +155,11 @@ export function getProjectWiseUsersSummary(
   const withoutAccessRecord = rows.filter(
     (row) => normalizeText(row.Ultimoacesso).toLowerCase() === 'sem registro',
   ).length;
+  const recentlyCreatedExceptions = rows.filter((row) =>
+    normalizeText(row.Motivo)
+      .toLowerCase()
+      .includes('usuario criado ha menos de 30 dias'),
+  ).length;
   const reasonMap = new Map<string, number>();
 
   for (const row of rows) {
@@ -170,9 +178,15 @@ export function getProjectWiseUsersSummary(
     inactiveUsers,
     eligibleForRemoval,
     withoutAccessRecord,
+    recentlyCreatedExceptions,
     activePercentage: formatPercentage(activeUsers, totalUsers),
     inactivePercentage: formatPercentage(inactiveUsers, totalUsers),
     removalPercentage: formatPercentage(eligibleForRemoval, totalUsers),
+    withoutAccessPercentage: formatPercentage(withoutAccessRecord, totalUsers),
+    recentlyCreatedExceptionsPercentage: formatPercentage(
+      recentlyCreatedExceptions,
+      totalUsers,
+    ),
     topReasons: [...reasonMap.entries()]
       .map(([reason, count]) => ({ reason, count }))
       .sort((a, b) => b.count - a.count),
