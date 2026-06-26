@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "sync:storage": "node scripts/sync-storage-source.mjs",
-    "dev": "npm run sync:storage && vite",
-    "build": "npm run sync:storage && tsc -b && vite build",
+    "sync:tickets": "node scripts/sync-tickets-source.mjs",
+    "sync:portal-users": "node scripts/sync-portal-users-source.mjs",
+    "sync:data": "npm run sync:storage && npm run sync:tickets && npm run sync:portal-users",
+    "export:pw-users": "node scripts/export-pw-users-to-xlsx.mjs",
+    "dev": "npm run sync:data && vite",
+    "build": "npm run sync:data && tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

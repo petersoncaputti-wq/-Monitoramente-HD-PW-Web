@@ -25,26 +25,17 @@ const PROJECT_WISE_USER_HEADERS = [
 
 const PROJECT_WISE_WEB_USER_HEADERS = [
   'Email',
-  'FirstName',
-  'LastName',
-  'EntitlementGroup(s)',
   'Locked',
   'ProfileCreationDate',
   'LastLoginDate',
-  'MFA',
 ];
 
 const TICKET_HEADERS = [
   'Status',
   'Resumo',
   'Abertoem',
-  'Atualizado',
-  'Prioridade',
-  'Grupoatribuído',
   'Tipodeticket',
   'StatusdoSLA',
-  'Organizaçãodobeneficiário',
-  'Categorização',
 ];
 
 const DISPLAY_HEADER_LABELS: Record<string, string> = {
@@ -92,21 +83,36 @@ const DISPLAY_HEADER_LABELS: Record<string, string> = {
   Resumo: 'Resumo',
   Abertoem: 'Aberto em',
   Atualizado: 'Atualizado',
+  Fechadoem: 'Fechado em',
   Prioridade: 'Prioridade',
   Solicitante: 'Solicitante',
   Organizaçãodosolicitante: 'Organização do solicitante',
+  AgenteAtribuído: 'Agente atribuído',
   Atribuído: 'Atribuído',
   Grupoatribuído: 'Grupo atribuído',
   Tipodeticket: 'Tipo de ticket',
-  Resolverem: 'Resolver em',
   StatusdoSLA: 'Status do SLA',
   Organizaçãodobeneficiário: 'Organização do beneficiário',
   Solicitadopara: 'Solicitado para',
-  Categorização: 'Categorização',
 };
 
 export function normalizeHeader(value: string): string {
-  return value.trim().replace(/\s+/g, '');
+  const compactHeader = value.trim().replace(/\s+/g, '');
+  const aliasKey = compactHeader
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[-_.]/g, '')
+    .toLowerCase();
+  const aliases: Record<string, string> = {
+    bloqueado: 'Locked',
+    criacaodoperfil: 'ProfileCreationDate',
+    email: 'Email',
+    emailaddress: 'Email',
+    emai: 'Email',
+    ultimologin: 'LastLoginDate',
+  };
+
+  return aliases[aliasKey] ?? compactHeader;
 }
 
 export function isValidHeader(value: string): boolean {
@@ -252,7 +258,7 @@ export function formatPreviewValue(header: string, value: unknown): string {
     case 'Ultimoacesso':
     case 'Abertoem':
     case 'Atualizado':
-    case 'Resolverem':
+    case 'Fechadoem':
     case 'ProfileCreationDate':
     case 'LastLoginDate':
       return typeof value === 'string' ? formatGenericDate(value) : String(value);

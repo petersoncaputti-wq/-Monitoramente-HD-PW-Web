@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { PanelShell } from '@/components/PanelShell';
 import { TicketKpiCard } from '@/components/TicketKpiCard';
 import type { TicketRow } from '@/types/monitoring';
-import { getTicketDateRange, getTicketServices, getTicketsSummary } from '@/utils/ticketsKpis';
+import { getTicketDateRange, getTicketsSummary } from '@/utils/ticketsKpis';
 
 interface TicketsTabProps {
   rows: TicketRow[];
-  fileName?: string;
 }
 
 function RankingList({
@@ -20,6 +19,7 @@ function RankingList({
 }) {
   const visibleItems = items.slice(0, limit);
   const maxCount = Math.max(...visibleItems.map((item) => item.count), 0);
+  const totalCount = items.reduce((total, item) => total + item.count, 0);
 
   if (visibleItems.length === 0) {
     return (
@@ -38,7 +38,18 @@ function RankingList({
           <div key={item.label} className="rounded-2xl border border-brand-100 bg-white px-4 py-3">
             <div className="flex items-center justify-between gap-4">
               <p className="min-w-0 truncate text-sm font-medium text-surface-900">{item.label}</p>
-              <span className="shrink-0 text-base font-semibold text-brand-700">{item.count}</span>
+              <span className="shrink-0 text-base font-semibold text-brand-700">
+                {item.count}
+                <span className="ml-1 text-sm font-medium text-surface-600">
+                  ·{' '}
+                  {totalCount > 0
+                    ? `${((item.count / totalCount) * 100).toLocaleString('pt-BR', {
+                        maximumFractionDigits: 1,
+                        minimumFractionDigits: 1,
+                      })}%`
+                    : '0,0%'}
+                </span>
+              </span>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-brand-50">
               <div className="h-full rounded-full bg-brand-600" style={{ width }} />
@@ -159,38 +170,29 @@ function AverageResolutionCard({ value }: { value: string }) {
         {value}
       </p>
       <p className="mt-auto pt-4 text-sm leading-6 text-surface-700">
-        Media em horas uteis entre abertura e encerramento dos chamados no periodo.
+        Media em tempo util entre abertura e encerramento. Acima de 24h, usa dias uteis de 8h.
       </p>
     </article>
   );
 }
 
-export function TicketsTab({ rows, fileName }: TicketsTabProps) {
+export function TicketsTab({ rows }: TicketsTabProps) {
   const dateRange = useMemo(() => getTicketDateRange(rows), [rows]);
-  const services = useMemo(() => getTicketServices(rows), [rows]);
   const [periodStartDate, setPeriodStartDate] = useState('');
   const [periodEndDate, setPeriodEndDate] = useState('');
-  const [selectedService, setSelectedService] = useState('Todos os servicos');
 
   useEffect(() => {
     setPeriodStartDate(dateRange?.minDate ?? '');
     setPeriodEndDate(dateRange?.maxDate ?? '');
   }, [dateRange?.maxDate, dateRange?.minDate]);
 
-  useEffect(() => {
-    if (selectedService !== 'Todos os servicos' && !services.includes(selectedService)) {
-      setSelectedService('Todos os servicos');
-    }
-  }, [selectedService, services]);
-
   const summary = useMemo(
     () =>
       getTicketsSummary(rows, {
         endDate: periodEndDate,
-        selectedService,
         startDate: periodStartDate,
       }),
-    [periodEndDate, periodStartDate, rows, selectedService],
+    [periodEndDate, periodStartDate, rows],
   );
 
   function clearPeriodFilter() {
@@ -203,68 +205,42 @@ export function TicketsTab({ rows, fileName }: TicketsTabProps) {
       <PanelShell
         title="Chamados"
         description="Indicadores de atendimento, SLA, categorias e distribuicao por organizacao."
-        actions={
-          fileName ? (
-            <span className="max-w-[280px] truncate rounded-2xl border border-brand-100 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700">
-              {fileName}
-            </span>
-          ) : null
-        }
       >
-        <div className="grid gap-4 lg:grid-cols-[1fr_280px] lg:items-end">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)_auto] sm:items-end">
-            <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-              Data inicial
-              <input
-                type="date"
-                value={periodStartDate}
-                min={dateRange?.minDate}
-                max={periodEndDate || dateRange?.maxDate}
-                disabled={rows.length === 0}
-                onChange={(event) => setPeriodStartDate(event.target.value)}
-                className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
-              />
-            </label>
-
-            <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-              Data final
-              <input
-                type="date"
-                value={periodEndDate}
-                min={periodStartDate || dateRange?.minDate}
-                max={dateRange?.maxDate}
-                disabled={rows.length === 0}
-                onChange={(event) => setPeriodEndDate(event.target.value)}
-                className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
-              />
-            </label>
-
-            <button
-              type="button"
-              onClick={clearPeriodFilter}
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)_96px] sm:items-end">
+          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
+            Data inicial
+            <input
+              type="date"
+              value={periodStartDate}
+              min={dateRange?.minDate}
+              max={periodEndDate || dateRange?.maxDate}
               disabled={rows.length === 0}
-              className="h-11 rounded-2xl border border-brand-100 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Limpar
-            </button>
-          </div>
+              onChange={(event) => setPeriodStartDate(event.target.value)}
+              className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </label>
 
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-            Servico selecionado
-            <select
-              value={selectedService}
+            Data final
+            <input
+              type="date"
+              value={periodEndDate}
+              min={periodStartDate || dateRange?.minDate}
+              max={dateRange?.maxDate}
               disabled={rows.length === 0}
-              onChange={(event) => setSelectedService(event.target.value)}
+              onChange={(event) => setPeriodEndDate(event.target.value)}
               className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option value="Todos os servicos">Todos os servicos</option>
-              {services.map((service) => (
-                <option key={service} value={service}>
-                  {service}
-                </option>
-              ))}
-            </select>
+            />
           </label>
+
+          <button
+            type="button"
+            onClick={clearPeriodFilter}
+            disabled={rows.length === 0}
+            className="h-11 rounded-xl border border-brand-100 bg-white px-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Limpar
+          </button>
         </div>
 
         <div className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -290,7 +266,7 @@ export function TicketsTab({ rows, fileName }: TicketsTabProps) {
             value={summary.slaComplianceValue}
             valueLabel={summary.slaCompliancePercentage}
             maxLabel="100%"
-            helperText={`${summary.inSla} dentro do SLA em ${summary.slaApplicableTickets} encerrados aplicaveis`}
+            helperText={`${summary.inSla} dentro do SLA em ${summary.slaApplicableTickets} chamados aplicaveis`}
             variant="segmented"
             tone={summary.violatedSla > 0 ? 'warning' : 'good'}
           />
@@ -299,19 +275,19 @@ export function TicketsTab({ rows, fileName }: TicketsTabProps) {
       </PanelShell>
 
       <PanelShell
-        title="Detalhamento do servico selecionado"
+        title="Detalhamento dos chamados"
         description="Chamados abertos por empresa e principais solicitantes para o filtro atual."
         tone="soft"
       >
         <div className="mb-5 rounded-2xl border border-brand-100 bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-            {summary.selectedService}
+            Periodo selecionado
           </p>
           <p className="mt-3 text-3xl font-semibold text-surface-900">
             {summary.selectedServiceOpenTickets}
           </p>
           <p className="mt-2 text-sm text-surface-700">
-            Chamados abertos para o servico no periodo selecionado.
+            Chamados abertos no periodo selecionado.
           </p>
         </div>
 
@@ -336,9 +312,9 @@ export function TicketsTab({ rows, fileName }: TicketsTabProps) {
         </div>
       </PanelShell>
 
-      <PanelShell title="Servicos" description="Maiores tipos de demanda registrados." tone="soft">
+      <PanelShell title="Motivos" description="Maiores motivos registrados nos chamados." tone="soft">
         <RankingList
-          emptyText="Nenhuma categoria informada na planilha."
+          emptyText="Nenhum motivo informado na planilha."
           items={summary.topCategories}
           limit={10}
         />

@@ -1,3 +1,4 @@
+import * as XLSX from 'xlsx';
 import type { TicketRow } from '@/types/monitoring';
 import { formatNumber } from '@/utils/excel';
 
@@ -51,8 +52,12 @@ function normalizeComparable(value: unknown): string {
 }
 
 const TICKET_FIELDS = {
-  beneficiaryOrganization: ['Organiza\u00e7\u00e3odobenefici\u00e1rio'],
-  category: ['Categoriza\u00e7\u00e3o'],
+  beneficiaryOrganization: [
+    'Organiza\u00e7\u00e3odobenefici\u00e1rio',
+    'Organiza\u00e7\u00e3odosolicitante',
+  ],
+  category: ['Tipodeticket'],
+  reason: ['Motivo'],
   requesterOrganization: ['Organiza\u00e7\u00e3odosolicitante'],
 };
 
@@ -134,6 +139,28 @@ function getBusinessHoursBetween(start: Date, end: Date): number {
 }
 
 function parseTicketDate(value: unknown): Date | null {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^-?\d+(?:[.,]\d+)?$/.test(value.trim())
+        ? Number(value.trim().replace(',', '.'))
+        : null;
+
+  if (numericValue !== null && Number.isFinite(numericValue)) {
+    const dateCode = XLSX.SSF.parse_date_code(numericValue);
+
+    if (dateCode) {
+      return new Date(
+        dateCode.y,
+        dateCode.m - 1,
+        dateCode.d,
+        dateCode.H,
+        dateCode.M,
+        Math.floor(dateCode.S),
+      );
+    }
+  }
+
   const text = normalizeText(value);
 
   if (!text) {
@@ -258,11 +285,19 @@ function formatDuration(milliseconds: number | null): string {
     return '-';
   }
 
-  const hours = milliseconds / 3600000;
-  return `${formatNumber(hours, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })} h`;
+  const totalMinutes = Math.round(milliseconds / 60000);
+  const totalHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (totalMinutes <= 24 * 60) {
+    return `${totalHours}h ${minutes}min`;
+  }
+
+  const businessHoursPerDay = 8;
+  const days = Math.floor(totalHours / businessHoursPerDay);
+  const hours = totalHours % businessHoursPerDay;
+
+  return `${days}d ${hours}h ${minutes}min`;
 }
 
 function getMedian(values: number[]): number | null {
@@ -299,9 +334,13 @@ function countResolutionTimeBuckets(durations: number[]) {
   return [...buckets.entries()].map(([label, count]) => ({ label, count }));
 }
 
+function getClosedAt(row: TicketRow): unknown {
+  return getRowValue(row, ['Atualizado', 'Fechadoem']);
+}
+
 export function getTicketDateRange(rows: TicketRow[]) {
   const validDates = rows
-    .flatMap((row) => [parseTicketDate(row.Abertoem), parseTicketDate(row.Atualizado)])
+    .flatMap((row) => [parseTicketDate(row.Abertoem), parseTicketDate(getClosedAt(row))])
     .filter((date): date is Date => date instanceof Date)
     .sort((a, b) => a.getTime() - b.getTime());
 
@@ -337,7 +376,7 @@ export function getTicketsSummary(
   const closedRows = rows.filter(
     (row) =>
       isClosedStatus(row.Status) &&
-      isDateInRange(parseTicketDate(row.Atualizado), startDate, endDate),
+      isDateInRange(parseTicketDate(getClosedAt(row)), startDate, endDate),
   );
   const pendingRows = rows.filter((row) => {
     if (isClosedStatus(row.Status)) {
@@ -350,7 +389,7 @@ export function getTicketsSummary(
 
     return isDateInRange(parseTicketDate(row.Abertoem), startDate, endDate);
   });
-  const slaRows = closedRows.filter(
+  const slaRows = openedRows.filter(
     (row) => !normalizeComparable(row.StatusdoSLA).includes('nao aplicado'),
   );
   const slaApplicableTickets = slaRows.length;
@@ -359,7 +398,7 @@ export function getTicketsSummary(
   const resolutionDurations = closedRows
     .map((row) => {
       const openedAt = parseTicketDate(row.Abertoem);
-      const updatedAt = parseTicketDate(row.Atualizado);
+      const updatedAt = parseTicketDate(getClosedAt(row));
 
       if (!openedAt || !updatedAt || updatedAt < openedAt) {
         return null;
@@ -399,15 +438,12 @@ export function getTicketsSummary(
     violatedSlaPercentage: formatPercentage(violatedSla, openedRows.length),
     averageResolutionHours,
     averageResolutionTime:
-      averageResolutionHours === null ? '-' : `${formatNumber(averageResolutionHours, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })} h`,
+      averageResolution === null ? '-' : formatDuration(averageResolution),
     medianResolutionTime: formatDuration(medianResolution),
     resolutionTimeBuckets: countResolutionTimeBuckets(resolutionDurations),
     selectedService: selectedService || 'Todos os servicos',
     selectedServiceOpenTickets: selectedServiceRows.length,
-    topCategories: countBy(rows, TICKET_FIELDS.category),
+    topCategories: countBy(rows, TICKET_FIELDS.reason),
     topOrganizations: countBy(rows, TICKET_FIELDS.beneficiaryOrganization),
     topRequesterOrganizations: countBy(rows, TICKET_FIELDS.requesterOrganization),
     topRequesters: countBy(openedRows, 'Solicitante'),
