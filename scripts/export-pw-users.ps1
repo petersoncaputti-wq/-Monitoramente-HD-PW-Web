@@ -38,13 +38,14 @@ function Read-DotEnv {
 function Get-RequiredValue {
     param(
         [hashtable]$Values,
-        [string]$Name
+        [string]$Name,
+        [string]$Path
     )
 
     $value = $Values[$Name]
 
     if ([string]::IsNullOrWhiteSpace($value)) {
-        throw "Configure $Name no arquivo .env.local."
+        throw "Configure $Name no arquivo $Path. Exemplo: PW_DATASOURCE_NAME=NomeDoDatasource"
     }
 
     return $value
@@ -64,6 +65,22 @@ function Get-OptionalIntValue {
     }
 
     return [int]$value
+}
+
+function Get-OptionalValue {
+    param(
+        [hashtable]$Values,
+        [string]$Name,
+        [string]$DefaultValue
+    )
+
+    $value = $Values[$Name]
+
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        return $DefaultValue
+    }
+
+    return $value
 }
 
 function Get-ValorSeguroPropriedade {
@@ -220,10 +237,8 @@ function Get-UltimoAcessoUsuario {
 }
 
 $envValues = Read-DotEnv -Path $EnvPath
-$datasourceName = Get-RequiredValue -Values $envValues -Name "PW_DATASOURCE_NAME"
-$username = Get-RequiredValue -Values $envValues -Name "PW_USERNAME"
-$password = Get-RequiredValue -Values $envValues -Name "PW_PASSWORD"
-$securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+$datasourceName = Get-RequiredValue -Values $envValues -Name "PW_DATASOURCE_NAME" -Path $EnvPath
+$authMode = (Get-OptionalValue -Values $envValues -Name "PW_AUTH_MODE" -DefaultValue "password").ToLowerInvariant()
 $inactiveDays = Get-OptionalIntValue -Values $envValues -Name "PW_INACTIVE_DAYS" -DefaultValue 180
 
 $outputDirectory = Split-Path -Parent $OutputPath
@@ -236,14 +251,47 @@ $loggedIn = $false
 try {
     Import-Module PWPS_DAB -ErrorAction Stop
 
-    New-PWLogin `
-        -DatasourceName $datasourceName `
-        -UserName $username `
-        -Password $securePassword `
-        -DoNotCreateWorkingDirectory | Out-Null
+    switch ($authMode) {
+        "password" {
+            $username = Get-RequiredValue -Values $envValues -Name "PW_USERNAME" -Path $EnvPath
+            $password = Get-RequiredValue -Values $envValues -Name "PW_PASSWORD" -Path $EnvPath
+            $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+
+            New-PWLogin `
+                -DatasourceName $datasourceName `
+                -Password $securePassword `
+                -UserName $username `
+                -ErrorAction Stop | Out-Null
+        }
+        "sso" {
+            New-PWLogin `
+                -DatasourceName $datasourceName `
+                -DoNotCreateWorkingDirectory `
+                -NonAdminLogin `
+                -ErrorAction Stop | Out-Null
+        }
+        "ims" {
+            New-PWLogin `
+                -DatasourceName $datasourceName `
+                -BentleyIMS `
+                -ErrorAction Stop | Out-Null
+        }
+        "gui" {
+            New-PWLogin `
+                -DatasourceName $datasourceName `
+                -UseGui `
+                -NonAdminLogin `
+                -DoNotCreateWorkingDirectory `
+                -ErrorAction Stop | Out-Null
+        }
+        default {
+            throw "PW_AUTH_MODE invalido no arquivo $EnvPath. Use password, sso, ims ou gui."
+        }
+    }
+
+    $usuarioAtual = Get-PWCurrentUser -ErrorAction Stop
 
     $loggedIn = $true
-    $usuarioAtual = Get-PWCurrentUser -ErrorAction SilentlyContinue
     $idUsuarioAtual = Get-ValorSeguroPropriedade -Objeto $usuarioAtual -PossiveisNomes @("ID", "Id", "UserID", "UserId")
     $nomeUsuarioAtual = Get-ValorSeguroPropriedade -Objeto $usuarioAtual -PossiveisNomes @("Name", "UserName", "LoginName")
 

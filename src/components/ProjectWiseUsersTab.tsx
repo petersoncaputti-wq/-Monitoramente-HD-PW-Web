@@ -25,7 +25,7 @@ export function ProjectWiseUsersTab({
         title="Resumo das fontes"
         description="Totais, usuários ativos e usuários inativos por fonte importada."
       >
-        <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <ProjectWiseUserKpiCard
             title="PW Explorer total"
             value={String(explorerSummary.totalUsers)}
@@ -42,6 +42,12 @@ export function ProjectWiseUsersTab({
             value={String(explorerSummary.inactiveUsers)}
             helperText={`${explorerSummary.inactivePercentage} da base Explorer`}
             tone="attention"
+          />
+          <ProjectWiseUserKpiCard
+            title="Explorer criados 30 dias"
+            value={String(explorerSummary.recentlyCreatedUsers)}
+            helperText={`${explorerSummary.recentlyCreatedUsersPercentage} da base Explorer`}
+            tone="good"
           />
           <ProjectWiseUserKpiCard
             title="Portal total"
@@ -61,9 +67,9 @@ export function ProjectWiseUsersTab({
             tone="warning"
           />
           <ProjectWiseUserKpiCard
-            title="Criados em 30 dias"
-            value={String(explorerSummary.recentlyCreatedExceptions)}
-            helperText={`${explorerSummary.recentlyCreatedExceptionsPercentage} mantidos ativos por exceção`}
+            title="PW Web criados 30 dias"
+            value={String(webSummary.recentlyCreatedUsers)}
+            helperText={`${webSummary.recentlyCreatedUsersPercentage} da base Portal`}
             tone="good"
           />
         </div>

@@ -19,7 +19,7 @@ export function ProjectWiseUserKpiCard({
   tone = 'default',
 }: ProjectWiseUserKpiCardProps) {
   return (
-    <article className={`kpi-card ${TONE_STYLES[tone]}`}>
+    <article className={`kpi-card kpi-card-compact ${TONE_STYLES[tone]}`}>
       <p className="kpi-card-title">{title}</p>
       <p className="kpi-card-value">{value}</p>
       <p className="kpi-card-helper">{helperText}</p>

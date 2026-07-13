@@ -8,11 +8,13 @@ export interface ProjectWiseUsersSummary {
   eligibleForRemoval: number;
   withoutAccessRecord: number;
   recentlyCreatedExceptions: number;
+  recentlyCreatedUsers: number;
   activePercentage: string;
   inactivePercentage: string;
   removalPercentage: string;
   withoutAccessPercentage: string;
   recentlyCreatedExceptionsPercentage: string;
+  recentlyCreatedUsersPercentage: string;
   topReasons: Array<{ reason: string; count: number }>;
 }
 
@@ -29,6 +31,7 @@ export interface ProjectWiseWebUsersSummary {
   withLoginPercentage: string;
   noLoginPercentage: string;
   recentLoginPercentage: string;
+  recentlyCreatedUsersPercentage: string;
   inactiveOver180Percentage: string;
 }
 
@@ -98,6 +101,14 @@ function parseDate(value: unknown): Date | null {
     return null;
   }
 
+  const brazilianDateMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+  if (brazilianDateMatch) {
+    const [, day, month, year] = brazilianDateMatch;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? null : date;
 }
@@ -142,6 +153,24 @@ export function isProjectWiseWebUserRecentlyCreated(
   return creationDate >= getRecentlyCreatedCutoffDate(referenceDate);
 }
 
+function isProjectWiseExplorerUserRecentlyCreated(
+  row: ProjectWiseUserRow,
+  referenceDate = new Date(),
+): boolean {
+  const dynamicCreationDateValue = Object.entries(row).find(([key]) =>
+    normalizeComparableText(key).replace(/[^a-z0-9]/g, '').startsWith('datacria'),
+  )?.[1];
+  const creationDate = parseDate(
+    row.Datacriacao ?? row['Data criação'] ?? dynamicCreationDateValue,
+  );
+
+  if (!creationDate) {
+    return false;
+  }
+
+  return creationDate >= getRecentlyCreatedCutoffDate(referenceDate);
+}
+
 export function isProjectWiseWebUserActive(
   row: ProjectWiseWebUserRow,
   referenceDate = new Date(),
@@ -166,6 +195,9 @@ export function getProjectWiseUsersSummary(
     normalizeComparableText(row.Motivo)
       .includes('usuario criado ha menos de 30 dias'),
   ).length;
+  const recentlyCreatedUsers = rows.filter((row) =>
+    isProjectWiseExplorerUserRecentlyCreated(row),
+  ).length;
   const reasonMap = new Map<string, number>();
 
   for (const row of rows) {
@@ -185,6 +217,7 @@ export function getProjectWiseUsersSummary(
     eligibleForRemoval,
     withoutAccessRecord,
     recentlyCreatedExceptions,
+    recentlyCreatedUsers,
     activePercentage: formatPercentage(activeUsers, totalUsers),
     inactivePercentage: formatPercentage(inactiveUsers, totalUsers),
     removalPercentage: formatPercentage(eligibleForRemoval, totalUsers),
@@ -193,6 +226,7 @@ export function getProjectWiseUsersSummary(
       recentlyCreatedExceptions,
       totalUsers,
     ),
+    recentlyCreatedUsersPercentage: formatPercentage(recentlyCreatedUsers, totalUsers),
     topReasons: [...reasonMap.entries()]
       .map(([reason, count]) => ({ reason, count }))
       .sort((a, b) => b.count - a.count),
@@ -232,6 +266,7 @@ export function getProjectWiseWebUsersSummary(
     withLoginPercentage: formatPercentage(withLastLogin, totalUsers),
     noLoginPercentage: formatPercentage(withoutLastLogin, totalUsers),
     recentLoginPercentage: formatPercentage(recentLastLogin, totalUsers),
+    recentlyCreatedUsersPercentage: formatPercentage(recentlyCreatedUsers, totalUsers),
     inactiveOver180Percentage: formatPercentage(inactiveOver180Days, totalUsers),
   };
 }
