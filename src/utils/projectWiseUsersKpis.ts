@@ -127,6 +127,12 @@ function getRecentlyCreatedCutoffDate(referenceDate = new Date()): Date {
   return cutoffDate;
 }
 
+function getReferenceEndDate(referenceDate = new Date()): Date {
+  const endDate = new Date(referenceDate);
+  endDate.setHours(23, 59, 59, 999);
+  return endDate;
+}
+
 export function isProjectWiseWebUserActiveWithin180Days(
   row: ProjectWiseWebUserRow,
   referenceDate = new Date(),
@@ -150,7 +156,10 @@ export function isProjectWiseWebUserRecentlyCreated(
     return false;
   }
 
-  return creationDate >= getRecentlyCreatedCutoffDate(referenceDate);
+  return (
+    creationDate >= getRecentlyCreatedCutoffDate(referenceDate) &&
+    creationDate <= getReferenceEndDate(referenceDate)
+  );
 }
 
 function isProjectWiseExplorerUserRecentlyCreated(
@@ -168,7 +177,10 @@ function isProjectWiseExplorerUserRecentlyCreated(
     return false;
   }
 
-  return creationDate >= getRecentlyCreatedCutoffDate(referenceDate);
+  return (
+    creationDate >= getRecentlyCreatedCutoffDate(referenceDate) &&
+    creationDate <= getReferenceEndDate(referenceDate)
+  );
 }
 
 export function isProjectWiseWebUserActive(

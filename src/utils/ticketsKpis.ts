@@ -167,31 +167,27 @@ function parseTicketDate(value: unknown): Date | null {
     return null;
   }
 
+  const match = text.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
+  );
+
+  if (match) {
+    const [, day, month, year, hours = '0', minutes = '0', seconds = '0'] = match;
+    const date = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hours),
+      Number(minutes),
+      Number(seconds),
+    );
+
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
   const parsed = new Date(text);
 
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed;
-  }
-
-  const match = text.match(
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
-  );
-
-  if (!match) {
-    return null;
-  }
-
-  const [, day, month, year, hours = '0', minutes = '0', seconds = '0'] = match;
-  const date = new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hours),
-    Number(minutes),
-    Number(seconds),
-  );
-
-  return Number.isNaN(date.getTime()) ? null : date;
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 export function formatInputDate(date: Date): string {
