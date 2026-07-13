@@ -59,7 +59,7 @@ function parseWorkbookBuffer(buffer: ArrayBuffer, fileName: string): ImportedWor
     Object.fromEntries(
       Object.entries(row)
         .filter(([key]) => isValidHeader(key))
-        .map(([key, value]) => [key.trim().replace(/\s+/g, ''), value]),
+        .map(([key, value]) => [mapHeaders([key])[0], value]),
     ),
   ) as Array<MonitoringRow | ProjectWiseUserRow | ProjectWiseWebUserRow | TicketRow>;
 

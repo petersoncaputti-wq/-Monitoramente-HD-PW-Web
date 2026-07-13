@@ -111,16 +111,32 @@ body::before {
     @apply flex h-full min-h-[220px] flex-col rounded-[28px] border p-6 shadow-soft;
   }
 
+  .kpi-card-compact {
+    @apply min-h-[150px] rounded-xl p-4;
+  }
+
   .kpi-card-title {
     @apply text-xs font-semibold uppercase tracking-[0.2em] text-brand-700;
+  }
+
+  .kpi-card-compact .kpi-card-title {
+    @apply text-[11px] tracking-normal;
   }
 
   .kpi-card-value {
     @apply mt-4 break-words text-[1.75rem] font-semibold leading-tight md:text-[2.05rem];
   }
 
+  .kpi-card-compact .kpi-card-value {
+    @apply mt-3 text-[1.55rem] md:text-[1.8rem];
+  }
+
   .kpi-card-helper {
     @apply mt-auto pt-4 text-sm leading-6 text-surface-700;
+  }
+
+  .kpi-card-compact .kpi-card-helper {
+    @apply pt-3 text-xs leading-5;
   }
 
   .kpi-card-info {

@@ -102,14 +102,17 @@ export function normalizeHeader(value: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[-_.]/g, '')
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
   const aliases: Record<string, string> = {
     bloqueado: 'Locked',
     criacaodoperfil: 'ProfileCreationDate',
+    datacriaaao: 'Datacriacao',
     email: 'Email',
     emailaddress: 'Email',
     emai: 'Email',
     acaoexecutada: 'Acaoexecutada',
+    aaaoexecutada: 'Acaoexecutada',
     datacriacao: 'Datacriacao',
     elegivelexclusao: 'Elegivelexclusao',
     ultimologin: 'LastLoginDate',
