@@ -135,8 +135,8 @@ async function readAllRecords<T>(
       const details = await response.text().catch(() => '');
       throw new Error(
         details
-          ? `Nao foi possivel ler ${table} no Supabase: ${details}`
-          : `Nao foi possivel ler ${table} no Supabase.`,
+          ? `Não foi possível ler ${table} no Supabase: ${details}`
+          : `Não foi possível ler ${table} no Supabase.`,
       );
     }
 

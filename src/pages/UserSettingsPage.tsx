@@ -51,7 +51,7 @@ export function UserSettingsPage() {
       setUsers(await listAdminUserProfiles(accessToken));
       setStatus('idle');
     } catch {
-      setMessage('Nao foi possivel carregar usuarios.');
+      setMessage('Não foi possível carregar usuários.');
       setStatus('error');
     }
   }
@@ -108,10 +108,10 @@ export function UserSettingsPage() {
         role: savedUser.role,
       });
       setStatus('idle');
-      setMessage('Usuario salvo.');
+      setMessage('Usuário salvo.');
     } catch {
       setStatus('error');
-      setMessage('Nao foi possivel salvar o usuario.');
+      setMessage('Não foi possível salvar o usuário.');
     }
   }
 
@@ -120,7 +120,7 @@ export function UserSettingsPage() {
       return;
     }
 
-    const confirmed = window.confirm(`Excluir o usuario ${user.email}?`);
+    const confirmed = window.confirm(`Excluir o usuário ${user.email}?`);
 
     if (!confirmed) {
       return;
@@ -138,10 +138,10 @@ export function UserSettingsPage() {
       }
 
       setStatus('idle');
-      setMessage('Usuario excluido.');
+      setMessage('Usuário excluído.');
     } catch {
       setStatus('error');
-      setMessage('Nao foi possivel excluir o usuario.');
+      setMessage('Não foi possível excluir o usuário.');
     }
   }
 
@@ -173,7 +173,7 @@ export function UserSettingsPage() {
       setMessage('Dados pessoais atualizados.');
     } catch {
       setStatus('error');
-      setMessage('Nao foi possivel atualizar seus dados.');
+      setMessage('Não foi possível atualizar seus dados.');
     }
   }
 
@@ -247,7 +247,7 @@ export function UserSettingsPage() {
                 Configurações
               </p>
               <h2 className="mt-2 text-lg font-semibold text-surface-900">
-                Usuarios e permissoes
+                Usuários e permissões
               </h2>
             </div>
 
@@ -257,7 +257,7 @@ export function UserSettingsPage() {
                 onClick={startCreateUser}
                 className="inline-flex items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-800"
               >
-                Novo usuario
+                Novo usuário
               </button>
               <button
                 type="button"
@@ -322,7 +322,7 @@ export function UserSettingsPage() {
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-surface-700">Permissao</span>
+              <span className="text-sm font-medium text-surface-700">Permissão</span>
               <select
                 value={userForm.role}
                 onChange={(event) =>
@@ -331,7 +331,7 @@ export function UserSettingsPage() {
                 disabled={selectedUser?.id === profile.id}
                 className="mt-2 w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-surface-50 disabled:text-surface-500"
               >
-                <option value="user">Usuario padrao</option>
+                <option value="user">Usuário padrão</option>
                 <option value="admin">Administrador</option>
               </select>
             </label>
@@ -342,7 +342,7 @@ export function UserSettingsPage() {
                 disabled={status === 'saving'}
                 className="inline-flex items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {status === 'saving' ? 'Salvando...' : selectedUser ? 'Salvar usuario' : 'Criar usuario'}
+                {status === 'saving' ? 'Salvando...' : selectedUser ? 'Salvar usuário' : 'Criar usuário'}
               </button>
               {selectedUser ? (
                 <button
@@ -350,7 +350,7 @@ export function UserSettingsPage() {
                   onClick={startCreateUser}
                   className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
                 >
-                  Cancelar edicao
+                  Cancelar edição
                 </button>
               ) : null}
             </div>
@@ -362,8 +362,8 @@ export function UserSettingsPage() {
                 <tr>
                   <th className="px-4 py-3 font-semibold">Email</th>
                   <th className="px-4 py-3 font-semibold">Nome</th>
-                  <th className="px-4 py-3 font-semibold">Permissao</th>
-                  <th className="px-4 py-3 font-semibold">Acoes</th>
+                  <th className="px-4 py-3 font-semibold">Permissão</th>
+                  <th className="px-4 py-3 font-semibold">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-100 bg-white text-surface-700">
@@ -372,7 +372,7 @@ export function UserSettingsPage() {
                     <td className="px-4 py-3">{user.email}</td>
                     <td className="px-4 py-3">{user.full_name || '-'}</td>
                     <td className="px-4 py-3">
-                      {user.role === 'admin' ? 'Administrador' : 'Usuario padrao'}
+                      {user.role === 'admin' ? 'Administrador' : 'Usuário padrão'}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">

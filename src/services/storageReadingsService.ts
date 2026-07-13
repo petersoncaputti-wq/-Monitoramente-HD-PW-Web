@@ -104,8 +104,8 @@ export async function readStorageReadingsFromSupabase(
       const details = await response.text().catch(() => '');
       throw new Error(
         details
-          ? `Nao foi possivel ler storage_readings no Supabase: ${details}`
-          : 'Nao foi possivel ler storage_readings no Supabase.',
+          ? `Não foi possível ler storage_readings no Supabase: ${details}`
+          : 'Não foi possível ler storage_readings no Supabase.',
       );
     }
 

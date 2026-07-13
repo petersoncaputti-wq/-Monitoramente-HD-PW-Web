@@ -43,7 +43,7 @@ export interface TicketInput {
 }
 
 const TICKET_HEADERS = [
-  'Cason.Âº',
+  'Caso n.º',
   'Status',
   'Motivo',
   'Resumo',
@@ -52,13 +52,13 @@ const TICKET_HEADERS = [
   'Fechadoem',
   'Prioridade',
   'Solicitante',
-  'OrganizaÃ§Ã£odosolicitante',
-  'AgenteAtribuÃ­do',
-  'AtribuÃ­do',
-  'GrupoatribuÃ­do',
+  'Organizaçãodosolicitante',
+  'AgenteAtribuído',
+  'Atribuído',
+  'Grupoatribuído',
   'Tipodeticket',
   'StatusdoSLA',
-  'OrganizaÃ§Ã£odobeneficiÃ¡rio',
+  'Organizaçãodobeneficiário',
   'Solicitadopara',
 ];
 
@@ -125,6 +125,10 @@ export function mapTicketRecord(record: TicketRecord): TicketRow {
     StatusdoSLA: record.sla_status ?? '',
     Tipodeticket: record.ticket_type ?? '',
     __id: record.id,
+    __caseNumber: record.case_number ?? '',
+    __closedAt: record.closed_at ?? '',
+    __openedAt: record.opened_at,
+    __updatedAt: record.updated_at ?? '',
   } as unknown as TicketRow;
 }
 

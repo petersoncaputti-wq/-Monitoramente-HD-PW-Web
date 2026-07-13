@@ -70,7 +70,7 @@ begin
   returning * into updated_profile;
 
   if updated_profile.id is null then
-    raise exception 'Perfil de acesso nao encontrado.';
+    raise exception 'Perfil de acesso não encontrado.';
   end if;
 
   return updated_profile;

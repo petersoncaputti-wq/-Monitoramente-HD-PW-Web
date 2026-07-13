@@ -149,7 +149,7 @@ export async function getMyProfile(accessToken: string, userId: string): Promise
   const profiles = await parseResponse<UserProfile[]>(response);
 
   if (!profiles[0]) {
-    throw new Error('Perfil de acesso nao encontrado.');
+    throw new Error('Perfil de acesso não encontrado.');
   }
 
   return profiles[0];
@@ -186,7 +186,7 @@ export async function updateUserRole(
   const profiles = await parseResponse<UserProfile[]>(response);
 
   if (!profiles[0]) {
-    throw new Error('Usuario nao encontrado.');
+    throw new Error('Usuário não encontrado.');
   }
 
   return profiles[0];

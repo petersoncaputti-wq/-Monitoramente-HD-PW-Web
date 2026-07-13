@@ -56,7 +56,7 @@ async function assertAdmin(headers) {
   const accessToken = authorization.replace(/^Bearer\s+/i, '').trim();
 
   if (!accessToken) {
-    return { error: 'Sessao ausente.', status: 401 };
+    return { error: 'Sessão ausente.', status: 401 };
   }
 
   const caller = await getCaller(accessToken);
@@ -184,7 +184,7 @@ export async function handleTicketsRequest({ body, headers, method }) {
     return deleteTicket(body ?? {});
   }
 
-  return { error: 'Metodo nao permitido.', status: 405 };
+  return { error: 'Método não permitido.', status: 405 };
 }
 
 export default async function handler(request, response) {

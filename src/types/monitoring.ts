@@ -54,7 +54,7 @@ export interface ProjectWiseWebUserRow {
 }
 
 export interface TicketRow {
-  'Cason.º': string;
+  'Caso n.º': string;
   Status: string;
   Motivo: string;
   Resumo: string;
