@@ -102,11 +102,11 @@ export function TicketsTable({ rows }: TicketsTableProps) {
           <tbody className="divide-y divide-brand-50">
             {sortedRows.map((row, index) => (
               <tr
-                key={`${row['Cason.º']}-${row.Resumo}-${index}`}
+                key={`${row['Caso n.º'] ?? row['Cason.º']}-${row.Resumo}-${index}`}
                 className="transition hover:bg-brand-50/60"
               >
                 <td className="whitespace-nowrap px-4 py-4 font-medium text-surface-900 first:pl-6">
-                  {row['Cason.º'] || '-'}
+                  {row['Caso n.º'] || row['Cason.º'] || '-'}
                 </td>
                 <td className="px-4 py-4">{getStatusBadge(row.Status)}</td>
                 <td className="px-4 py-4">{getSlaBadge(row.StatusdoSLA)}</td>

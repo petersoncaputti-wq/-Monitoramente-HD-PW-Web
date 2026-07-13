@@ -167,7 +167,7 @@ export function ProjectWiseUsersTable({ rows }: ProjectWiseUsersTableProps) {
                 Criado em
               </th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Descricao
+                Descrição
               </th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
                 Último acesso

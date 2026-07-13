@@ -71,7 +71,7 @@ async function assertAdmin(headers) {
   const accessToken = authorization.replace(/^Bearer\s+/i, '').trim();
 
   if (!accessToken) {
-    return { error: 'Sessao ausente.', status: 401 };
+    return { error: 'Sessão ausente.', status: 401 };
   }
 
   const caller = await getCaller(accessToken);
@@ -311,7 +311,7 @@ async function importStorageCsv(body) {
 
 export async function handleStorageImportRequest({ body, headers, method }) {
   if (method !== 'POST') {
-    return { error: 'Metodo nao permitido.', status: 405 };
+    return { error: 'Método não permitido.', status: 405 };
   }
 
   const adminCheck = await assertAdmin(headers);

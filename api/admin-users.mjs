@@ -57,7 +57,7 @@ async function assertAdmin(headers) {
   const accessToken = authorization.replace(/^Bearer\s+/i, '').trim();
 
   if (!accessToken) {
-    return { error: 'Sessao ausente.', status: 401 };
+    return { error: 'Sessão ausente.', status: 401 };
   }
 
   const caller = await getCaller(accessToken);
@@ -87,7 +87,7 @@ async function createUser(body) {
   const role = normalizeRole(body.role);
 
   if (!email || !password) {
-    return { error: 'Email e senha sao obrigatorios.', status: 400 };
+    return { error: 'Email e senha sao obrigatórios.', status: 400 };
   }
 
   const user = await supabaseRequest('/auth/v1/admin/users', {
@@ -126,7 +126,7 @@ async function updateUser(body) {
   const role = normalizeRole(body.role);
 
   if (!id) {
-    return { error: 'ID do usuario e obrigatorio.', status: 400 };
+    return { error: 'ID do usuário e obrigatório.', status: 400 };
   }
 
   const profiles = await supabaseRequest(`/rest/v1/app_profiles?id=eq.${encodeURIComponent(id)}`, {
@@ -138,7 +138,7 @@ async function updateUser(body) {
   });
 
   if (!profiles[0]) {
-    return { error: 'Usuario nao encontrado.', status: 404 };
+    return { error: 'Usuário não encontrado.', status: 404 };
   }
 
   await supabaseRequest(`/auth/v1/admin/users/${encodeURIComponent(id)}`, {
@@ -157,7 +157,7 @@ async function deleteUser(body) {
   const id = String(body.id ?? '').trim();
 
   if (!id) {
-    return { error: 'ID do usuario e obrigatorio.', status: 400 };
+    return { error: 'ID do usuário e obrigatório.', status: 400 };
   }
 
   await supabaseRequest(`/auth/v1/admin/users/${encodeURIComponent(id)}`, {
@@ -190,7 +190,7 @@ export async function handleAdminUsersRequest({ body, headers, method }) {
     return deleteUser(body ?? {});
   }
 
-  return { error: 'Metodo nao permitido.', status: 405 };
+  return { error: 'Método não permitido.', status: 405 };
 }
 
 export default async function handler(request, response) {

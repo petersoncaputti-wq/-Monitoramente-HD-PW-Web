@@ -184,6 +184,8 @@ const PORTAL_USERS_UPDATE_STEPS = [
   'Recarregando comparativo de usuários',
 ];
 
+const TICKETS_PAGE_SIZE = 20;
+
 type AutoStorageStatus =
   | { state: 'idle' }
   | { state: 'loading' }
@@ -425,6 +427,13 @@ export function DashboardPage() {
   });
   const [ticketFormStatus, setTicketFormStatus] = useState<TicketFormStatus>({ state: 'idle' });
   const [ticketSearchTerm, setTicketSearchTerm] = useState('');
+  const [ticketColumnFilters, setTicketColumnFilters] = useState({
+    caseNumber: '',
+    requester: '',
+    status: '',
+    summary: '',
+  });
+  const [ticketPage, setTicketPage] = useState(1);
   const [periodStartDate, setPeriodStartDate] = useState('');
   const [periodEndDate, setPeriodEndDate] = useState('');
   const rows = useMemo(
@@ -455,36 +464,93 @@ export function DashboardPage() {
     return String(entry?.[1] ?? '');
   };
   const getTicketCaseNumber = (row: TicketRow) =>
-    getTicketValue(row, 'Cason') || getTicketValue(row, 'Caso n') || String(row['Cason.Âº'] ?? '');
-  const filteredAdminTicketRows = useMemo(() => {
-    const normalizedTerm = ticketSearchTerm
+    getTicketValue(row, 'Caso n') || getTicketValue(row, 'Cason');
+  const normalizeTicketFilterValue = (value: unknown) =>
+    String(value ?? '')
       .trim()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
+  const ticketStatusOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(ticketRows.map((row) => String(row.Status ?? '').trim()).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [ticketRows],
+  );
+  const filteredAdminTicketRows = useMemo(() => {
+    const normalizedTerm = normalizeTicketFilterValue(ticketSearchTerm);
+    const normalizedColumnFilters = {
+      caseNumber: normalizeTicketFilterValue(ticketColumnFilters.caseNumber),
+      requester: normalizeTicketFilterValue(ticketColumnFilters.requester),
+      status: normalizeTicketFilterValue(ticketColumnFilters.status),
+      summary: normalizeTicketFilterValue(ticketColumnFilters.summary),
+    };
 
-    if (!normalizedTerm) {
-      return ticketRows;
-    }
+    return ticketRows.filter((row) => {
+      const rowMatchesGeneralSearch =
+        !normalizedTerm ||
+        [
+          getTicketCaseNumber(row),
+          row.Status,
+          row.Resumo,
+          row.Solicitante,
+          row.Motivo,
+          row.Tipodeticket,
+          row.StatusdoSLA,
+        ].some((value) => normalizeTicketFilterValue(value).includes(normalizedTerm));
 
-    return ticketRows.filter((row) =>
-      [
-        getTicketCaseNumber(row),
-        row.Status,
-        row.Resumo,
-        row.Solicitante,
-        row.Motivo,
-        row.Tipodeticket,
-        row.StatusdoSLA,
-      ].some((value) =>
-        String(value ?? '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase()
-          .includes(normalizedTerm),
-      ),
-    );
-  }, [ticketRows, ticketSearchTerm]);
+      return (
+        rowMatchesGeneralSearch &&
+        (!normalizedColumnFilters.caseNumber ||
+          normalizeTicketFilterValue(getTicketCaseNumber(row)).includes(
+            normalizedColumnFilters.caseNumber,
+          )) &&
+        (!normalizedColumnFilters.status ||
+          normalizeTicketFilterValue(row.Status) === normalizedColumnFilters.status) &&
+        (!normalizedColumnFilters.summary ||
+          normalizeTicketFilterValue(row.Resumo).includes(normalizedColumnFilters.summary)) &&
+        (!normalizedColumnFilters.requester ||
+          normalizeTicketFilterValue(row.Solicitante).includes(normalizedColumnFilters.requester))
+      );
+    });
+  }, [ticketRows, ticketSearchTerm, ticketColumnFilters]);
+  const hasTicketFilters =
+    Boolean(ticketSearchTerm.trim()) ||
+    Object.values(ticketColumnFilters).some((value) => Boolean(value.trim()));
+  const clearTicketFilters = () => {
+    setTicketSearchTerm('');
+    setTicketColumnFilters({
+      caseNumber: '',
+      requester: '',
+      status: '',
+      summary: '',
+    });
+  };
+  const totalTicketPages = Math.max(
+    1,
+    Math.ceil(filteredAdminTicketRows.length / TICKETS_PAGE_SIZE),
+  );
+  const visibleTicketPage = Math.min(ticketPage, totalTicketPages);
+  const ticketPageStartIndex = (visibleTicketPage - 1) * TICKETS_PAGE_SIZE;
+  const paginatedAdminTicketRows = filteredAdminTicketRows.slice(
+    ticketPageStartIndex,
+    ticketPageStartIndex + TICKETS_PAGE_SIZE,
+  );
+  const firstTicketOnPage =
+    filteredAdminTicketRows.length === 0 ? 0 : ticketPageStartIndex + 1;
+  const lastTicketOnPage = Math.min(
+    ticketPageStartIndex + TICKETS_PAGE_SIZE,
+    filteredAdminTicketRows.length,
+  );
+
+  useEffect(() => {
+    setTicketPage(1);
+  }, [ticketSearchTerm, ticketColumnFilters]);
+
+  useEffect(() => {
+    setTicketPage((currentPage) => Math.min(currentPage, totalTicketPages));
+  }, [totalTicketPages]);
   const dateRange = useMemo(() => getRowsDateRange(rows), [rows]);
   const filteredRows = useMemo(
     () => filterRowsByPeriod(rows, periodStartDate, periodEndDate),
@@ -532,7 +598,7 @@ export function DashboardPage() {
       if (!accessToken) {
         setAutoStorageStatus({
           state: 'error',
-          message: 'Sessao autenticada indisponivel para ler os dados de armazenamento.',
+          message: 'Sessão autenticada indisponível para ler os dados de armazenamento.',
         });
         return;
       }
@@ -551,7 +617,7 @@ export function DashboardPage() {
         const message =
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel carregar os dados de armazenamento no Supabase.';
+            : 'Não foi possível carregar os dados de armazenamento no Supabase.';
 
         setAutoStorageStatus({ state: 'error', message });
       }
@@ -632,7 +698,7 @@ export function DashboardPage() {
       const validAccessToken = await getValidAccessToken();
 
       if (!validAccessToken) {
-        throw new Error('Sessao expirada. Entre novamente para importar os arquivos.');
+        throw new Error('Sessão expirada. Entre novamente para importar os arquivos.');
       }
 
       let totalRowsRead = 0;
@@ -656,7 +722,7 @@ export function DashboardPage() {
         message:
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel importar o CSV de armazenamento.',
+            : 'Não foi possível importar o CSV de armazenamento.',
       });
     }
   }
@@ -672,7 +738,7 @@ export function DashboardPage() {
       const validAccessToken = await getValidAccessToken();
 
       if (!validAccessToken) {
-        throw new Error('Sessao expirada. Entre novamente para importar o arquivo.');
+        throw new Error('Sessão expirada. Entre novamente para importar o arquivo.');
       }
 
       const result = await importProjectWiseUsersFile(
@@ -683,7 +749,7 @@ export function DashboardPage() {
 
       setProjectWiseExplorerImportStatus({
         state: 'success',
-        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} usuarios PW importados.`,
+        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} usuários PW importados.`,
       });
       setProjectWiseExplorerFile(null);
       await loadAutoProjectWiseUsersSource();
@@ -693,7 +759,7 @@ export function DashboardPage() {
         message:
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel importar os usuarios PW.',
+            : 'Não foi possível importar os usuários PW.',
       });
     }
   }
@@ -709,7 +775,7 @@ export function DashboardPage() {
       const validAccessToken = await getValidAccessToken();
 
       if (!validAccessToken) {
-        throw new Error('Sessao expirada. Entre novamente para importar o arquivo.');
+        throw new Error('Sessão expirada. Entre novamente para importar o arquivo.');
       }
 
       const result = await importProjectWiseUsersFile(
@@ -720,7 +786,7 @@ export function DashboardPage() {
 
       setProjectWisePortalImportStatus({
         state: 'success',
-        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} usuarios do Portal importados.`,
+        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} usuários do Portal importados.`,
       });
       setProjectWisePortalFile(null);
       await loadAutoProjectWisePortalUsersSource();
@@ -730,7 +796,7 @@ export function DashboardPage() {
         message:
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel importar os usuarios do Portal Bentley.',
+            : 'Não foi possível importar os usuários do Portal Bentley.',
       });
     }
   }
@@ -772,6 +838,17 @@ export function DashboardPage() {
         return '';
       }
 
+      const isoDate = new Date(text);
+
+      if (!Number.isNaN(isoDate.getTime())) {
+        const year = isoDate.getFullYear();
+        const month = String(isoDate.getMonth() + 1).padStart(2, '0');
+        const day = String(isoDate.getDate()).padStart(2, '0');
+        const hours = String(isoDate.getHours()).padStart(2, '0');
+        const minutes = String(isoDate.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
       const match = text.match(/^(\d{2})\/(\d{2})\/(\d{4}),?\s+(\d{2}):(\d{2})$/);
 
       if (match) {
@@ -786,23 +863,32 @@ export function DashboardPage() {
       assignedAgent: getValue('AgenteAtribuido'),
       assignedGroup: getValue('Grupoatribuido'),
       assignedTo: getValue('Atribuido'),
-      beneficiaryOrganization: getValue('Organizacaobeneficiario'),
-      caseNumber: getValue('Cason'),
-      closedAt: toDatetimeLocal(row.Fechadoem),
+      beneficiaryOrganization: getValue('Organizaçãobeneficiario'),
+      caseNumber: String(row.__caseNumber ?? '') || getTicketCaseNumber(row),
+      closedAt: toDatetimeLocal(row.__closedAt || row.Fechadoem),
       id,
-      openedAt: toDatetimeLocal(row.Abertoem),
+      openedAt: toDatetimeLocal(row.__openedAt || row.Abertoem),
       priority: String(row.Prioridade ?? ''),
       reason: String(row.Motivo ?? ''),
       requestedFor: String(row.Solicitadopara ?? ''),
       requester: String(row.Solicitante ?? ''),
-      requesterOrganization: getValue('Organizacaodosolicitante'),
+      requesterOrganization: getValue('Organizaçãodosolicitante'),
       slaStatus: String(row.StatusdoSLA ?? ''),
       status: String(row.Status ?? 'Novo'),
       summary: String(row.Resumo ?? ''),
       ticketType: String(row.Tipodeticket ?? ''),
-      updatedAt: toDatetimeLocal(row.Atualizado),
+      updatedAt: toDatetimeLocal(row.__updatedAt || row.Atualizado),
     });
-    setTicketFormStatus({ state: 'idle' });
+    setTicketFormStatus({
+      state: 'success',
+      message: `Editando chamado ${String(row.__caseNumber ?? '') || getTicketCaseNumber(row) || id}.`,
+    });
+    window.setTimeout(() => {
+      document.getElementById('ticket-form')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 0);
   }
 
   async function saveTicketForm() {
@@ -811,7 +897,7 @@ export function DashboardPage() {
     if (!validAccessToken) {
       setTicketFormStatus({
         state: 'error',
-        message: 'Sessao expirada. Entre novamente para salvar o chamado.',
+        message: 'Sessão expirada. Entre novamente para salvar o chamado.',
       });
       return;
     }
@@ -830,11 +916,11 @@ export function DashboardPage() {
         message: ticketForm.id ? 'Chamado atualizado.' : 'Chamado registrado.',
       });
       resetTicketForm();
-      await loadAutoTicketsSource();
+      await loadAutoTicketsSource({ accessTokenOverride: validAccessToken });
     } catch (error) {
       setTicketFormStatus({
         state: 'error',
-        message: error instanceof Error ? error.message : 'Nao foi possivel salvar o chamado.',
+        message: error instanceof Error ? error.message : 'Não foi possível salvar o chamado.',
       });
     }
   }
@@ -851,37 +937,59 @@ export function DashboardPage() {
     if (!validAccessToken) {
       setTicketFormStatus({
         state: 'error',
-        message: 'Sessao expirada. Entre novamente para excluir o chamado.',
+        message: 'Sessão expirada. Entre novamente para excluir o chamado.',
       });
       return;
     }
 
     try {
       await deleteTicket(validAccessToken, id);
-      setTicketFormStatus({ state: 'success', message: 'Chamado excluido.' });
-      await loadAutoTicketsSource();
+      setTicketSearchTerm('');
+      setTicketColumnFilters({
+        caseNumber: '',
+        requester: '',
+        status: '',
+        summary: '',
+      });
+      setTicketPage(1);
+      setTicketForm((currentForm) =>
+        currentForm.id === id
+          ? {
+              openedAt: '',
+              status: 'Novo',
+              summary: '',
+            }
+          : currentForm,
+      );
+      await loadAutoTicketsSource({ accessTokenOverride: validAccessToken });
+      setTicketFormStatus({ state: 'success', message: 'Chamado excluído.' });
     } catch (error) {
       setTicketFormStatus({
         state: 'error',
-        message: error instanceof Error ? error.message : 'Nao foi possivel excluir o chamado.',
+        message: error instanceof Error ? error.message : 'Não foi possível excluir o chamado.',
       });
     }
   }
 
-  async function loadAutoTicketsSource(options?: { syncBeforeRead?: boolean }) {
+  async function loadAutoTicketsSource(options?: {
+    accessTokenOverride?: string;
+    syncBeforeRead?: boolean;
+  }) {
     setAutoTicketsStatus({ state: 'loading' });
 
     if (hasSupabaseTicketsConfig()) {
-      if (!accessToken) {
+      const ticketsAccessToken = options?.accessTokenOverride ?? accessToken;
+
+      if (!ticketsAccessToken) {
         setAutoTicketsStatus({
           state: 'error',
-          message: 'Sessao autenticada indisponivel para ler os chamados.',
+          message: 'Sessão autenticada indisponível para ler os chamados.',
         });
         return;
       }
 
       try {
-        const data = await readTicketsFromSupabase(accessToken);
+        const data = await readTicketsFromSupabase(ticketsAccessToken);
 
         applyTicketsData(data);
         setAutoTicketsStatus({
@@ -896,7 +1004,7 @@ export function DashboardPage() {
           message:
             error instanceof Error
               ? error.message
-              : 'Nao foi possivel carregar os chamados no Supabase.',
+              : 'Não foi possível carregar os chamados no Supabase.',
         });
       }
 
@@ -963,7 +1071,7 @@ export function DashboardPage() {
       if (!accessToken) {
         setAutoProjectWiseUsersStatus({
           state: 'error',
-          message: 'Sessao autenticada indisponivel para ler os usuarios PW.',
+          message: 'Sessão autenticada indisponível para ler os usuários PW.',
         });
         return;
       }
@@ -982,7 +1090,7 @@ export function DashboardPage() {
         const message =
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel carregar os usuarios PW no Supabase.';
+            : 'Não foi possível carregar os usuários PW no Supabase.';
 
         setAutoProjectWiseUsersStatus({ state: 'error', message });
       }
@@ -1050,7 +1158,7 @@ export function DashboardPage() {
       if (!accessToken) {
         setAutoProjectWisePortalUsersStatus({
           state: 'error',
-          message: 'Sessao autenticada indisponivel para ler os usuarios do Portal Bentley.',
+          message: 'Sessão autenticada indisponível para ler os usuários do Portal Bentley.',
         });
         return;
       }
@@ -1069,7 +1177,7 @@ export function DashboardPage() {
         const message =
           error instanceof Error
             ? error.message
-            : 'Nao foi possivel carregar os usuarios do Portal Bentley no Supabase.';
+            : 'Não foi possível carregar os usuários do Portal Bentley no Supabase.';
 
         setAutoProjectWisePortalUsersStatus({ state: 'error', message });
       }
@@ -1178,7 +1286,7 @@ export function DashboardPage() {
           <div className="flex flex-col items-start gap-2 rounded-[20px] border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-surface-700 lg:items-end">
             <span className="font-semibold text-surface-900">{profile?.email}</span>
             <span className="text-xs uppercase tracking-[0.16em] text-brand-700">
-              {profile?.role === 'admin' ? 'Administrador' : 'Usuario padrao'}
+              {profile?.role === 'admin' ? 'Administrador' : 'Usuário padrão'}
             </span>
             <button
               type="button"
@@ -1254,7 +1362,7 @@ export function DashboardPage() {
                     {autoStorageStatus.state === 'loading'
                       ? 'Atualizando a leitura no Supabase...'
                       : autoStorageStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoStorageStatus.fileName} as ${autoStorageStatus.loadedAt.toLocaleTimeString('pt-BR', {
+                        ? `Fonte carregada: ${autoStorageStatus.fileName} ?s ${autoStorageStatus.loadedAt.toLocaleTimeString('pt-BR', {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}. ${autoStorageStatus.rowsCount} registros lidos.`
@@ -1285,7 +1393,7 @@ export function DashboardPage() {
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <label className="block flex-1">
                       <span className="text-sm font-semibold text-surface-700">
-                        Importar CSV diario
+                        Importar CSV diário
                       </span>
                       <input
                         type="file"
@@ -1362,7 +1470,7 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Linhas fonte/copia
+                      Linhas fonte/cópia
                     </p>
                     <p className="mt-1">
                       {autoStorageStatus.syncInfo.sourceRowsCount} /{' '}
@@ -1442,7 +1550,7 @@ export function DashboardPage() {
                     {autoProjectWiseUsersStatus.state === 'loading'
                       ? 'Atualizando a extração de usuários ProjectWise...'
                       : autoProjectWiseUsersStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} as ${autoProjectWiseUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
+                        ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} ?s ${autoProjectWiseUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}. ${autoProjectWiseUsersStatus.rowsCount} registros lidos.`
@@ -1519,7 +1627,7 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Linhas fonte/copia
+                      Linhas fonte/cópia
                     </p>
                     <p className="mt-1">
                       {autoProjectWiseUsersStatus.syncInfo.sourceRowsCount} /{' '}
@@ -1570,7 +1678,7 @@ export function DashboardPage() {
                     {autoProjectWisePortalUsersStatus.state === 'loading'
                       ? 'Atualizando a leitura do CSV exportado do Portal Bentley...'
                       : autoProjectWisePortalUsersStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoProjectWisePortalUsersStatus.fileName} as ${autoProjectWisePortalUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
+                        ? `Fonte carregada: ${autoProjectWisePortalUsersStatus.fileName} ?s ${autoProjectWisePortalUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}. ${autoProjectWisePortalUsersStatus.rowsCount} registros lidos.`
@@ -1657,7 +1765,7 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Linhas fonte/copia
+                      Linhas fonte/cópia
                     </p>
                     <p className="mt-1">
                       {autoProjectWisePortalUsersStatus.syncInfo.sourceRowsCount} /{' '}
@@ -1712,7 +1820,10 @@ export function DashboardPage() {
         {activeTab === 'tickets' ? (
           <>
             {profile?.role === 'admin' ? (
-              <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
+              <section
+                id="ticket-form"
+                className="mt-6 scroll-mt-24 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft"
+              >
                 <div className="flex flex-col gap-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
                     Registro de chamados
@@ -1782,11 +1893,16 @@ export function DashboardPage() {
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Prioridade
-                    <input
+                    <select
                       value={ticketForm.priority ?? ''}
                       onChange={(event) => updateTicketForm('priority', event.target.value)}
                       className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
-                    />
+                    >
+                      <option value="">Não informado</option>
+                      <option>Alta</option>
+                      <option>Média</option>
+                      <option>Baixa</option>
+                    </select>
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Solicitante
@@ -1797,7 +1913,7 @@ export function DashboardPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-                    Organizacao
+                    Organização
                     <input
                       value={ticketForm.beneficiaryOrganization ?? ''}
                       onChange={(event) =>
@@ -1808,11 +1924,14 @@ export function DashboardPage() {
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Tipo de ticket
-                    <input
+                    <select
                       value={ticketForm.ticketType ?? ''}
                       onChange={(event) => updateTicketForm('ticketType', event.target.value)}
                       className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
-                    />
+                    >
+                      <option value="">Não informado</option>
+                      <option>Solicitação de serviço</option>
+                    </select>
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Status do SLA
@@ -1821,10 +1940,10 @@ export function DashboardPage() {
                       onChange={(event) => updateTicketForm('slaStatus', event.target.value)}
                       className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
                     >
-                      <option value="">Nao informado</option>
+                      <option value="">Não informado</option>
                       <option>No SLA</option>
                       <option>SLA violado</option>
-                      <option>Nao aplicado</option>
+                      <option>Não aplicado</option>
                     </select>
                   </label>
                 </div>
@@ -1877,12 +1996,79 @@ export function DashboardPage() {
                     </label>
                     <button
                       type="button"
-                      onClick={() => setTicketSearchTerm('')}
-                      disabled={!ticketSearchTerm}
+                      onClick={clearTicketFilters}
+                      disabled={!hasTicketFilters}
                       className="h-11 rounded-2xl border border-brand-100 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Limpar
+                      Limpar filtros
                     </button>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-4">
+                    <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">
+                      Caso
+                      <input
+                        type="search"
+                        value={ticketColumnFilters.caseNumber}
+                        onChange={(event) =>
+                          setTicketColumnFilters((current) => ({
+                            ...current,
+                            caseNumber: event.target.value,
+                          }))
+                        }
+                        placeholder="Filtrar caso"
+                        className="h-10 rounded-xl border border-brand-100 bg-white px-3 text-sm font-medium normal-case tracking-normal text-surface-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">
+                      Status
+                      <select
+                        value={ticketColumnFilters.status}
+                        onChange={(event) =>
+                          setTicketColumnFilters((current) => ({
+                            ...current,
+                            status: event.target.value,
+                          }))
+                        }
+                        className="h-10 rounded-xl border border-brand-100 bg-white px-3 text-sm font-medium normal-case tracking-normal text-surface-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                      >
+                        <option value="">Todos</option>
+                        {ticketStatusOptions.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">
+                      Resumo
+                      <input
+                        type="search"
+                        value={ticketColumnFilters.summary}
+                        onChange={(event) =>
+                          setTicketColumnFilters((current) => ({
+                            ...current,
+                            summary: event.target.value,
+                          }))
+                        }
+                        placeholder="Filtrar resumo"
+                        className="h-10 rounded-xl border border-brand-100 bg-white px-3 text-sm font-medium normal-case tracking-normal text-surface-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">
+                      Solicitante
+                      <input
+                        type="search"
+                        value={ticketColumnFilters.requester}
+                        onChange={(event) =>
+                          setTicketColumnFilters((current) => ({
+                            ...current,
+                            requester: event.target.value,
+                          }))
+                        }
+                        placeholder="Filtrar solicitante"
+                        className="h-10 rounded-xl border border-brand-100 bg-white px-3 text-sm font-medium normal-case tracking-normal text-surface-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                      />
+                    </label>
                   </div>
                   <p className="mt-3 text-xs text-surface-700">
                     {filteredAdminTicketRows.length} de {ticketRows.length} chamados encontrados.
@@ -1897,11 +2083,11 @@ export function DashboardPage() {
                         <th className="px-4 py-3">Status</th>
                         <th className="px-4 py-3">Resumo</th>
                         <th className="px-4 py-3">Solicitante</th>
-                        <th className="px-4 py-3">Acoes</th>
+                        <th className="px-4 py-3">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-brand-50">
-                      {filteredAdminTicketRows.slice(0, 25).map((row, index) => (
+                      {paginatedAdminTicketRows.map((row, index) => (
                         <tr key={`${row.__id ?? getTicketCaseNumber(row)}-${index}`}>
                           <td className="px-4 py-3 font-medium text-surface-900">
                             {getTicketCaseNumber(row) || '-'}
@@ -1941,6 +2127,35 @@ export function DashboardPage() {
                     </tbody>
                   </table>
                 </div>
+                <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm text-surface-700 sm:flex-row sm:items-center sm:justify-between">
+                  <p>
+                    Exibindo {firstTicketOnPage}-{lastTicketOnPage} de{' '}
+                    {filteredAdminTicketRows.length} chamados
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTicketPage(Math.max(1, visibleTicketPage - 1))}
+                      disabled={visibleTicketPage === 1}
+                      className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-xs font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Anterior
+                    </button>
+                    <span className="min-w-[88px] text-center text-xs font-semibold text-surface-700">
+                      Página {visibleTicketPage} de {totalTicketPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTicketPage(Math.min(totalTicketPages, visibleTicketPage + 1))
+                      }
+                      disabled={visibleTicketPage === totalTicketPages}
+                      className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-xs font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                </div>
               </section>
             ) : null}
 
@@ -1955,7 +2170,7 @@ export function DashboardPage() {
                     {autoTicketsStatus.state === 'loading'
                       ? 'Atualizando a leitura da planilha de chamados...'
                       : autoTicketsStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoTicketsStatus.fileName} as ${autoTicketsStatus.loadedAt.toLocaleTimeString('pt-BR', {
+                        ? `Fonte carregada: ${autoTicketsStatus.fileName} ?s ${autoTicketsStatus.loadedAt.toLocaleTimeString('pt-BR', {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}. ${autoTicketsStatus.rowsCount} registros lidos.`
@@ -2002,7 +2217,7 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Linhas fonte/copia
+                      Linhas fonte/cópia
                     </p>
                     <p className="mt-1">
                       {autoTicketsStatus.syncInfo.sourceRowsCount} /{' '}

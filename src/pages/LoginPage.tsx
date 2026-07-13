@@ -16,7 +16,7 @@ export function LoginPage() {
     try {
       await login(email, password);
     } catch {
-      setErrorMessage('Email ou senha invalidos, ou usuario sem perfil de acesso.');
+      setErrorMessage('E-mail ou senha inválidos, ou usuário sem perfil de acesso.');
     } finally {
       setIsSubmitting(false);
     }
@@ -34,11 +34,11 @@ export function LoginPage() {
         </div>
 
         <h1 className="text-xl font-semibold text-surface-900">Painel Operacional ProjectWise</h1>
-        <p className="mt-2 text-sm text-surface-600">Acesse com seu usuario autorizado.</p>
+        <p className="mt-2 text-sm text-surface-600">Acesse com seu usuário autorizado.</p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block">
-            <span className="text-sm font-medium text-surface-700">Email</span>
+            <span className="text-sm font-medium text-surface-700">E-mail</span>
             <input
               type="email"
               value={email}

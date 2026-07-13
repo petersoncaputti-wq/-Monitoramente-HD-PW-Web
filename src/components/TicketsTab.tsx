@@ -164,13 +164,13 @@ function AverageResolutionCard({ value }: { value: string }) {
   return (
     <article className="flex h-full min-h-[220px] flex-col rounded-[28px] border border-brand-100 bg-white p-6 shadow-soft">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-        Tempo medio de solucao
+        Tempo médio de solução
       </p>
       <p className="mt-4 break-words text-[1.75rem] font-semibold leading-tight text-brand-700 md:text-[2.05rem]">
         {value}
       </p>
       <p className="mt-auto pt-4 text-sm leading-6 text-surface-700">
-        Media em tempo util entre abertura e encerramento. Acima de 24h, usa dias uteis de 8h.
+        Média em tempo útil entre abertura e encerramento. Acima de 24h, usa dias úteis de 8h.
       </p>
     </article>
   );
@@ -281,7 +281,7 @@ export function TicketsTab({ rows }: TicketsTabProps) {
       >
         <div className="mb-5 rounded-2xl border border-brand-100 bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-            Periodo selecionado
+            Período selecionado
           </p>
           <p className="mt-3 text-3xl font-semibold text-surface-900">
             {summary.selectedServiceOpenTickets}
@@ -295,7 +295,7 @@ export function TicketsTab({ rows }: TicketsTabProps) {
           <div>
             <h3 className="mb-4 text-base font-semibold text-surface-900">Abertos por empresa</h3>
             <RankingList
-              emptyText="Nenhuma empresa encontrada para o servico selecionado."
+              emptyText="Nenhuma empresa encontrada para o serviço selecionado."
               items={summary.selectedServiceOpenByCompany}
               limit={10}
             />
@@ -304,7 +304,7 @@ export function TicketsTab({ rows }: TicketsTabProps) {
           <div>
             <h3 className="mb-4 text-base font-semibold text-surface-900">Top 10 solicitantes</h3>
             <RankingList
-              emptyText="Nenhum solicitante encontrado para o servico selecionado."
+              emptyText="Nenhum solicitante encontrado para o serviço selecionado."
               items={summary.selectedServiceTopRequesters}
               limit={10}
             />

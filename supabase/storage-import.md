@@ -24,7 +24,7 @@ Para importar o CSV mais recente para o Supabase:
 npm run import:storage
 ```
 
-Tambem e possivel informar um arquivo especifico:
+Também e possível informar um arquivo específico:
 
 ```bash
 npm run import:storage -- C:\Caminho\historico_2026-07-12.csv

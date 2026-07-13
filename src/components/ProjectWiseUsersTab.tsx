@@ -23,13 +23,13 @@ export function ProjectWiseUsersTab({
     <div className="flex flex-col gap-6">
       <PanelShell
         title="Resumo das fontes"
-        description="Totais, usuarios ativos e usuarios inativos por fonte importada."
+        description="Totais, usuários ativos e usuários inativos por fonte importada."
       >
         <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <ProjectWiseUserKpiCard
             title="PW Explorer total"
             value={String(explorerSummary.totalUsers)}
-            helperText="Usuarios no PW Explorer"
+            helperText="Usuários no PW Explorer"
           />
           <ProjectWiseUserKpiCard
             title="PW Explorer ativos"
@@ -52,7 +52,7 @@ export function ProjectWiseUsersTab({
           <ProjectWiseUserKpiCard
             title="Portal total"
             value={String(webSummary.totalUsers)}
-            helperText="Usuarios importados do Portal Bentley"
+            helperText="Usuários importados do Portal Bentley"
           />
           <ProjectWiseUserKpiCard
             title="Portal ativos"
@@ -63,7 +63,7 @@ export function ProjectWiseUsersTab({
           <ProjectWiseUserKpiCard
             title="Portal inativos"
             value={String(webSummary.inactiveOver180Days)}
-            helperText={`${webSummary.inactiveOver180Percentage} sem login em 180 dias e fora da excecao de 30 dias`}
+            helperText={`${webSummary.inactiveOver180Percentage} sem login em 180 dias e fora da exceção de 30 dias`}
             tone="warning"
           />
           <ProjectWiseUserKpiCard
