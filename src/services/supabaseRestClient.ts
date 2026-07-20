@@ -1,6 +1,7 @@
 import type { AppRole, AuthSession, AuthUser, UserProfile } from '@/types/auth';
 
 const SESSION_STORAGE_KEY = 'monitoramento-hd-pw.session';
+const SHOULD_PERSIST_SESSION = import.meta.env.VITE_PERSIST_AUTH_SESSION === 'true';
 
 interface SupabaseUserResponse {
   id: string;
@@ -60,6 +61,11 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export function saveStoredSession(session: AuthSession) {
+  if (!SHOULD_PERSIST_SESSION) {
+    clearStoredSession();
+    return;
+  }
+
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
 }
 
@@ -68,6 +74,11 @@ export function clearStoredSession() {
 }
 
 export function getStoredSession(): AuthSession | null {
+  if (!SHOULD_PERSIST_SESSION) {
+    clearStoredSession();
+    return null;
+  }
+
   const rawSession = localStorage.getItem(SESSION_STORAGE_KEY);
 
   if (!rawSession) {
