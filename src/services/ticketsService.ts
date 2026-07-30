@@ -16,7 +16,6 @@ export interface TicketRecord {
   requester_organization: string | null;
   sla_status: string | null;
   status: string;
-  summary: string;
   ticket_type: string | null;
   updated_at: string | null;
 }
@@ -37,7 +36,6 @@ export interface TicketInput {
   requesterOrganization?: string;
   slaStatus?: string;
   status: string;
-  summary: string;
   ticketType?: string;
   updatedAt?: string;
 }
@@ -46,7 +44,6 @@ const TICKET_HEADERS = [
   'Caso n.º',
   'Status',
   'Motivo',
-  'Resumo',
   'Abertoem',
   'Atualizado',
   'Fechadoem',
@@ -118,7 +115,6 @@ export function mapTicketRecord(record: TicketRecord): TicketRow {
     'Organiza\u00c3\u00a7\u00c3\u00a3odosolicitante': record.requester_organization ?? '',
     'Organiza\u00e7\u00e3odosolicitante': record.requester_organization ?? '',
     Prioridade: record.priority ?? '',
-    Resumo: record.summary,
     Solicitadopara: record.requested_for ?? '',
     Solicitante: record.requester ?? '',
     Status: record.status,

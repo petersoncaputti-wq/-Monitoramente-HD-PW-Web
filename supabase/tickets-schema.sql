@@ -3,7 +3,6 @@ create table if not exists public.tickets (
   case_number text,
   status text not null default 'Novo',
   reason text,
-  summary text not null,
   opened_at timestamptz not null,
   updated_at timestamptz,
   closed_at timestamptz,
@@ -22,6 +21,10 @@ create table if not exists public.tickets (
   created_at timestamptz not null default now(),
   updated_at_system timestamptz not null default now()
 );
+
+-- Remove a coluna de instalações criadas com versões anteriores do painel.
+alter table public.tickets
+drop column if exists summary;
 
 create index if not exists tickets_opened_at_idx on public.tickets (opened_at desc);
 create index if not exists tickets_status_idx on public.tickets (status);

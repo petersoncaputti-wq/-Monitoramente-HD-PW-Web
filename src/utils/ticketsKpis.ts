@@ -331,7 +331,7 @@ function countResolutionTimeBuckets(durations: number[]) {
 }
 
 function getClosedAt(row: TicketRow): unknown {
-  return getRowValue(row, ['Atualizado', 'Fechadoem']);
+  return getRowValue(row, ['Fechadoem', 'Atualizado']);
 }
 
 export function getTicketDateRange(rows: TicketRow[]) {

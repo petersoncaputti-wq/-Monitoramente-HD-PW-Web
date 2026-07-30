@@ -76,6 +76,16 @@ function normalizeRole(role) {
   return role === 'admin' ? 'admin' : 'user';
 }
 
+function getCreatedUser(authResponse) {
+  const user = authResponse?.user ?? authResponse;
+
+  if (!user?.id || typeof user.id !== 'string') {
+    throw new Error('O Supabase criou o usuário, mas não retornou um ID válido.');
+  }
+
+  return user;
+}
+
 async function listProfiles() {
   return supabaseRequest('/rest/v1/app_profiles?select=*&order=email.asc');
 }
@@ -90,7 +100,7 @@ async function createUser(body) {
     return { error: 'Email e senha sao obrigatórios.', status: 400 };
   }
 
-  const user = await supabaseRequest('/auth/v1/admin/users', {
+  const authResponse = await supabaseRequest('/auth/v1/admin/users', {
     body: JSON.stringify({
       email,
       email_confirm: true,
@@ -101,23 +111,47 @@ async function createUser(body) {
     }),
     method: 'POST',
   });
+  const user = getCreatedUser(authResponse);
 
-  const profiles = await supabaseRequest('/rest/v1/app_profiles?on_conflict=id', {
-    body: JSON.stringify([
-      {
-        email,
-        full_name: fullName || null,
-        id: user.id,
-        role,
+  try {
+    const profiles = await supabaseRequest('/rest/v1/app_profiles?on_conflict=id', {
+      body: JSON.stringify([
+        {
+          email,
+          full_name: fullName || null,
+          id: user.id,
+          role,
+        },
+      ]),
+      headers: {
+        Prefer: 'resolution=merge-duplicates,return=representation',
       },
-    ]),
-    headers: {
-      Prefer: 'resolution=merge-duplicates,return=representation',
-    },
-    method: 'POST',
-  });
+      method: 'POST',
+    });
 
-  return { body: profiles[0], status: 201 };
+    if (!profiles[0]) {
+      throw new Error('O perfil do usuário não foi retornado pelo Supabase.');
+    }
+
+    return { body: profiles[0], status: 201 };
+  } catch (profileError) {
+    try {
+      await supabaseRequest(`/auth/v1/admin/users/${encodeURIComponent(user.id)}`, {
+        method: 'DELETE',
+      });
+    } catch (rollbackError) {
+      const profileMessage =
+        profileError instanceof Error ? profileError.message : 'Erro ao criar o perfil.';
+      const rollbackMessage =
+        rollbackError instanceof Error ? rollbackError.message : 'Erro ao desfazer a criação.';
+
+      throw new Error(
+        `${profileMessage} Também não foi possível remover o usuário criado: ${rollbackMessage}`,
+      );
+    }
+
+    throw profileError;
+  }
 }
 
 async function updateUser(body) {

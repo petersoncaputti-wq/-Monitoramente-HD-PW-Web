@@ -423,7 +423,6 @@ export function DashboardPage() {
   const [ticketForm, setTicketForm] = useState<TicketInput>({
     openedAt: '',
     status: 'Novo',
-    summary: '',
   });
   const [ticketFormStatus, setTicketFormStatus] = useState<TicketFormStatus>({ state: 'idle' });
   const [ticketSearchTerm, setTicketSearchTerm] = useState('');
@@ -431,7 +430,6 @@ export function DashboardPage() {
     caseNumber: '',
     requester: '',
     status: '',
-    summary: '',
   });
   const [ticketPage, setTicketPage] = useState(1);
   const [periodStartDate, setPeriodStartDate] = useState('');
@@ -471,6 +469,61 @@ export function DashboardPage() {
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
+  const requesterHistory = useMemo(() => {
+    const counts = new Map<string, { count: number; value: string }>();
+
+    for (const row of ticketRows) {
+      const value = String(row.Solicitante ?? '').trim();
+      const key = normalizeTicketFilterValue(value);
+
+      if (!key) {
+        continue;
+      }
+
+      const current = counts.get(key);
+      counts.set(key, { count: (current?.count ?? 0) + 1, value: current?.value ?? value });
+    }
+
+    return [...counts.values()]
+      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'pt-BR'))
+      .slice(0, 50);
+  }, [ticketRows]);
+  const organizationHistory = useMemo(() => {
+    const selectedRequester = normalizeTicketFilterValue(ticketForm.requester);
+    const counts = new Map<string, { count: number; requesterMatches: number; value: string }>();
+
+    for (const row of ticketRows) {
+      const value =
+        getTicketValue(row, 'Organizaçãodobeneficiário') ||
+        getTicketValue(row, 'Organizaçãodosolicitante');
+      const key = normalizeTicketFilterValue(value);
+
+      if (!key) {
+        continue;
+      }
+
+      const current = counts.get(key);
+      const requesterMatches =
+        selectedRequester &&
+        normalizeTicketFilterValue(row.Solicitante) === selectedRequester
+          ? 1
+          : 0;
+      counts.set(key, {
+        count: (current?.count ?? 0) + 1,
+        requesterMatches: (current?.requesterMatches ?? 0) + requesterMatches,
+        value: current?.value ?? value,
+      });
+    }
+
+    return [...counts.values()]
+      .sort(
+        (a, b) =>
+          b.requesterMatches - a.requesterMatches ||
+          b.count - a.count ||
+          a.value.localeCompare(b.value, 'pt-BR'),
+      )
+      .slice(0, 50);
+  }, [ticketForm.requester, ticketRows]);
   const ticketStatusOptions = useMemo(
     () =>
       Array.from(
@@ -484,7 +537,6 @@ export function DashboardPage() {
       caseNumber: normalizeTicketFilterValue(ticketColumnFilters.caseNumber),
       requester: normalizeTicketFilterValue(ticketColumnFilters.requester),
       status: normalizeTicketFilterValue(ticketColumnFilters.status),
-      summary: normalizeTicketFilterValue(ticketColumnFilters.summary),
     };
 
     return ticketRows.filter((row) => {
@@ -493,7 +545,6 @@ export function DashboardPage() {
         [
           getTicketCaseNumber(row),
           row.Status,
-          row.Resumo,
           row.Solicitante,
           row.Motivo,
           row.Tipodeticket,
@@ -508,8 +559,6 @@ export function DashboardPage() {
           )) &&
         (!normalizedColumnFilters.status ||
           normalizeTicketFilterValue(row.Status) === normalizedColumnFilters.status) &&
-        (!normalizedColumnFilters.summary ||
-          normalizeTicketFilterValue(row.Resumo).includes(normalizedColumnFilters.summary)) &&
         (!normalizedColumnFilters.requester ||
           normalizeTicketFilterValue(row.Solicitante).includes(normalizedColumnFilters.requester))
       );
@@ -524,7 +573,6 @@ export function DashboardPage() {
       caseNumber: '',
       requester: '',
       status: '',
-      summary: '',
     });
   };
   const totalTicketPages = Math.max(
@@ -813,7 +861,6 @@ export function DashboardPage() {
     setTicketForm({
       openedAt: '',
       status: 'Novo',
-      summary: '',
     });
     setTicketFormStatus({ state: 'idle' });
   }
@@ -875,7 +922,6 @@ export function DashboardPage() {
       requesterOrganization: getValue('Organizaçãodosolicitante'),
       slaStatus: String(row.StatusdoSLA ?? ''),
       status: String(row.Status ?? 'Novo'),
-      summary: String(row.Resumo ?? ''),
       ticketType: String(row.Tipodeticket ?? ''),
       updatedAt: toDatetimeLocal(row.__updatedAt || row.Atualizado),
     });
@@ -949,7 +995,6 @@ export function DashboardPage() {
         caseNumber: '',
         requester: '',
         status: '',
-        summary: '',
       });
       setTicketPage(1);
       setTicketForm((currentForm) =>
@@ -957,7 +1002,6 @@ export function DashboardPage() {
           ? {
               openedAt: '',
               status: 'Novo',
-              summary: '',
             }
           : currentForm,
       );
@@ -1875,14 +1919,6 @@ export function DashboardPage() {
                       className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
                     />
                   </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-surface-700 md:col-span-2">
-                    Resumo
-                    <input
-                      value={ticketForm.summary}
-                      onChange={(event) => updateTicketForm('summary', event.target.value)}
-                      className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
-                    />
-                  </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Motivo
                     <input
@@ -1907,20 +1943,42 @@ export function DashboardPage() {
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Solicitante
                     <input
+                      list="ticket-requester-history"
                       value={ticketForm.requester ?? ''}
                       onChange={(event) => updateTicketForm('requester', event.target.value)}
+                      placeholder="Digite ou selecione do histórico"
+                      autoComplete="off"
                       className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
                     />
+                    <datalist id="ticket-requester-history">
+                      {requesterHistory.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.count} chamado{item.count === 1 ? '' : 's'}
+                        </option>
+                      ))}
+                    </datalist>
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Organização
                     <input
+                      list="ticket-organization-history"
                       value={ticketForm.beneficiaryOrganization ?? ''}
                       onChange={(event) =>
                         updateTicketForm('beneficiaryOrganization', event.target.value)
                       }
+                      placeholder="Digite ou selecione do histórico"
+                      autoComplete="off"
                       className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
                     />
+                    <datalist id="ticket-organization-history">
+                      {organizationHistory.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.requesterMatches > 0
+                            ? `Usada anteriormente para este solicitante`
+                            : `${item.count} chamado${item.count === 1 ? '' : 's'}`}
+                        </option>
+                      ))}
+                    </datalist>
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Tipo de ticket
@@ -1990,7 +2048,7 @@ export function DashboardPage() {
                         type="search"
                         value={ticketSearchTerm}
                         onChange={(event) => setTicketSearchTerm(event.target.value)}
-                        placeholder="Caso, resumo, solicitante, status, motivo ou tipo"
+                        placeholder="Caso, solicitante, status, motivo ou tipo"
                         className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                       />
                     </label>
@@ -2003,7 +2061,7 @@ export function DashboardPage() {
                       Limpar filtros
                     </button>
                   </div>
-                  <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
                     <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">
                       Caso
                       <input
@@ -2040,21 +2098,6 @@ export function DashboardPage() {
                       </select>
                     </label>
                     <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">
-                      Resumo
-                      <input
-                        type="search"
-                        value={ticketColumnFilters.summary}
-                        onChange={(event) =>
-                          setTicketColumnFilters((current) => ({
-                            ...current,
-                            summary: event.target.value,
-                          }))
-                        }
-                        placeholder="Filtrar resumo"
-                        className="h-10 rounded-xl border border-brand-100 bg-white px-3 text-sm font-medium normal-case tracking-normal text-surface-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">
                       Solicitante
                       <input
                         type="search"
@@ -2081,7 +2124,6 @@ export function DashboardPage() {
                       <tr>
                         <th className="px-4 py-3">Caso</th>
                         <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Resumo</th>
                         <th className="px-4 py-3">Solicitante</th>
                         <th className="px-4 py-3">Ações</th>
                       </tr>
@@ -2093,9 +2135,6 @@ export function DashboardPage() {
                             {getTicketCaseNumber(row) || '-'}
                           </td>
                           <td className="px-4 py-3 text-surface-700">{row.Status || '-'}</td>
-                          <td className="max-w-[360px] px-4 py-3 text-surface-700">
-                            <span className="line-clamp-1">{row.Resumo || '-'}</span>
-                          </td>
                           <td className="px-4 py-3 text-surface-700">{row.Solicitante || '-'}</td>
                           <td className="px-4 py-3">
                             <div className="flex gap-2">
@@ -2119,7 +2158,7 @@ export function DashboardPage() {
                       ))}
                       {filteredAdminTicketRows.length === 0 ? (
                         <tr>
-                          <td className="px-4 py-8 text-center text-sm text-surface-700" colSpan={5}>
+                          <td className="px-4 py-8 text-center text-sm text-surface-700" colSpan={4}>
                             Nenhum chamado encontrado.
                           </td>
                         </tr>
