@@ -94,15 +94,12 @@ export function TicketsTable({ rows }: TicketsTableProps) {
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
                 Categoria
               </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 last:pr-6">
-                Resumo
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-50">
             {sortedRows.map((row, index) => (
               <tr
-                key={`${row['Caso n.º'] ?? row['Cason.º']}-${row.Resumo}-${index}`}
+                key={`${row['Caso n.º'] ?? row['Cason.º']}-${index}`}
                 className="transition hover:bg-brand-50/60"
               >
                 <td className="whitespace-nowrap px-4 py-4 font-medium text-surface-900 first:pl-6">
@@ -121,9 +118,6 @@ export function TicketsTable({ rows }: TicketsTableProps) {
                 </td>
                 <td className="max-w-[300px] px-4 py-4 text-surface-700">
                   <span className="line-clamp-2">{row.Tipodeticket || '-'}</span>
-                </td>
-                <td className="max-w-[320px] px-4 py-4 text-surface-700 last:pr-6">
-                  <span className="line-clamp-2">{row.Resumo || '-'}</span>
                 </td>
               </tr>
             ))}

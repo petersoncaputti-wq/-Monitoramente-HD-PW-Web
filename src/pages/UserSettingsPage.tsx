@@ -109,9 +109,13 @@ export function UserSettingsPage() {
       });
       setStatus('idle');
       setMessage('Usuário salvo.');
-    } catch {
+    } catch (error) {
       setStatus('error');
-      setMessage('Não foi possível salvar o usuário.');
+      setMessage(
+        error instanceof Error && error.message
+          ? `Não foi possível salvar o usuário: ${error.message}`
+          : 'Não foi possível salvar o usuário.',
+      );
     }
   }
 

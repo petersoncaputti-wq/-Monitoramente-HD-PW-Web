@@ -32,7 +32,6 @@ const PROJECT_WISE_WEB_USER_HEADERS = [
 
 const TICKET_HEADERS = [
   'Status',
-  'Resumo',
   'Abertoem',
   'Tipodeticket',
   'StatusdoSLA',

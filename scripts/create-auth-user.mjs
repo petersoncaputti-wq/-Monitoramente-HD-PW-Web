@@ -59,6 +59,16 @@ async function supabaseRequest(env, path, options = {}) {
   return response.json();
 }
 
+function getCreatedUser(authResponse) {
+  const user = authResponse?.user ?? authResponse;
+
+  if (!user?.id || typeof user.id !== 'string') {
+    throw new Error('O Supabase criou o usuário, mas não retornou um ID válido.');
+  }
+
+  return user;
+}
+
 async function main() {
   const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)));
   const env = {
@@ -80,7 +90,7 @@ async function main() {
     throw new Error('Role invalida. Use admin ou user.');
   }
 
-  const user = await supabaseRequest(env, '/auth/v1/admin/users', {
+  const authResponse = await supabaseRequest(env, '/auth/v1/admin/users', {
     body: JSON.stringify({
       email,
       password,
@@ -91,6 +101,7 @@ async function main() {
     }),
     method: 'POST',
   });
+  const user = getCreatedUser(authResponse);
 
   const profilePayload = {
     email,
@@ -99,13 +110,32 @@ async function main() {
     role,
   };
 
-  await supabaseRequest(env, '/rest/v1/app_profiles?on_conflict=id', {
-    body: JSON.stringify([profilePayload]),
-    headers: {
-      Prefer: 'resolution=merge-duplicates,return=representation',
-    },
-    method: 'POST',
-  });
+  try {
+    await supabaseRequest(env, '/rest/v1/app_profiles?on_conflict=id', {
+      body: JSON.stringify([profilePayload]),
+      headers: {
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+      method: 'POST',
+    });
+  } catch (profileError) {
+    try {
+      await supabaseRequest(env, `/auth/v1/admin/users/${encodeURIComponent(user.id)}`, {
+        method: 'DELETE',
+      });
+    } catch (rollbackError) {
+      const profileMessage =
+        profileError instanceof Error ? profileError.message : 'Erro ao criar o perfil.';
+      const rollbackMessage =
+        rollbackError instanceof Error ? rollbackError.message : 'Erro ao desfazer a criação.';
+
+      throw new Error(
+        `${profileMessage} Também não foi possível remover o usuário criado: ${rollbackMessage}`,
+      );
+    }
+
+    throw profileError;
+  }
 
   console.log(
     JSON.stringify({

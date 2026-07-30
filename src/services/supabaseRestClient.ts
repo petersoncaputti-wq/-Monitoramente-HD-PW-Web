@@ -1,7 +1,6 @@
 import type { AppRole, AuthSession, AuthUser, UserProfile } from '@/types/auth';
 
 const SESSION_STORAGE_KEY = 'monitoramento-hd-pw.session';
-const SHOULD_PERSIST_SESSION = import.meta.env.VITE_PERSIST_AUTH_SESSION === 'true';
 
 interface SupabaseUserResponse {
   id: string;
@@ -61,25 +60,18 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export function saveStoredSession(session: AuthSession) {
-  if (!SHOULD_PERSIST_SESSION) {
-    clearStoredSession();
-    return;
-  }
-
-  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+  sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
 }
 
 export function clearStoredSession() {
+  sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  // Remove sessões da implementação anterior, que usava armazenamento persistente.
   localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
 export function getStoredSession(): AuthSession | null {
-  if (!SHOULD_PERSIST_SESSION) {
-    clearStoredSession();
-    return null;
-  }
-
-  const rawSession = localStorage.getItem(SESSION_STORAGE_KEY);
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+  const rawSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
 
   if (!rawSession) {
     return null;

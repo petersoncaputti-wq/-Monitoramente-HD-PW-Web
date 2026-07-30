@@ -93,15 +93,15 @@ function cleanDate(value) {
 }
 
 function mapTicketInput(body, userId) {
-  const summary = cleanText(body.summary);
   const openedAt = cleanDate(body.openedAt);
-
-  if (!summary) {
-    throw new Error('Informe o resumo do chamado.');
-  }
+  const closedAt = cleanDate(body.closedAt);
 
   if (!openedAt) {
     throw new Error('Informe a data de abertura.');
+  }
+
+  if (closedAt && new Date(closedAt) < new Date(openedAt)) {
+    throw new Error('A data de fechamento não pode ser anterior à abertura.');
   }
 
   return {
@@ -110,7 +110,7 @@ function mapTicketInput(body, userId) {
     assigned_to: cleanText(body.assignedTo),
     beneficiary_organization: cleanText(body.beneficiaryOrganization),
     case_number: cleanText(body.caseNumber),
-    closed_at: cleanDate(body.closedAt),
+    closed_at: closedAt,
     opened_at: openedAt,
     priority: cleanText(body.priority),
     reason: cleanText(body.reason),
@@ -119,7 +119,6 @@ function mapTicketInput(body, userId) {
     requester_organization: cleanText(body.requesterOrganization),
     sla_status: cleanText(body.slaStatus),
     status: cleanText(body.status) ?? 'Novo',
-    summary,
     ticket_type: cleanText(body.ticketType),
     updated_at: cleanDate(body.updatedAt),
     updated_by: userId,

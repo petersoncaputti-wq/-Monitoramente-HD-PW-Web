@@ -145,7 +145,6 @@ function mapTicket(row) {
     ),
     sla_status: text(valueOf(row, 'StatusdoSLA', 'Status do SLA')),
     status: text(valueOf(row, 'Status')) ?? 'Novo',
-    summary: text(valueOf(row, 'Resumo')) ?? '-',
     ticket_type: text(valueOf(row, 'Tipodeticket', 'Tipo de ticket')),
     updated_at: dateIso(valueOf(row, 'Atualizado', 'Atualizado em')),
   };

@@ -57,7 +57,7 @@ export interface TicketRow {
   'Caso n.º': string;
   Status: string;
   Motivo: string;
-  Resumo: string;
+  Resumo?: string;
   Abertoem: string;
   Atualizado: string;
   Fechadoem: string;
