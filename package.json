@@ -8,16 +8,20 @@
     "sync:tickets": "node scripts/sync-tickets-source.mjs",
     "sync:portal-users": "node scripts/sync-portal-users-source.mjs",
     "sync:data": "npm run sync:storage && npm run sync:tickets && npm run sync:portal-users",
-    "import:storage": "node scripts/import-storage-to-supabase.mjs",
-    "import:tickets": "node scripts/import-tickets-to-supabase.mjs",
-    "auth:create-user": "node scripts/create-auth-user.mjs",
-    "auth:sync-profiles": "node scripts/sync-auth-profiles.mjs",
+    "db:migrate": "node scripts/apply-azure-schema.mjs",
+    "legacy:supabase:import-storage": "node scripts/import-storage-to-supabase.mjs",
+    "legacy:supabase:import-tickets": "node scripts/import-tickets-to-supabase.mjs",
+    "legacy:supabase:create-user": "node scripts/create-auth-user.mjs",
+    "legacy:supabase:sync-profiles": "node scripts/sync-auth-profiles.mjs",
     "export:pw-users": "node scripts/export-pw-users-to-xlsx.mjs",
     "dev": "npm run sync:data && vite",
-    "build": "npm run sync:data && tsc -b && vite build",
-    "preview": "vite preview"
+    "build": "tsc -b && vite build",
+    "build:with-sync": "npm run sync:data && npm run build",
+    "preview": "vite preview",
+    "start": "node server.mjs"
   },
   "dependencies": {
+    "pg": "^8.16.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "xlsx": "^0.18.5"
