@@ -26,8 +26,19 @@ const STORAGE_HEADERS = [
 
 const STORAGE_READINGS_PAGE_SIZE = 1000;
 
+function getSupabaseConfig() {
+  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+
+  return {
+    anonKey,
+    enabled: Boolean(url && anonKey),
+    url,
+  };
+}
+
 export function hasSupabaseStorageConfig(): boolean {
-  return true;
+  return getSupabaseConfig().enabled;
 }
 
 function normalizeTime(value: string): string {
@@ -52,14 +63,40 @@ function mapStorageReading(record: StorageReadingRecord): MonitoringRow {
 export async function readStorageReadingsFromSupabase(
   accessToken?: string,
 ): Promise<ImportedWorkbookData> {
+  const config = getSupabaseConfig();
+
+  if (!config.url || !config.anonKey) {
+    throw new Error('Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para ler o Supabase.');
+  }
+
   const records: StorageReadingRecord[] = [];
   let page = 0;
 
   while (true) {
+    const endpoint = new URL('/rest/v1/storage_readings', config.url);
+    endpoint.searchParams.set(
+      'select',
+      [
+        'reading_date',
+        'reading_time',
+        'computer',
+        'unit',
+        'total_gb',
+        'used_gb',
+        'free_gb',
+        'percent_used',
+        'percent_free',
+      ].join(','),
+    );
+    endpoint.searchParams.set('order', 'observed_at.asc');
+
     const from = page * STORAGE_READINGS_PAGE_SIZE;
-    const response = await fetch(`/api/storage-readings?limit=${STORAGE_READINGS_PAGE_SIZE}&offset=${from}`, {
+    const to = from + STORAGE_READINGS_PAGE_SIZE - 1;
+    const response = await fetch(endpoint, {
       headers: {
-        Authorization: `Bearer ${accessToken ?? ''}`,
+        apikey: config.anonKey,
+        Authorization: `Bearer ${accessToken ?? config.anonKey}`,
+        Range: `${from}-${to}`,
       },
     });
 
@@ -83,7 +120,7 @@ export async function readStorageReadingsFromSupabase(
   }
 
   return {
-    fileName: 'Azure PostgreSQL - storage_readings',
+    fileName: 'Supabase - storage_readings',
     headers: STORAGE_HEADERS,
     kind: 'storage',
     rows: records.map(mapStorageReading),

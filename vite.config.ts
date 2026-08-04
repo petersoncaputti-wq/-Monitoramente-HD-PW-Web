@@ -135,30 +135,6 @@ function localAdminUsersApiPlugin(): Plugin {
     configureServer(server) {
       loadLocalEnv();
 
-      server.middlewares.use(async (request, response, next) => {
-        const requestUrl = request.url ?? '';
-        if (!requestUrl.startsWith('/api/') || requestUrl.startsWith('/api/sync-')) {
-          next();
-          return;
-        }
-        try {
-          const { handleApiRequest } = await import('./api/_router.mjs');
-          const result = await handleApiRequest({
-            body: ['GET', 'HEAD'].includes(request.method ?? 'GET') ? {} : await readJsonBody(request),
-            headers: request.headers,
-            method: request.method ?? 'GET',
-            url: new URL(requestUrl, 'http://localhost'),
-          });
-          response.statusCode = result.status;
-          response.setHeader('Content-Type', 'application/json');
-          response.end(JSON.stringify(result.error ? { error: result.error } : result.body));
-        } catch (error) {
-          response.statusCode = 500;
-          response.setHeader('Content-Type', 'application/json');
-          response.end(JSON.stringify({ error: error instanceof Error ? error.message : 'Erro inesperado.' }));
-        }
-      });
-
       server.middlewares.use('/api/admin-users', async (request, response) => {
         try {
           const { handleAdminUsersRequest } = await import('./api/admin-users.mjs');
