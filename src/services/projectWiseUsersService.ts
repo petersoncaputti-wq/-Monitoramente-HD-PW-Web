@@ -86,48 +86,25 @@ const PORTAL_HEADERS = [
 
 const PAGE_SIZE = 1000;
 
-function getSupabaseConfig() {
-  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
-
-  return {
-    anonKey,
-    enabled: Boolean(url && anonKey),
-    url,
-  };
-}
-
 export function hasSupabaseProjectWiseUsersConfig(): boolean {
-  return getSupabaseConfig().enabled;
+  return true;
 }
 
 async function readAllRecords<T>(
   accessToken: string,
   table: string,
-  select: string,
-  order: string,
+  _select: string,
+  _order: string,
 ): Promise<T[]> {
-  const config = getSupabaseConfig();
-
-  if (!config.url || !config.anonKey) {
-    throw new Error('Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para ler o Supabase.');
-  }
-
   const records: T[] = [];
   let page = 0;
 
   while (true) {
-    const endpoint = new URL(`/rest/v1/${table}`, config.url);
-    endpoint.searchParams.set('select', select);
-    endpoint.searchParams.set('order', order);
-
     const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-    const response = await fetch(endpoint, {
+    const kind = table === 'pw_explorer_users' ? 'explorer' : 'portal';
+    const response = await fetch(`/api/pw-users?kind=${kind}&limit=${PAGE_SIZE}&offset=${from}`, {
       headers: {
-        apikey: config.anonKey,
         Authorization: `Bearer ${accessToken}`,
-        Range: `${from}-${to}`,
       },
     });
 
@@ -222,7 +199,7 @@ export async function readProjectWiseExplorerUsersFromSupabase(
   );
 
   return {
-    fileName: 'Supabase - pw_explorer_users',
+    fileName: 'Azure PostgreSQL - pw_explorer_users',
     headers: EXPLORER_HEADERS,
     kind: 'projectWiseUsers',
     rows: records.map(mapExplorerUser),
@@ -262,7 +239,7 @@ export async function readProjectWisePortalUsersFromSupabase(
   );
 
   return {
-    fileName: 'Supabase - pw_portal_users',
+    fileName: 'Azure PostgreSQL - pw_portal_users',
     headers: PORTAL_HEADERS,
     kind: 'projectWiseWebUsers',
     rows: records.map(mapPortalUser),

@@ -1,244 +1,102 @@
-function getEnv() {
-  const url = process.env.VITE_SUPABASE_URL;
-  const publishableKey = process.env.VITE_SUPABASE_ANON_KEY;
-  const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { requireAdmin } from './_auth.mjs';
+import { query } from './_database.mjs';
+import { supabaseAdminRequest } from './_supabase-admin.mjs';
 
-  if (!url || !publishableKey || !secretKey) {
-    throw new Error('Variaveis Supabase ausentes no servidor.');
-  }
+const PROFILE_COLUMNS = 'id, email, full_name, role, created_at, updated_at';
 
-  return { publishableKey, secretKey, url };
+function normalizeRole(value) {
+  return value === 'admin' ? 'admin' : 'user';
 }
 
-async function parseJsonResponse(response) {
-  if (!response.ok) {
-    const details = await response.text().catch(() => '');
-    throw new Error(details || `Erro HTTP ${response.status}.`);
-  }
-
-  if (response.status === 204) {
-    return null;
-  }
-
-  return response.json();
-}
-
-async function supabaseRequest(path, options = {}) {
-  const { secretKey, url } = getEnv();
-  const response = await fetch(`${url}${path}`, {
-    ...options,
-    headers: {
-      apikey: secretKey,
-      Authorization: `Bearer ${secretKey}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'admin-users-api/1.0',
-      Prefer: 'return=representation',
-      ...(options.headers ?? {}),
-    },
-  });
-
-  return parseJsonResponse(response);
-}
-
-async function getCaller(accessToken) {
-  const { publishableKey, url } = getEnv();
-  const response = await fetch(`${url}/auth/v1/user`, {
-    headers: {
-      apikey: publishableKey,
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  return parseJsonResponse(response);
-}
-
-async function assertAdmin(headers) {
-  const authorization = headers.authorization ?? headers.Authorization ?? '';
-  const accessToken = authorization.replace(/^Bearer\s+/i, '').trim();
-
-  if (!accessToken) {
-    return { error: 'Sessão ausente.', status: 401 };
-  }
-
-  const caller = await getCaller(accessToken);
-  const profiles = await supabaseRequest(
-    `/rest/v1/app_profiles?select=id,email,role&id=eq.${encodeURIComponent(caller.id)}&limit=1`,
-  );
-
-  if (profiles[0]?.role !== 'admin') {
-    return { error: 'Acesso restrito a administradores.', status: 403 };
-  }
-
-  return { caller, profile: profiles[0] };
-}
-
-function normalizeRole(role) {
-  return role === 'admin' ? 'admin' : 'user';
-}
-
-function getCreatedUser(authResponse) {
-  const user = authResponse?.user ?? authResponse;
-
-  if (!user?.id || typeof user.id !== 'string') {
-    throw new Error('O Supabase criou o usuário, mas não retornou um ID válido.');
-  }
-
+function createdUser(response) {
+  const user = response?.user ?? response;
+  if (!user?.id) throw new Error('O Supabase nao retornou o ID do usuario criado.');
   return user;
 }
 
 async function listProfiles() {
-  return supabaseRequest('/rest/v1/app_profiles?select=*&order=email.asc');
+  const result = await query(`select ${PROFILE_COLUMNS} from app_profiles order by email asc`);
+  return { body: result.rows, status: 200 };
 }
 
 async function createUser(body) {
   const email = String(body.email ?? '').trim().toLowerCase();
   const password = String(body.password ?? '');
-  const fullName = String(body.fullName ?? '').trim();
+  const fullName = String(body.fullName ?? '').trim() || null;
   const role = normalizeRole(body.role);
+  if (!email || !password) return { error: 'Email e senha sao obrigatorios.', status: 400 };
 
-  if (!email || !password) {
-    return { error: 'Email e senha sao obrigatórios.', status: 400 };
-  }
-
-  const authResponse = await supabaseRequest('/auth/v1/admin/users', {
-    body: JSON.stringify({
-      email,
-      email_confirm: true,
-      password,
-      user_metadata: {
-        full_name: fullName,
-      },
-    }),
+  const user = createdUser(await supabaseAdminRequest('/auth/v1/admin/users', {
+    body: JSON.stringify({ email, email_confirm: true, password, user_metadata: { full_name: fullName } }),
     method: 'POST',
-  });
-  const user = getCreatedUser(authResponse);
+  }));
 
   try {
-    const profiles = await supabaseRequest('/rest/v1/app_profiles?on_conflict=id', {
-      body: JSON.stringify([
-        {
-          email,
-          full_name: fullName || null,
-          id: user.id,
-          role,
-        },
-      ]),
-      headers: {
-        Prefer: 'resolution=merge-duplicates,return=representation',
-      },
-      method: 'POST',
-    });
-
-    if (!profiles[0]) {
-      throw new Error('O perfil do usuário não foi retornado pelo Supabase.');
-    }
-
-    return { body: profiles[0], status: 201 };
-  } catch (profileError) {
-    try {
-      await supabaseRequest(`/auth/v1/admin/users/${encodeURIComponent(user.id)}`, {
-        method: 'DELETE',
-      });
-    } catch (rollbackError) {
-      const profileMessage =
-        profileError instanceof Error ? profileError.message : 'Erro ao criar o perfil.';
-      const rollbackMessage =
-        rollbackError instanceof Error ? rollbackError.message : 'Erro ao desfazer a criação.';
-
-      throw new Error(
-        `${profileMessage} Também não foi possível remover o usuário criado: ${rollbackMessage}`,
-      );
-    }
-
-    throw profileError;
+    const result = await query(
+      `insert into app_profiles (id, email, full_name, role)
+       values ($1, $2, $3, $4) returning ${PROFILE_COLUMNS}`,
+      [user.id, email, fullName, role],
+    );
+    return { body: result.rows[0], status: 201 };
+  } catch (error) {
+    await supabaseAdminRequest(`/auth/v1/admin/users/${encodeURIComponent(user.id)}`, { method: 'DELETE' })
+      .catch(() => undefined);
+    throw error;
   }
 }
 
-async function updateUser(body) {
+async function updateUser(body, caller) {
   const id = String(body.id ?? '').trim();
-  const fullName = String(body.fullName ?? '').trim();
+  const hasFullName = body.fullName !== undefined;
+  const fullName = hasFullName ? (String(body.fullName).trim() || null) : null;
   const role = normalizeRole(body.role);
-
-  if (!id) {
-    return { error: 'ID do usuário e obrigatório.', status: 400 };
+  if (!id) return { error: 'ID do usuario ausente.', status: 400 };
+  if (id === caller.id && role !== 'admin') {
+    return { error: 'Voce nao pode remover sua propria permissao de administrador.', status: 400 };
   }
-
-  const profiles = await supabaseRequest(`/rest/v1/app_profiles?id=eq.${encodeURIComponent(id)}`, {
-    body: JSON.stringify({
-      full_name: fullName || null,
-      role,
-    }),
-    method: 'PATCH',
-  });
-
-  if (!profiles[0]) {
-    return { error: 'Usuário não encontrado.', status: 404 };
+  const result = await query(
+    `update app_profiles set full_name = case when $4 then $2 else full_name end, role = $3 where id = $1
+     returning ${PROFILE_COLUMNS}`,
+    [id, fullName, role, hasFullName],
+  );
+  if (!result.rows[0]) return { error: 'Usuario nao encontrado.', status: 404 };
+  if (hasFullName) {
+    await supabaseAdminRequest(`/auth/v1/admin/users/${encodeURIComponent(id)}`, {
+      body: JSON.stringify({ user_metadata: { full_name: fullName } }), method: 'PUT',
+    }).catch(() => undefined);
   }
-
-  await supabaseRequest(`/auth/v1/admin/users/${encodeURIComponent(id)}`, {
-    body: JSON.stringify({
-      user_metadata: {
-        full_name: fullName,
-      },
-    }),
-    method: 'PUT',
-  }).catch(() => null);
-
-  return { body: profiles[0], status: 200 };
+  return { body: result.rows[0], status: 200 };
 }
 
-async function deleteUser(body) {
+async function deleteUser(body, caller) {
   const id = String(body.id ?? '').trim();
+  if (!id) return { error: 'ID do usuario ausente.', status: 400 };
+  if (id === caller.id) return { error: 'Voce nao pode excluir sua propria conta.', status: 400 };
 
-  if (!id) {
-    return { error: 'ID do usuário e obrigatório.', status: 400 };
-  }
-
-  await supabaseRequest(`/auth/v1/admin/users/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
-
+  const selected = await query(`select ${PROFILE_COLUMNS} from app_profiles where id = $1`, [id]);
+  const profile = selected.rows[0];
+  if (!profile) return { error: 'Usuario nao encontrado.', status: 404 };
+  await supabaseAdminRequest(`/auth/v1/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  await query('delete from app_profiles where id = $1', [id]);
   return { body: { id }, status: 200 };
 }
 
-export async function handleAdminUsersRequest({ body, headers, method }) {
-  const adminCheck = await assertAdmin(headers);
-
-  if (adminCheck.error) {
-    return adminCheck;
-  }
-
-  if (method === 'GET') {
-    return { body: await listProfiles(), status: 200 };
-  }
-
-  if (method === 'POST') {
-    return createUser(body ?? {});
-  }
-
-  if (method === 'PATCH') {
-    return updateUser(body ?? {});
-  }
-
-  if (method === 'DELETE') {
-    return deleteUser(body ?? {});
-  }
-
-  return { error: 'Método não permitido.', status: 405 };
+export async function handleAdminUsersRequest({ body = {}, headers = {}, method }) {
+  const auth = await requireAdmin(headers);
+  if (auth.error) return auth;
+  if (method === 'GET') return listProfiles();
+  if (method === 'POST') return createUser(body);
+  if (method === 'PATCH') return updateUser(body, auth.caller);
+  if (method === 'DELETE') return deleteUser(body, auth.caller);
+  return { error: 'Metodo nao permitido.', status: 405 };
 }
 
 export default async function handler(request, response) {
   try {
-    const result = await handleAdminUsersRequest({
-      body: request.body ?? {},
-      headers: request.headers,
-      method: request.method,
-    });
-
+    const result = await handleAdminUsersRequest(request);
     response.status(result.status).json(result.error ? { error: result.error } : result.body);
   } catch (error) {
-    response.status(500).json({
-      error: error instanceof Error ? error.message : 'Erro inesperado.',
-    });
+    const status = error?.code === '23505' ? 409 : 500;
+    response.status(status).json({ error: status === 409 ? 'Email ja cadastrado.' : error.message });
   }
 }
