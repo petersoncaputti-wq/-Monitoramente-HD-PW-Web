@@ -1,6 +1,4 @@
 import { createHash } from 'node:crypto';
-import { requireAdmin } from './_auth.mjs';
-import { insertRows, transaction } from './_database.mjs';
 
 const REQUIRED_HEADERS = [
   'Data',
@@ -262,33 +260,49 @@ async function importStorageCsv(body) {
   const fileHash = getContentHash(content);
   const rows = parseStorageCsv(content);
 
-  const migration = await transaction(async (client) => {
-    const created = await client.query(
-      `insert into storage_imports (file_hash, file_name, rows_imported, rows_read, status)
-       values ($1, $2, 0, $3, 'completed') returning id`,
-      [fileHash, fileName, rows.length],
-    );
-    const importId = created.rows[0].id;
-    const rowsWithImportId = rows.map((row) => ({ ...row, import_id: importId }));
-    const conflict = `on conflict (observed_at, computer, unit) do update set
-      import_id = excluded.import_id, reading_date = excluded.reading_date,
-      reading_time = excluded.reading_time, total_gb = excluded.total_gb,
-      used_gb = excluded.used_gb, free_gb = excluded.free_gb,
-      percent_used = excluded.percent_used, percent_free = excluded.percent_free`;
-    let rowsImported = 0;
-    for (let index = 0; index < rowsWithImportId.length; index += 500) {
-      rowsImported += (await insertRows(client, 'storage_readings', rowsWithImportId.slice(index, index + 500), conflict)).length;
-    }
-    await client.query('update storage_imports set rows_imported = $2 where id = $1', [importId, rowsImported]);
-    return { importId, rowsImported };
+  const [importRecord] = await supabaseRequest('/rest/v1/storage_imports', {
+    body: JSON.stringify([
+      {
+        file_hash: fileHash,
+        file_name: fileName,
+        rows_imported: 0,
+        rows_read: rows.length,
+        status: 'completed',
+      },
+    ]),
+    method: 'POST',
+  });
+
+  const rowsWithImportId = rows.map((row) => ({
+    ...row,
+    import_id: importRecord.id,
+  }));
+
+  const importedRows = await supabaseRequest(
+    '/rest/v1/storage_readings?on_conflict=observed_at,computer,unit',
+    {
+      body: JSON.stringify(rowsWithImportId),
+      headers: {
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+      method: 'POST',
+    },
+  );
+
+  await supabaseRequest(`/rest/v1/storage_imports?id=eq.${importRecord.id}`, {
+    body: JSON.stringify({
+      rows_imported: importedRows.length,
+      status: 'completed',
+    }),
+    method: 'PATCH',
   });
 
   return {
     body: {
       fileHash,
       fileName,
-      importId: migration.importId,
-      rowsImported: migration.rowsImported,
+      importId: importRecord.id,
+      rowsImported: importedRows.length,
       rowsRead: rows.length,
     },
     status: 200,
@@ -300,7 +314,7 @@ export async function handleStorageImportRequest({ body, headers, method }) {
     return { error: 'Método não permitido.', status: 405 };
   }
 
-  const adminCheck = await requireAdmin(headers);
+  const adminCheck = await assertAdmin(headers);
 
   if (adminCheck.error) {
     return adminCheck;

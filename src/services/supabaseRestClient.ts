@@ -142,13 +142,14 @@ export async function signOut(accessToken: string) {
 }
 
 export async function getMyProfile(accessToken: string, userId: string): Promise<UserProfile> {
-  void userId;
-  const response = await fetch('/api/profile', {
+  const { anonKey, url } = getSupabaseConfig();
+  const response = await fetch(`${url}/rest/v1/app_profiles?select=*&id=eq.${encodeURIComponent(userId)}&limit=1`, {
     headers: {
+      apikey: anonKey,
       Authorization: `Bearer ${accessToken}`,
     },
   });
-  const profiles = [await parseResponse<UserProfile>(response)];
+  const profiles = await parseResponse<UserProfile[]>(response);
 
   if (!profiles[0]) {
     throw new Error('Perfil de acesso não encontrado.');
@@ -158,8 +159,10 @@ export async function getMyProfile(accessToken: string, userId: string): Promise
 }
 
 export async function listUserProfiles(accessToken: string): Promise<UserProfile[]> {
-  const response = await fetch('/api/admin-users', {
+  const { anonKey, url } = getSupabaseConfig();
+  const response = await fetch(`${url}/rest/v1/app_profiles?select=*&order=email.asc`, {
     headers: {
+      apikey: anonKey,
       Authorization: `Bearer ${accessToken}`,
     },
   });
@@ -172,15 +175,18 @@ export async function updateUserRole(
   userId: string,
   role: AppRole,
 ): Promise<UserProfile> {
-  const response = await fetch('/api/admin-users', {
-    body: JSON.stringify({ id: userId, role }),
+  const { anonKey, url } = getSupabaseConfig();
+  const response = await fetch(`${url}/rest/v1/app_profiles?id=eq.${encodeURIComponent(userId)}`, {
+    body: JSON.stringify({ role }),
     headers: {
+      apikey: anonKey,
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
+      Prefer: 'return=representation',
     },
     method: 'PATCH',
   });
-  const profiles = [await parseResponse<UserProfile>(response)];
+  const profiles = await parseResponse<UserProfile[]>(response);
 
   if (!profiles[0]) {
     throw new Error('Usuário não encontrado.');
@@ -193,13 +199,15 @@ export async function updateMyProfile(
   accessToken: string,
   fullName: string,
 ): Promise<UserProfile> {
-  const response = await fetch('/api/profile', {
-    body: JSON.stringify({ fullName }),
+  const { anonKey, url } = getSupabaseConfig();
+  const response = await fetch(`${url}/rest/v1/rpc/update_my_profile`, {
+    body: JSON.stringify({ p_full_name: fullName }),
     headers: {
+      apikey: anonKey,
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    method: 'PATCH',
+    method: 'POST',
   });
 
   return parseResponse<UserProfile>(response);

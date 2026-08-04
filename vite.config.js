@@ -193,56 +193,8 @@ function localAdminUsersApiPlugin() {
         configureServer: function (server) {
             var _this = this;
             loadLocalEnv();
-            server.middlewares.use(function (request, response, next) { return __awaiter(_this, void 0, void 0, function () {
-                var requestUrl, handleApiRequest, result, _a, _b, error_1;
-                var _c;
-                var _d, _e, _f;
-                return __generator(this, function (_g) {
-                    switch (_g.label) {
-                        case 0:
-                            requestUrl = (_d = request.url) !== null && _d !== void 0 ? _d : '';
-                            if (!requestUrl.startsWith('/api/') || requestUrl.startsWith('/api/sync-')) {
-                                next();
-                                return [2 /*return*/];
-                            }
-                            _g.label = 1;
-                        case 1:
-                            _g.trys.push([1, 7, , 8]);
-                            return [4 /*yield*/, import('./api/_router.mjs')];
-                        case 2:
-                            handleApiRequest = (_g.sent()).handleApiRequest;
-                            _a = handleApiRequest;
-                            _c = {};
-                            if (!['GET', 'HEAD'].includes((_e = request.method) !== null && _e !== void 0 ? _e : 'GET')) return [3 /*break*/, 3];
-                            _b = {};
-                            return [3 /*break*/, 5];
-                        case 3: return [4 /*yield*/, readJsonBody(request)];
-                        case 4:
-                            _b = _g.sent();
-                            _g.label = 5;
-                        case 5: return [4 /*yield*/, _a.apply(void 0, [(_c.body = _b,
-                                    _c.headers = request.headers,
-                                    _c.method = (_f = request.method) !== null && _f !== void 0 ? _f : 'GET',
-                                    _c.url = new URL(requestUrl, 'http://localhost'),
-                                    _c)])];
-                        case 6:
-                            result = _g.sent();
-                            response.statusCode = result.status;
-                            response.setHeader('Content-Type', 'application/json');
-                            response.end(JSON.stringify(result.error ? { error: result.error } : result.body));
-                            return [3 /*break*/, 8];
-                        case 7:
-                            error_1 = _g.sent();
-                            response.statusCode = 500;
-                            response.setHeader('Content-Type', 'application/json');
-                            response.end(JSON.stringify({ error: error_1 instanceof Error ? error_1.message : 'Erro inesperado.' }));
-                            return [3 /*break*/, 8];
-                        case 8: return [2 /*return*/];
-                    }
-                });
-            }); });
             server.middlewares.use('/api/admin-users', function (request, response) { return __awaiter(_this, void 0, void 0, function () {
-                var handleAdminUsersRequest, result, _a, _b, error_2;
+                var handleAdminUsersRequest, result, _a, _b, error_1;
                 var _c;
                 var _d;
                 return __generator(this, function (_e) {
@@ -272,11 +224,11 @@ function localAdminUsersApiPlugin() {
                             response.end(JSON.stringify(result.error ? { error: result.error } : result.body));
                             return [3 /*break*/, 7];
                         case 6:
-                            error_2 = _e.sent();
+                            error_1 = _e.sent();
                             response.statusCode = 500;
                             response.setHeader('Content-Type', 'application/json');
                             response.end(JSON.stringify({
-                                error: error_2 instanceof Error ? error_2.message : 'Erro inesperado.',
+                                error: error_1 instanceof Error ? error_1.message : 'Erro inesperado.',
                             }));
                             return [3 /*break*/, 7];
                         case 7: return [2 /*return*/];
@@ -284,7 +236,7 @@ function localAdminUsersApiPlugin() {
                 });
             }); });
             server.middlewares.use('/api/storage-import', function (request, response) { return __awaiter(_this, void 0, void 0, function () {
-                var handleStorageImportRequest, result, _a, error_3;
+                var handleStorageImportRequest, result, _a, error_2;
                 var _b;
                 var _c;
                 return __generator(this, function (_d) {
@@ -295,6 +247,42 @@ function localAdminUsersApiPlugin() {
                         case 1:
                             handleStorageImportRequest = (_d.sent()).handleStorageImportRequest;
                             _a = handleStorageImportRequest;
+                            _b = {};
+                            return [4 /*yield*/, readJsonBody(request)];
+                        case 2: return [4 /*yield*/, _a.apply(void 0, [(_b.body = _d.sent(),
+                                    _b.headers = request.headers,
+                                    _b.method = (_c = request.method) !== null && _c !== void 0 ? _c : 'POST',
+                                    _b)])];
+                        case 3:
+                            result = _d.sent();
+                            response.statusCode = result.status;
+                            response.setHeader('Content-Type', 'application/json');
+                            response.end(JSON.stringify(result.error ? { error: result.error } : result.body));
+                            return [3 /*break*/, 5];
+                        case 4:
+                            error_2 = _d.sent();
+                            response.statusCode = 500;
+                            response.setHeader('Content-Type', 'application/json');
+                            response.end(JSON.stringify({
+                                error: error_2 instanceof Error ? error_2.message : 'Erro inesperado.',
+                            }));
+                            return [3 /*break*/, 5];
+                        case 5: return [2 /*return*/];
+                    }
+                });
+            }); });
+            server.middlewares.use('/api/pw-users-import', function (request, response) { return __awaiter(_this, void 0, void 0, function () {
+                var handleProjectWiseUsersImportRequest, result, _a, error_3;
+                var _b;
+                var _c;
+                return __generator(this, function (_d) {
+                    switch (_d.label) {
+                        case 0:
+                            _d.trys.push([0, 4, , 5]);
+                            return [4 /*yield*/, import('./api/pw-users-import.mjs')];
+                        case 1:
+                            handleProjectWiseUsersImportRequest = (_d.sent()).handleProjectWiseUsersImportRequest;
+                            _a = handleProjectWiseUsersImportRequest;
                             _b = {};
                             return [4 /*yield*/, readJsonBody(request)];
                         case 2: return [4 /*yield*/, _a.apply(void 0, [(_b.body = _d.sent(),
@@ -319,44 +307,8 @@ function localAdminUsersApiPlugin() {
                     }
                 });
             }); });
-            server.middlewares.use('/api/pw-users-import', function (request, response) { return __awaiter(_this, void 0, void 0, function () {
-                var handleProjectWiseUsersImportRequest, result, _a, error_4;
-                var _b;
-                var _c;
-                return __generator(this, function (_d) {
-                    switch (_d.label) {
-                        case 0:
-                            _d.trys.push([0, 4, , 5]);
-                            return [4 /*yield*/, import('./api/pw-users-import.mjs')];
-                        case 1:
-                            handleProjectWiseUsersImportRequest = (_d.sent()).handleProjectWiseUsersImportRequest;
-                            _a = handleProjectWiseUsersImportRequest;
-                            _b = {};
-                            return [4 /*yield*/, readJsonBody(request)];
-                        case 2: return [4 /*yield*/, _a.apply(void 0, [(_b.body = _d.sent(),
-                                    _b.headers = request.headers,
-                                    _b.method = (_c = request.method) !== null && _c !== void 0 ? _c : 'POST',
-                                    _b)])];
-                        case 3:
-                            result = _d.sent();
-                            response.statusCode = result.status;
-                            response.setHeader('Content-Type', 'application/json');
-                            response.end(JSON.stringify(result.error ? { error: result.error } : result.body));
-                            return [3 /*break*/, 5];
-                        case 4:
-                            error_4 = _d.sent();
-                            response.statusCode = 500;
-                            response.setHeader('Content-Type', 'application/json');
-                            response.end(JSON.stringify({
-                                error: error_4 instanceof Error ? error_4.message : 'Erro inesperado.',
-                            }));
-                            return [3 /*break*/, 5];
-                        case 5: return [2 /*return*/];
-                    }
-                });
-            }); });
             server.middlewares.use('/api/tickets', function (request, response) { return __awaiter(_this, void 0, void 0, function () {
-                var handleTicketsRequest, result, _a, error_5;
+                var handleTicketsRequest, result, _a, error_4;
                 var _b;
                 var _c;
                 return __generator(this, function (_d) {
@@ -380,11 +332,11 @@ function localAdminUsersApiPlugin() {
                             response.end(JSON.stringify(result.error ? { error: result.error } : result.body));
                             return [3 /*break*/, 5];
                         case 4:
-                            error_5 = _d.sent();
+                            error_4 = _d.sent();
                             response.statusCode = 500;
                             response.setHeader('Content-Type', 'application/json');
                             response.end(JSON.stringify({
-                                error: error_5 instanceof Error ? error_5.message : 'Erro inesperado.',
+                                error: error_4 instanceof Error ? error_4.message : 'Erro inesperado.',
                             }));
                             return [3 /*break*/, 5];
                         case 5: return [2 /*return*/];

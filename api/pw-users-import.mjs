@@ -1,7 +1,5 @@
 import { createHash } from 'node:crypto';
 import * as XLSX from 'xlsx';
-import { requireAdmin } from './_auth.mjs';
-import { insertRows, transaction } from './_database.mjs';
 
 const EXPLORER_REQUIRED_HEADERS = [
   'Nome',
@@ -209,13 +207,16 @@ function mapPortalRow(row, importId) {
   };
 }
 
-async function insertInChunks(client, table, rows) {
+async function insertInChunks(table, rows) {
   const chunkSize = 500;
   let inserted = 0;
 
   for (let index = 0; index < rows.length; index += chunkSize) {
     const chunk = rows.slice(index, index + chunkSize);
-    const result = await insertRows(client, table, chunk);
+    const result = await supabaseRequest(`/rest/v1/${table}`, {
+      body: JSON.stringify(chunk),
+      method: 'POST',
+    });
     inserted += result.length;
   }
 
@@ -249,29 +250,48 @@ async function importProjectWiseUsers(body, caller) {
 
   assertRequiredHeaders(rows, sourceKind);
 
-  const migration = await transaction(async (client) => {
-    const created = await client.query(
-      `insert into pw_user_imports
-        (file_hash, file_name, imported_by, rows_imported, rows_read, source_kind, status)
-       values ($1, $2, $3, 0, $4, $5, 'completed') returning id`,
-      [fileHash, fileName, caller.id, rows.length, sourceKind],
-    );
-    const importId = created.rows[0].id;
-    const table = sourceKind === 'explorer' ? 'pw_explorer_users' : 'pw_portal_users';
-    await client.query(`delete from ${table}`);
-    const mappedRows = rows.map((row) => sourceKind === 'explorer'
-      ? mapExplorerRow(row, importId) : mapPortalRow(row, importId));
-    const rowsImported = await insertInChunks(client, table, mappedRows);
-    await client.query('update pw_user_imports set rows_imported = $2 where id = $1', [importId, rowsImported]);
-    return { importId, rowsImported };
+  const [importRecord] = await supabaseRequest('/rest/v1/pw_user_imports', {
+    body: JSON.stringify([
+      {
+        file_hash: fileHash,
+        file_name: fileName,
+        imported_by: caller.id,
+        rows_imported: 0,
+        rows_read: rows.length,
+        source_kind: sourceKind,
+        status: 'completed',
+      },
+    ]),
+    method: 'POST',
+  });
+
+  const table = sourceKind === 'explorer' ? 'pw_explorer_users' : 'pw_portal_users';
+  await supabaseRequest(`/rest/v1/${table}?id=not.is.null`, {
+    headers: { Prefer: 'return=minimal' },
+    method: 'DELETE',
+  });
+
+  const mappedRows = rows.map((row) =>
+    sourceKind === 'explorer'
+      ? mapExplorerRow(row, importRecord.id)
+      : mapPortalRow(row, importRecord.id),
+  );
+  const rowsImported = await insertInChunks(table, mappedRows);
+
+  await supabaseRequest(`/rest/v1/pw_user_imports?id=eq.${importRecord.id}`, {
+    body: JSON.stringify({
+      rows_imported: rowsImported,
+      status: 'completed',
+    }),
+    method: 'PATCH',
   });
 
   return {
     body: {
       fileHash,
       fileName,
-      importId: migration.importId,
-      rowsImported: migration.rowsImported,
+      importId: importRecord.id,
+      rowsImported,
       rowsRead: rows.length,
       sourceKind,
     },
@@ -284,7 +304,7 @@ export async function handleProjectWiseUsersImportRequest({ body, headers, metho
     return { error: 'Método não permitido.', status: 405 };
   }
 
-  const adminCheck = await requireAdmin(headers);
+  const adminCheck = await assertAdmin(headers);
 
   if (adminCheck.error) {
     return adminCheck;
