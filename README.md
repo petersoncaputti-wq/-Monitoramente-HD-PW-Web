@@ -25,6 +25,20 @@ Base inicial de um painel front-end para importar planilhas operacionais do Proj
 2. Rode `npm install`.
 3. Rode `npm run dev`.
 
+## Publicacao na Vercel
+
+1. Importe este repositorio GitHub na Vercel e mantenha o preset `Vite`.
+2. Configure o comando de build como `npm run build` e o diretorio de saida como `dist`.
+3. Em **Settings > Environment Variables**, configure `VITE_SUPABASE_URL`,
+   `VITE_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` para Production e Preview.
+4. Publique novamente depois de criar ou alterar qualquer variavel.
+
+`SUPABASE_SERVICE_ROLE_KEY` e segredo de servidor e nunca deve ser colocado em codigo
+frontend ou receber o prefixo `VITE_`. As funcoes em `api/` sao publicadas como
+Vercel Functions. O build de nuvem nao executa as sincronizacoes de arquivos locais.
+Para gerar localmente um build com as fontes sincronizadas, use
+`npm run build:with-sync`.
+
 ## Como testar a importacao
 
 1. Inicie a aplicacao.
