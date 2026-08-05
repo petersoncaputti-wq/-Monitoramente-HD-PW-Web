@@ -4,6 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "start": "node server/index.mjs",
+    "dev:azure": "node --watch server/index.mjs",
+    "db:migrate": "node scripts/azure-db-migrate.mjs",
+    "db:migrate-data": "node scripts/migrate-supabase-to-azure.mjs",
+    "auth:create-admin": "node scripts/create-azure-admin.mjs",
     "sync:storage": "node scripts/sync-storage-source.mjs",
     "sync:tickets": "node scripts/sync-tickets-source.mjs",
     "sync:portal-users": "node scripts/sync-portal-users-source.mjs",
@@ -19,6 +24,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.6.2",
+    "helmet": "^8.3.0",
+    "pg": "^8.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "xlsx": "^0.18.5"

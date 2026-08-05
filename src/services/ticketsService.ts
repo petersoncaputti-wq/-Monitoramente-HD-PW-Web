@@ -59,21 +59,8 @@ const TICKET_HEADERS = [
   'Solicitadopara',
 ];
 
-const PAGE_SIZE = 1000;
-
-function getSupabaseConfig() {
-  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
-
-  return {
-    anonKey,
-    enabled: Boolean(url && anonKey),
-    url,
-  };
-}
-
 export function hasSupabaseTicketsConfig(): boolean {
-  return getSupabaseConfig().enabled;
+  return true;
 }
 
 function formatTicketDate(value: string | null): string {
@@ -146,43 +133,12 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function readTicketsFromSupabase(accessToken: string): Promise<ImportedWorkbookData> {
-  const config = getSupabaseConfig();
-
-  if (!config.url || !config.anonKey) {
-    throw new Error('Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para ler o Supabase.');
-  }
-
-  const records: TicketRecord[] = [];
-  let page = 0;
-
-  while (true) {
-    const endpoint = new URL('/rest/v1/tickets', config.url);
-    endpoint.searchParams.set('select', '*');
-    endpoint.searchParams.set('order', 'opened_at.desc');
-
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-    const response = await fetch(endpoint, {
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${accessToken}`,
-        Range: `${from}-${to}`,
-      },
-    });
-
-    const pageRecords = await parseResponse<TicketRecord[]>(response);
-    records.push(...pageRecords);
-
-    if (pageRecords.length < PAGE_SIZE) {
-      break;
-    }
-
-    page += 1;
-  }
+export async function readTicketsFromSupabase(_accessToken: string): Promise<ImportedWorkbookData> {
+  const response = await fetch('/api/data/tickets', { credentials: 'same-origin' });
+  const records = await parseResponse<TicketRecord[]>(response);
 
   return {
-    fileName: 'Supabase - tickets',
+    fileName: 'Azure PostgreSQL - tickets',
     headers: TICKET_HEADERS,
     kind: 'tickets',
     rows: records.map(mapTicketRecord),

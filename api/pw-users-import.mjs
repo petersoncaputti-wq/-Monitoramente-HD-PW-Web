@@ -122,11 +122,11 @@ function normalizeRow(row) {
   );
 }
 
-function getContentHash(buffer) {
+export function getContentHash(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
-function readWorkbookRows(buffer) {
+export function readWorkbookRows(buffer) {
   const workbook = XLSX.read(buffer, {
     cellDates: false,
     raw: false,
@@ -144,7 +144,7 @@ function readWorkbookRows(buffer) {
     .filter((row) => Object.values(row).some((value) => String(value ?? '').trim()));
 }
 
-function assertRequiredHeaders(rows, sourceKind) {
+export function assertRequiredHeaders(rows, sourceKind) {
   const headers = new Set(Object.keys(rows[0] ?? {}).map(normalizeHeader));
   const requiredHeaders =
     sourceKind === 'explorer' ? EXPLORER_REQUIRED_HEADERS : PORTAL_REQUIRED_HEADERS;
@@ -159,7 +159,7 @@ function asText(value) {
   return String(value ?? '').trim();
 }
 
-function mapExplorerRow(row, importId) {
+export function mapExplorerRow(row, importId) {
   return {
     acao_executada: asText(row.Acaoexecutada),
     data_criacao: asText(row.Datacriacao),
@@ -179,7 +179,7 @@ function mapExplorerRow(row, importId) {
   };
 }
 
-function mapPortalRow(row, importId) {
+export function mapPortalRow(row, importId) {
   return {
     city: asText(row.City),
     communication_email: asText(row.CommunicationEmail),
