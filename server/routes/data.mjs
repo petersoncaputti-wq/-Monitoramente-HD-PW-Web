@@ -7,7 +7,9 @@ router.use(requireUser);
 
 router.get('/storage', async (_request, response) => {
   const result = await query(
-    `select reading_date, reading_time, computer, unit, total_gb, used_gb, free_gb,
+    `select to_char(reading_date, 'YYYY-MM-DD') as reading_date,
+            to_char(reading_time, 'HH24:MI:SS') as reading_time,
+            computer, unit, total_gb, used_gb, free_gb,
             percent_used, percent_free
        from storage_readings
       order by observed_at asc`,
