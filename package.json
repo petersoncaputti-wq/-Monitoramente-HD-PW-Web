@@ -8,6 +8,7 @@
     "dev:azure": "node --watch server/index.mjs",
     "db:migrate": "node scripts/azure-db-migrate.mjs",
     "db:migrate-data": "node scripts/migrate-supabase-to-azure.mjs",
+    "db:create-app-user": "node scripts/create-azure-app-user.mjs",
     "auth:create-admin": "node scripts/create-azure-admin.mjs",
     "sync:storage": "node scripts/sync-storage-source.mjs",
     "sync:tickets": "node scripts/sync-tickets-source.mjs",
