@@ -84,73 +84,17 @@ const PORTAL_HEADERS = [
   'MFA',
 ];
 
-const PAGE_SIZE = 1000;
-
-function getSupabaseConfig() {
-  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
-
-  return {
-    anonKey,
-    enabled: Boolean(url && anonKey),
-    url,
-  };
-}
-
 export function hasSupabaseProjectWiseUsersConfig(): boolean {
-  return getSupabaseConfig().enabled;
+  return true;
 }
 
 async function readAllRecords<T>(
-  accessToken: string,
-  table: string,
-  select: string,
-  order: string,
+  _accessToken: string,
+  sourceKind: 'explorer' | 'portal',
 ): Promise<T[]> {
-  const config = getSupabaseConfig();
-
-  if (!config.url || !config.anonKey) {
-    throw new Error('Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para ler o Supabase.');
-  }
-
-  const records: T[] = [];
-  let page = 0;
-
-  while (true) {
-    const endpoint = new URL(`/rest/v1/${table}`, config.url);
-    endpoint.searchParams.set('select', select);
-    endpoint.searchParams.set('order', order);
-
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-    const response = await fetch(endpoint, {
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${accessToken}`,
-        Range: `${from}-${to}`,
-      },
-    });
-
-    if (!response.ok) {
-      const details = await response.text().catch(() => '');
-      throw new Error(
-        details
-          ? `Não foi possível ler ${table} no Supabase: ${details}`
-          : `Não foi possível ler ${table} no Supabase.`,
-      );
-    }
-
-    const pageRecords = (await response.json()) as T[];
-    records.push(...pageRecords);
-
-    if (pageRecords.length < PAGE_SIZE) {
-      break;
-    }
-
-    page += 1;
-  }
-
-  return records;
+  const response = await fetch(`/api/data/pw-users/${sourceKind}`, { credentials: 'same-origin' });
+  if (!response.ok) throw new Error('Não foi possível carregar os usuários ProjectWise.');
+  return response.json() as Promise<T[]>;
 }
 
 function mapExplorerUser(record: ProjectWiseExplorerUserRecord): ProjectWiseUserRow {
@@ -202,27 +146,11 @@ export async function readProjectWiseExplorerUsersFromSupabase(
 ): Promise<ImportedWorkbookData> {
   const records = await readAllRecords<ProjectWiseExplorerUserRecord>(
     accessToken,
-    'pw_explorer_users',
-    [
-      'nome',
-      'email',
-      'pw_id',
-      'data_criacao',
-      'descricao',
-      'ultimo_acesso',
-      'status',
-      'status_acesso',
-      'status_projectwise',
-      'elegivel_exclusao',
-      'motivo',
-      'acao_executada',
-      'resultado',
-    ].join(','),
-    'nome.asc',
+    'explorer',
   );
 
   return {
-    fileName: 'Supabase - pw_explorer_users',
+    fileName: 'Azure PostgreSQL - pw_explorer_users',
     headers: EXPLORER_HEADERS,
     kind: 'projectWiseUsers',
     rows: records.map(mapExplorerUser),
@@ -234,35 +162,11 @@ export async function readProjectWisePortalUsersFromSupabase(
 ): Promise<ImportedWorkbookData> {
   const records = await readAllRecords<ProjectWisePortalUserRecord>(
     accessToken,
-    'pw_portal_users',
-    [
-      'email',
-      'communication_email',
-      'first_name',
-      'middle_name',
-      'last_name',
-      'profile_country',
-      'language',
-      'entitlement_country',
-      'entitlement_groups',
-      'cost_allocation_group',
-      'user_management_groups',
-      'roles',
-      'global_fulfillment_contact',
-      'fulfillment_contact_countries',
-      'city',
-      'company_name',
-      'job_title',
-      'locked',
-      'profile_creation_date',
-      'last_login_date',
-      'mfa',
-    ].join(','),
-    'email.asc',
+    'portal',
   );
 
   return {
-    fileName: 'Supabase - pw_portal_users',
+    fileName: 'Azure PostgreSQL - pw_portal_users',
     headers: PORTAL_HEADERS,
     kind: 'projectWiseWebUsers',
     rows: records.map(mapPortalUser),
