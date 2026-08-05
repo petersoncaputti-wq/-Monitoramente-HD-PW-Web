@@ -8,6 +8,7 @@ import adminUsersRouter from './routes/admin-users.mjs';
 import dataRouter from './routes/data.mjs';
 import ticketsRouter from './routes/tickets.mjs';
 import importsRouter from './routes/imports.mjs';
+import copilotRouter from './routes/copilot.mjs';
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -45,6 +46,7 @@ app.use('/api/pw-users-import', (request, response, next) => {
   request.url = '/pw-users';
   importsRouter(request, response, next);
 });
+app.use('/api/copilot', copilotRouter);
 
 if (existsSync(distPath)) {
   app.use(express.static(distPath, { index: false }));
