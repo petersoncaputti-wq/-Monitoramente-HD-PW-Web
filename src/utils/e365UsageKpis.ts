@@ -17,12 +17,23 @@ export interface E365QuarterSummary {
 }
 
 export interface E365RegistrationComparison {
+  billedOutsidePortalUsers: E365ComparedUser[];
   billedOutsidePortal: number;
   billingCoveragePercentage: number;
+  portalBilledUsers: E365ComparedUser[];
   portalBilled: number;
   portalNotBilled: number;
   portalUsers: number;
   quarterBilledUsers: number;
+}
+
+export interface E365ComparedUser {
+  applications: string[];
+  email: string;
+  imsIds: string[];
+  origin: 'E365' | 'Portal PW + E365';
+  spend: number;
+  status: 'Cadastrado e faturado' | 'Faturado fora da base';
 }
 
 function normalize(value: unknown) {
@@ -72,15 +83,46 @@ export function getE365RegistrationComparison(
       .map((row) => normalize(row.UniquePersona).toLowerCase())
       .filter(Boolean),
   );
-  const portalBilled = [...portalUsers.values()].filter((aliases) =>
-    [...aliases].some((email) => billedEmails.has(email)),
-  ).length;
+  const billedGroups = new Map<string, E365UsageRow[]>();
+  for (const row of quarterRows) {
+    const email = normalize(row.UniquePersona).toLowerCase();
+    if (!email) continue;
+    billedGroups.set(email, [...(billedGroups.get(email) ?? []), row]);
+  }
+
+  function comparedUser(
+    email: string,
+    usageRows: E365UsageRow[],
+    matched: boolean,
+  ): E365ComparedUser {
+    return {
+      applications: [...new Set(usageRows.map((row) => normalize(row.Product)).filter(Boolean))].sort(),
+      email,
+      imsIds: [...new Set(usageRows.map((row) => normalize(row.ImsID)).filter(Boolean))].sort(),
+      origin: matched ? 'Portal PW + E365' : 'E365',
+      spend: usageRows.reduce((total, row) => total + parseAmount(row.Net), 0),
+      status: matched ? 'Cadastrado e faturado' : 'Faturado fora da base',
+    };
+  }
+
+  const portalBilledUsers = [...portalUsers.entries()].flatMap(([canonicalEmail, aliases]) => {
+    const matchedEmails = [...aliases].filter((email) => billedGroups.has(email));
+    if (!matchedEmails.length) return [];
+    const usageRows = matchedEmails.flatMap((email) => billedGroups.get(email) ?? []);
+    return [comparedUser(canonicalEmail, usageRows, true)];
+  });
+  const billedOutsidePortalUsers = [...billedGroups.entries()]
+    .filter(([email]) => !portalAliases.has(email))
+    .map(([email, usageRows]) => comparedUser(email, usageRows, false));
+  const portalBilled = portalBilledUsers.length;
   const portalUserCount = portalUsers.size;
 
   return {
-    billedOutsidePortal: [...billedEmails].filter((email) => !portalAliases.has(email)).length,
+    billedOutsidePortal: billedOutsidePortalUsers.length,
+    billedOutsidePortalUsers,
     billingCoveragePercentage: portalUserCount ? (portalBilled / portalUserCount) * 100 : 0,
     portalBilled,
+    portalBilledUsers,
     portalNotBilled: Math.max(portalUserCount - portalBilled, 0),
     portalUsers: portalUserCount,
     quarterBilledUsers: billedEmails.size,
