@@ -45,6 +45,18 @@ export function readE365Rows(buffer) {
 
 export function assertE365Headers(rows) {
   const headers = new Set(Object.keys(rows[0] ?? {}).map(asText));
+  const isApplicationUsageExport =
+    headers.has('ProductName') &&
+    headers.has('Email') &&
+    headers.has('TotalMinutes') &&
+    !headers.has('Net');
+
+  if (isApplicationUsageExport) {
+    throw new Error(
+      'Arquivo de Application Usage detectado. Para alimentar gastos e usuários faturados, exporte o tipo E365 Usage Data.',
+    );
+  }
+
   const missing = REQUIRED_HEADERS.filter((header) => !headers.has(header));
   if (missing.length) {
     throw new Error(`Cabeçalhos E365 ausentes: ${missing.join(', ')}`);

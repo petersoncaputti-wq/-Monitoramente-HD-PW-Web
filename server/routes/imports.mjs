@@ -130,7 +130,14 @@ router.post('/e365', async (request, response) => {
     return;
   }
 
-  assertE365Headers(rows);
+  try {
+    assertE365Headers(rows);
+  } catch (error) {
+    response.status(400).json({
+      error: error instanceof Error ? error.message : 'Cabeçalhos E365 inválidos.',
+    });
+    return;
+  }
   const fileHash = getE365ContentHash(buffer);
   const duplicate = await queryDuplicateImport(fileHash);
   if (duplicate) {
