@@ -259,7 +259,7 @@ export function E365UsagePanel({
           <div className="flex min-h-[190px] flex-col items-center justify-center border-y border-brand-100 px-5 py-9 text-center">
             <p className="text-lg font-semibold text-surface-900">Agora importe o E365 Usage Data</p>
             <p className="mt-2 max-w-xl text-sm leading-6 text-surface-700">O arquivo acrescenta usuários faturados, aplicações e gastos por quarter.</p>
-            {canManage ? <><label htmlFor={e365InputId} className="mt-5 inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-600">{isImporting ? 'Importando...' : 'Selecionar arquivos E365'}</label><input id={e365InputId} type="file" multiple accept=".csv,.xls,.xlsx" onChange={handleFiles} className="sr-only" /></> : <p className="mt-4 text-sm font-medium text-surface-600">Nenhum dado E365 foi publicado.</p>}
+            {canManage && isLocalPreview ? <><label htmlFor={e365InputId} className="mt-5 inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-600">{isImporting ? 'Importando...' : 'Selecionar arquivos E365'}</label><input id={e365InputId} type="file" multiple accept=".csv,.xls,.xlsx" onChange={handleFiles} className="sr-only" /></> : <p className="mt-4 text-sm font-medium text-surface-600">Nenhum dado E365 foi publicado. A importação fica na área de fontes acima.</p>}
             {errorMessage ? <p className="mt-4 text-sm font-medium text-rose-700">{errorMessage}</p> : null}
           </div>
         </PanelShell>
@@ -286,7 +286,7 @@ export function E365UsagePanel({
                 {summaries.map((item) => <option key={item.quarter} value={item.quarter}>{formatE365Quarter(item.quarter)} · {formatE365QuarterPeriod(item.quarter)}</option>)}
               </select>
             </label>
-            {canManage ? <><label htmlFor={e365InputId} className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-100">
+            {canManage && isLocalPreview ? <><label htmlFor={e365InputId} className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-100">
               {isImporting ? 'Importando...' : 'Adicionar arquivo'}
             </label>
             <input id={e365InputId} type="file" multiple accept=".csv,.xls,.xlsx" onChange={handleFiles} className="sr-only" />
