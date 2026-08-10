@@ -9,6 +9,7 @@ import {
   formatE365Date,
   formatE365Quarter,
   formatE365QuarterPeriod,
+  getE365RegistrationComparison,
   getE365QuarterSummaries,
   type E365QuarterSummary,
 } from '@/utils/e365UsageKpis';
@@ -145,6 +146,13 @@ export function E365UsagePanel({
         .includes(term))
       .sort((a, b) => String(a.UniquePersona).localeCompare(String(b.UniquePersona), 'pt-BR'));
   }, [effectiveQuarter, rows, searchTerm]);
+  const comparison = useMemo(
+    () => getE365RegistrationComparison(
+      portalRows,
+      rows.filter((row) => String(row.UsageQuarter).trim() === effectiveQuarter),
+    ),
+    [effectiveQuarter, portalRows, rows],
+  );
 
   useEffect(() => {
     if (initialRows.length > 0) setRows(initialRows);
@@ -331,6 +339,53 @@ export function E365UsagePanel({
       </div>
 
       <PanelShell title="Usuários faturados" description={`Relação nominal de ${formatE365Quarter(summary.quarter)}.`}>
+        <div className="mb-6 border-b border-brand-100 pb-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-base font-semibold text-surface-900">Cadastrados x faturados</h3>
+              <p className="mt-1 text-sm text-surface-600">
+                Cobertura da base Portal PW em {formatE365Quarter(summary.quarter)}
+              </p>
+            </div>
+            <p className="text-2xl font-semibold text-brand-700">
+              {comparison.billingCoveragePercentage.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+            </p>
+          </div>
+
+          <div
+            className="mt-4 flex h-7 w-full overflow-hidden rounded-md bg-surface-100"
+            role="img"
+            aria-label={`${comparison.portalBilled} usuários cadastrados faturados e ${comparison.portalNotBilled} não faturados`}
+          >
+            {comparison.portalUsers > 0 ? (
+              <>
+                <div
+                  className="h-full bg-brand-600"
+                  style={{ width: `${comparison.billingCoveragePercentage}%` }}
+                  title={`${comparison.portalBilled} cadastrados faturados`}
+                />
+                <div
+                  className="h-full bg-amber-400"
+                  style={{ width: `${100 - comparison.billingCoveragePercentage}%` }}
+                  title={`${comparison.portalNotBilled} cadastrados não faturados`}
+                />
+              </>
+            ) : null}
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-surface-700">
+            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 bg-brand-600" /> Cadastrados faturados: {comparison.portalBilled}</span>
+            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 bg-amber-400" /> Cadastrados não faturados: {comparison.portalNotBilled}</span>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="border-l-4 border-brand-600 bg-brand-50 px-4 py-3"><p className="text-xs text-surface-600">Cadastrados</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalUsers}</p></div>
+            <div className="border-l-4 border-emerald-500 bg-emerald-50 px-4 py-3"><p className="text-xs text-surface-600">Cadastrados faturados</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalBilled}</p></div>
+            <div className="border-l-4 border-amber-400 bg-amber-50 px-4 py-3"><p className="text-xs text-surface-600">Sem faturamento</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalNotBilled}</p></div>
+            <div className="border-l-4 border-rose-400 bg-rose-50 px-4 py-3"><p className="text-xs text-surface-600">Faturados fora da base</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.billedOutsidePortal}</p></div>
+          </div>
+        </div>
+
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex w-full max-w-2xl items-end gap-2">
             <label className="flex flex-1 flex-col gap-2 text-sm font-medium text-surface-700">Pesquisar e-mail<input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="nome@empresa.com.br" className="h-11 rounded-lg border border-brand-100 bg-white px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100" /></label>

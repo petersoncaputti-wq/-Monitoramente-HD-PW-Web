@@ -1,4 +1,4 @@
-import type { E365UsageRow } from '@/types/monitoring';
+import type { E365UsageRow, ProjectWiseWebUserRow } from '@/types/monitoring';
 
 export interface E365ApplicationSummary {
   application: string;
@@ -14,6 +14,15 @@ export interface E365QuarterSummary {
   applications: E365ApplicationSummary[];
   minUsageDate: string;
   maxUsageDate: string;
+}
+
+export interface E365RegistrationComparison {
+  billedOutsidePortal: number;
+  billingCoveragePercentage: number;
+  portalBilled: number;
+  portalNotBilled: number;
+  portalUsers: number;
+  quarterBilledUsers: number;
 }
 
 function normalize(value: unknown) {
@@ -37,6 +46,45 @@ function parseAmount(value: unknown): number {
 
 function uniqueUserKey(row: E365UsageRow) {
   return normalize(row.ImsID).toLowerCase() || normalize(row.UniquePersona).toLowerCase();
+}
+
+export function getE365RegistrationComparison(
+  portalRows: ProjectWiseWebUserRow[],
+  quarterRows: E365UsageRow[],
+): E365RegistrationComparison {
+  const portalUsers = new Map<string, Set<string>>();
+  const portalAliases = new Set<string>();
+
+  portalRows.forEach((row, index) => {
+    const email = normalize(row.Email).toLowerCase();
+    const communicationEmail = normalize(row.CommunicationEmail).toLowerCase();
+    const canonicalEmail = email || communicationEmail || `__sem_email_${index}`;
+
+    const aliases = new Set([email, communicationEmail].filter(Boolean));
+    const currentAliases = portalUsers.get(canonicalEmail) ?? new Set<string>();
+    aliases.forEach((alias) => currentAliases.add(alias));
+    portalUsers.set(canonicalEmail, currentAliases);
+    aliases.forEach((alias) => portalAliases.add(alias));
+  });
+
+  const billedEmails = new Set(
+    quarterRows
+      .map((row) => normalize(row.UniquePersona).toLowerCase())
+      .filter(Boolean),
+  );
+  const portalBilled = [...portalUsers.values()].filter((aliases) =>
+    [...aliases].some((email) => billedEmails.has(email)),
+  ).length;
+  const portalUserCount = portalUsers.size;
+
+  return {
+    billedOutsidePortal: [...billedEmails].filter((email) => !portalAliases.has(email)).length,
+    billingCoveragePercentage: portalUserCount ? (portalBilled / portalUserCount) * 100 : 0,
+    portalBilled,
+    portalNotBilled: Math.max(portalUserCount - portalBilled, 0),
+    portalUsers: portalUserCount,
+    quarterBilledUsers: billedEmails.size,
+  };
 }
 
 export function formatE365Quarter(value: string) {
