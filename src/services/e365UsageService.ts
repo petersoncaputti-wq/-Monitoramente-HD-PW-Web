@@ -25,6 +25,18 @@ export async function readE365UsageFile(file: File): Promise<E365UsageRow[]> {
     defval: '',
   });
   const headers = rows[0] ? Object.keys(rows[0]) : [];
+  const isApplicationUsageExport =
+    headers.includes('ProductName') &&
+    headers.includes('Email') &&
+    headers.includes('TotalMinutes') &&
+    !headers.includes('Net');
+
+  if (isApplicationUsageExport) {
+    throw new Error(
+      'Arquivo de Application Usage detectado. Exporte o tipo E365 Usage Data para obter quarter e valores de cobrança.',
+    );
+  }
+
   const missingHeaders = REQUIRED_HEADERS.filter((header) => !headers.includes(header));
 
   if (missingHeaders.length > 0) {
