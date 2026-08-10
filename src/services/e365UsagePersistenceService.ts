@@ -22,8 +22,14 @@ export interface E365ImportResult {
   fileHash: string;
   fileName: string;
   importId: string;
+  replacedQuarters: string[];
   rowsImported: number;
   rowsRead: number;
+}
+
+export interface E365DeleteResult {
+  rowsDeleted: number;
+  usageQuarter: string;
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -64,6 +70,16 @@ export async function importE365UsageFile(file: File): Promise<E365ImportResult>
     method: 'POST',
   });
   return parseResponse<E365ImportResult>(response);
+}
+
+export async function deleteE365Quarter(usageQuarter: string): Promise<E365DeleteResult> {
+  const response = await fetch('/api/e365-import', {
+    body: JSON.stringify({ usageQuarter }),
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    method: 'DELETE',
+  });
+  return parseResponse<E365DeleteResult>(response);
 }
 
 export async function readE365UsageFromDatabase(): Promise<E365UsageRow[]> {
