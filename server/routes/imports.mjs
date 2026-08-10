@@ -146,6 +146,12 @@ router.post('/e365', async (request, response) => {
   }
 
   const result = await withTransaction(async (client) => {
+    await client.query(
+      `delete from e365_imports imports
+       where file_hash=$1
+         and not exists (select 1 from e365_usage usage where usage.import_id=imports.id)`,
+      [fileHash],
+    );
     const imported = await client.query(
       `insert into e365_imports
        (file_name,file_hash,rows_read,rows_imported,status,imported_by)
@@ -159,11 +165,13 @@ router.post('/e365', async (request, response) => {
       mappedByKey.set(`${mapped.usage_quarter}|${mapped.ims_id}|${mapped.product_id}`, mapped);
     }
     const mapped = [...mappedByKey.values()];
+    const replacedQuarters = [...new Set(mapped.map((row) => row.usage_quarter))];
     const columns = [
       'import_id','ultimate_id','account_name','country_iso','product_id','product_name',
       'connection_status','ims_id','persona_email','usage_date','usage_quarter','usage_interval',
       'currency','gross_amount','net_amount','exported_at','raw_data',
     ];
+    await client.query('delete from e365_usage where usage_quarter = any($1::text[])', [replacedQuarters]);
     await insertRows(
       client,
       'e365_usage',
@@ -179,7 +187,36 @@ router.post('/e365', async (request, response) => {
        exported_at=excluded.exported_at, raw_data=excluded.raw_data, updated_at=now()`,
     );
     await client.query('update e365_imports set rows_imported=$1 where id=$2', [mapped.length, importId]);
-    return { fileHash, fileName, importId, rowsImported: mapped.length, rowsRead: rows.length };
+    return {
+      fileHash,
+      fileName,
+      importId,
+      replacedQuarters,
+      rowsImported: mapped.length,
+      rowsRead: rows.length,
+    };
+  });
+
+  response.json(result);
+});
+
+router.delete('/e365', async (request, response) => {
+  const usageQuarter = String(request.body?.usageQuarter ?? '').trim();
+  if (!/^\d{4}[1-4]$/.test(usageQuarter)) {
+    response.status(400).json({ error: 'Quarter E365 inválido.' });
+    return;
+  }
+
+  const result = await withTransaction(async (client) => {
+    const deleted = await client.query(
+      'delete from e365_usage where usage_quarter=$1 returning id',
+      [usageQuarter],
+    );
+    await client.query(
+      `delete from e365_imports imports
+       where not exists (select 1 from e365_usage usage where usage.import_id=imports.id)`,
+    );
+    return { rowsDeleted: deleted.rowCount, usageQuarter };
   });
 
   response.json(result);
@@ -187,7 +224,12 @@ router.post('/e365', async (request, response) => {
 
 async function queryDuplicateImport(fileHash) {
   const result = await query(
-    `select id from e365_imports where file_hash=$1 and status='completed' limit 1`,
+    `select imports.id
+       from e365_imports imports
+      where imports.file_hash=$1
+        and imports.status='completed'
+        and exists (select 1 from e365_usage usage where usage.import_id=imports.id)
+      limit 1`,
     [fileHash],
   );
   return result.rows[0] ?? null;

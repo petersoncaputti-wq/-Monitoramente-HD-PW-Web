@@ -21,9 +21,11 @@ import type {
   TicketRow,
 } from '@/types/monitoring';
 import {
+  deleteE365Quarter,
   importE365UsageFile,
   readE365UsageFromDatabase,
 } from '@/services/e365UsagePersistenceService';
+import { formatE365Quarter } from '@/utils/e365UsageKpis';
 import { readMonitoringWorkbookFromUrl } from '@/services/excelService';
 import { importProjectWiseUsersFile } from '@/services/projectWiseUsersImportService';
 import {
@@ -61,6 +63,11 @@ function formatInputDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function getLatestE365Quarter(rows: E365UsageRow[]): string {
+  const quarters = [...new Set(rows.map((row) => row.UsageQuarter).filter(Boolean))].sort();
+  return quarters[quarters.length - 1] ?? '';
 }
 
 function parseInputDate(value: string): Date | null {
@@ -751,7 +758,7 @@ export function DashboardPage() {
       setE365UsageRows(nextRows);
       setProjectWiseExplorerImportStatus({
         state: 'success',
-        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} registros E365 importados/atualizados.`,
+        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} registros gravados. ${result.replacedQuarters.map(formatE365Quarter).join(', ')} foi substituído integralmente.`,
       });
       setProjectWiseExplorerFile(null);
       await loadAutoProjectWiseUsersSource();
@@ -759,6 +766,31 @@ export function DashboardPage() {
       setProjectWiseExplorerImportStatus({
         state: 'error',
         message: error instanceof Error ? error.message : 'Não foi possível importar o arquivo E365.',
+      });
+    }
+  }
+
+  async function clearLatestE365Quarter() {
+    const usageQuarter = getLatestE365Quarter(e365UsageRows);
+    if (!usageQuarter) return;
+
+    const label = formatE365Quarter(usageQuarter);
+    if (!window.confirm(`Remover todos os dados de ${label}? Essa ação prepara o quarter para uma nova importação.`)) {
+      return;
+    }
+
+    setProjectWiseExplorerImportStatus({ state: 'importing' });
+    try {
+      const result = await deleteE365Quarter(usageQuarter);
+      setE365UsageRows(await readE365UsageFromDatabase());
+      setProjectWiseExplorerImportStatus({
+        state: 'success',
+        message: `${formatE365Quarter(result.usageQuarter)} removido: ${result.rowsDeleted} registros apagados.`,
+      });
+    } catch (error) {
+      setProjectWiseExplorerImportStatus({
+        state: 'error',
+        message: error instanceof Error ? error.message : 'Não foi possível limpar o quarter E365.',
       });
     }
   }
@@ -1537,6 +1569,16 @@ export function DashboardPage() {
                         ? 'Importando...'
                         : 'Importar E365'}
                     </button>
+                    {e365UsageRows.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => void clearLatestE365Quarter()}
+                        disabled={projectWiseExplorerImportStatus.state === 'importing'}
+                        className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Limpar {formatE365Quarter(getLatestE365Quarter(e365UsageRows))}
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
