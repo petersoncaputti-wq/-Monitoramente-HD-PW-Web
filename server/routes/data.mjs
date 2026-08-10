@@ -33,4 +33,16 @@ router.get('/pw-users/:sourceKind', async (request, response) => {
   response.json(result.rows);
 });
 
+router.get('/e365', async (_request, response) => {
+  const result = await query(
+    `select ultimate_id, account_name, country_iso, product_id, product_name,
+            connection_status, ims_id, persona_email, usage_date, usage_quarter,
+            usage_interval, currency, gross_amount::double precision as gross_amount,
+            net_amount::double precision as net_amount, exported_at
+       from e365_usage
+      order by usage_quarter asc, persona_email asc nulls last`,
+  );
+  response.json(result.rows);
+});
+
 export default router;

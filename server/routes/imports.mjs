@@ -10,8 +10,14 @@ import {
   mapPortalRow,
   readWorkbookRows,
 } from '../../api/pw-users-import.mjs';
+import {
+  assertE365Headers,
+  getE365ContentHash,
+  mapE365Row,
+  readE365Rows,
+} from '../../api/e365-import.mjs';
 import { requireAdmin, requireUser } from '../auth.mjs';
-import { withTransaction } from '../db.mjs';
+import { query, withTransaction } from '../db.mjs';
 
 const router = Router();
 router.use(requireUser, requireAdmin);
@@ -107,5 +113,77 @@ router.post('/pw-users', async (request, response) => {
   });
   response.json(result);
 });
+
+router.post('/e365', async (request, response) => {
+  const fileName = String(request.body?.fileName ?? '').trim();
+  const contentBase64 = String(request.body?.contentBase64 ?? '');
+
+  if (!/\.(csv|xlsx|xls)$/i.test(fileName) || !contentBase64) {
+    response.status(400).json({ error: 'Selecione um arquivo E365 CSV, XLS ou XLSX válido.' });
+    return;
+  }
+
+  const buffer = Buffer.from(contentBase64, 'base64');
+  const rows = readE365Rows(buffer);
+  if (!rows.length) {
+    response.status(400).json({ error: 'Nenhuma linha E365 foi encontrada no arquivo.' });
+    return;
+  }
+
+  assertE365Headers(rows);
+  const fileHash = getE365ContentHash(buffer);
+  const duplicate = await queryDuplicateImport(fileHash);
+  if (duplicate) {
+    response.status(409).json({ error: 'Este arquivo E365 já foi importado.' });
+    return;
+  }
+
+  const result = await withTransaction(async (client) => {
+    const imported = await client.query(
+      `insert into e365_imports
+       (file_name,file_hash,rows_read,rows_imported,status,imported_by)
+       values ($1,$2,$3,0,'completed',$4) returning id`,
+      [fileName, fileHash, rows.length, request.user.id],
+    );
+    const importId = imported.rows[0].id;
+    const mappedByKey = new Map();
+    for (const row of rows) {
+      const mapped = mapE365Row(row, importId);
+      mappedByKey.set(`${mapped.usage_quarter}|${mapped.ims_id}|${mapped.product_id}`, mapped);
+    }
+    const mapped = [...mappedByKey.values()];
+    const columns = [
+      'import_id','ultimate_id','account_name','country_iso','product_id','product_name',
+      'connection_status','ims_id','persona_email','usage_date','usage_quarter','usage_interval',
+      'currency','gross_amount','net_amount','exported_at','raw_data',
+    ];
+    await insertRows(
+      client,
+      'e365_usage',
+      columns,
+      mapped,
+      `on conflict (usage_quarter,ims_id,product_id) do update set
+       import_id=excluded.import_id, ultimate_id=excluded.ultimate_id,
+       account_name=excluded.account_name, country_iso=excluded.country_iso,
+       product_name=excluded.product_name, connection_status=excluded.connection_status,
+       persona_email=excluded.persona_email, usage_date=excluded.usage_date,
+       usage_interval=excluded.usage_interval, currency=excluded.currency,
+       gross_amount=excluded.gross_amount, net_amount=excluded.net_amount,
+       exported_at=excluded.exported_at, raw_data=excluded.raw_data, updated_at=now()`,
+    );
+    await client.query('update e365_imports set rows_imported=$1 where id=$2', [mapped.length, importId]);
+    return { fileHash, fileName, importId, rowsImported: mapped.length, rowsRead: rows.length };
+  });
+
+  response.json(result);
+});
+
+async function queryDuplicateImport(fileHash) {
+  const result = await query(
+    `select id from e365_imports where file_hash=$1 and status='completed' limit 1`,
+    [fileHash],
+  );
+  return result.rows[0] ?? null;
+}
 
 export default router;

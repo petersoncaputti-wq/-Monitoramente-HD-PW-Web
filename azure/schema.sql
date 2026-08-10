@@ -78,6 +78,42 @@ create table if not exists pw_portal_users (
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 
+create table if not exists e365_imports (
+  id uuid primary key default gen_random_uuid(),
+  file_name text not null,
+  file_hash text not null,
+  rows_read integer not null default 0,
+  rows_imported integer not null default 0,
+  status text not null check (status in ('completed', 'failed')),
+  error_message text,
+  imported_at timestamptz not null default now(),
+  imported_by uuid references app_users(id) on delete set null
+);
+
+create table if not exists e365_usage (
+  id uuid primary key default gen_random_uuid(),
+  import_id uuid references e365_imports(id) on delete set null,
+  ultimate_id text,
+  account_name text,
+  country_iso text,
+  product_id text not null,
+  product_name text not null,
+  connection_status text,
+  ims_id text not null,
+  persona_email text,
+  usage_date text,
+  usage_quarter text not null,
+  usage_interval text,
+  currency text,
+  gross_amount numeric,
+  net_amount numeric,
+  exported_at text,
+  raw_data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (usage_quarter, ims_id, product_id)
+);
+
 alter table tickets drop constraint if exists tickets_created_by_fkey;
 alter table tickets drop constraint if exists tickets_updated_by_fkey;
 alter table tickets add constraint tickets_created_by_fkey foreign key (created_by) references app_users(id) on delete set null not valid;
@@ -86,5 +122,12 @@ alter table tickets add constraint tickets_updated_by_fkey foreign key (updated_
 alter table pw_user_imports drop constraint if exists pw_user_imports_imported_by_fkey;
 alter table pw_user_imports add constraint pw_user_imports_imported_by_fkey foreign key (imported_by) references app_users(id) on delete set null not valid;
 
+alter table e365_imports drop constraint if exists e365_imports_imported_by_fkey;
+alter table e365_imports add constraint e365_imports_imported_by_fkey foreign key (imported_by) references app_users(id) on delete set null not valid;
+
 create index if not exists tickets_opened_at_idx on tickets(opened_at desc);
 create index if not exists tickets_status_idx on tickets(status);
+create unique index if not exists e365_imports_file_hash_idx on e365_imports(file_hash) where status = 'completed';
+create index if not exists e365_usage_quarter_idx on e365_usage(usage_quarter);
+create index if not exists e365_usage_persona_email_idx on e365_usage(lower(persona_email));
+create index if not exists e365_usage_product_idx on e365_usage(product_name);

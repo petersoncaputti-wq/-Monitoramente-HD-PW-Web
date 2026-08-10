@@ -15,11 +15,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserSettingsPage } from '@/pages/UserSettingsPage';
 import type {
   ImportedWorkbookData,
+  E365UsageRow,
   MonitoringRow,
-  ProjectWiseUserRow,
   ProjectWiseWebUserRow,
   TicketRow,
 } from '@/types/monitoring';
+import {
+  importE365UsageFile,
+  readE365UsageFromDatabase,
+} from '@/services/e365UsagePersistenceService';
 import { readMonitoringWorkbookFromUrl } from '@/services/excelService';
 import { importProjectWiseUsersFile } from '@/services/projectWiseUsersImportService';
 import {
@@ -153,6 +157,7 @@ const AUTO_PROJECT_WISE_PORTAL_USER_SOURCES = [
 ];
 
 const EXTERNAL_STORAGE_SOURCE_URL = import.meta.env.VITE_STORAGE_SOURCE_URL?.trim();
+const IS_E365_LOCAL_PREVIEW = import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true';
 
 const STORAGE_UPDATE_STEPS = [
   'Conectando ao Supabase',
@@ -382,12 +387,6 @@ function isTicketRow(row: ImportedWorkbookData['rows'][number]): row is TicketRo
   return 'StatusdoSLA' in row && 'Tipodeticket' in row && 'Abertoem' in row;
 }
 
-function isProjectWiseUserRow(
-  row: ImportedWorkbookData['rows'][number],
-): row is ProjectWiseUserRow {
-  return 'Ultimoacesso' in row && 'StatusProjectWise' in row && 'Elegivelexclusao' in row;
-}
-
 function isProjectWiseWebUserRow(
   row: ImportedWorkbookData['rows'][number],
 ): row is ProjectWiseWebUserRow {
@@ -399,10 +398,11 @@ export function DashboardPage() {
   const [activeTab, setActiveTab] = useState<DashboardTab>('storage');
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
-  const [projectWiseUsersData, setProjectWiseUsersData] =
+  const [, setProjectWiseUsersData] =
     useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
     useState<ImportedWorkbookData | null>(null);
+  const [e365UsageRows, setE365UsageRows] = useState<E365UsageRow[]>([]);
   const [autoStorageStatus, setAutoStorageStatus] =
     useState<AutoStorageStatus>({ state: 'idle' });
   const [autoTicketsStatus, setAutoTicketsStatus] =
@@ -437,10 +437,6 @@ export function DashboardPage() {
   const rows = useMemo(
     () => (storageData?.rows.filter(isMonitoringRow) ?? []),
     [storageData],
-  );
-  const projectWiseUserRows = useMemo(
-    () => projectWiseUsersData?.rows.filter(isProjectWiseUserRow) ?? [],
-    [projectWiseUsersData],
   );
   const projectWiseWebUserRows = useMemo(
     () => projectWisePortalUsersData?.rows.filter(isProjectWiseWebUserRow) ?? [],
@@ -1299,7 +1295,19 @@ export function DashboardPage() {
     void loadAutoTicketsSource();
     void loadAutoProjectWiseUsersSource();
     void loadAutoProjectWisePortalUsersSource();
+    void readE365UsageFromDatabase()
+      .then(setE365UsageRows)
+      .catch((error) => console.error('Não foi possível carregar os dados E365.', error));
   }, [accessToken]);
+
+  async function importE365Files(files: File[]) {
+    for (const file of files) {
+      await importE365UsageFile(file);
+    }
+    const nextRows = await readE365UsageFromDatabase();
+    setE365UsageRows(nextRows);
+    return nextRows;
+  }
 
   function clearPeriodFilter() {
     setPeriodStartDate(dateRange?.minDate ?? '');
@@ -1854,7 +1862,10 @@ export function DashboardPage() {
 
             <section className="mt-6">
               <ProjectWiseUsersTab
-                explorerRows={projectWiseUserRows}
+                canManage={IS_E365_LOCAL_PREVIEW || profile?.role === 'admin'}
+                e365Rows={e365UsageRows}
+                isLocalPreview={IS_E365_LOCAL_PREVIEW}
+                onImportE365Files={importE365Files}
                 webRows={projectWiseWebUserRows}
               />
             </section>

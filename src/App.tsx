@@ -5,6 +5,10 @@ import { LoginPage } from '@/pages/LoginPage';
 function AuthenticatedApp() {
   const { status } = useAuth();
 
+  if (import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true') {
+    return <DashboardPage />;
+  }
+
   if (status === 'loading') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-surface-50 px-4 py-10">
