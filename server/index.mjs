@@ -46,6 +46,10 @@ app.use('/api/pw-users-import', (request, response, next) => {
   request.url = '/pw-users';
   importsRouter(request, response, next);
 });
+app.use('/api/e365-import', (request, response, next) => {
+  request.url = '/e365';
+  importsRouter(request, response, next);
+});
 app.use('/api/copilot', copilotRouter);
 
 if (existsSync(distPath)) {
