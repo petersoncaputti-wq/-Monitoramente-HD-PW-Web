@@ -277,6 +277,15 @@ export function E365UsagePanel({
         </div>
       </PanelShell>
 
+      <PanelShell title="Evolução trimestral" description="Gasto líquido e usuários únicos em cada quarter importado.">
+        <E365EvolutionChart
+          currency={currency}
+          onSelectQuarter={setSelectedQuarter}
+          selectedQuarter={effectiveQuarter}
+          summaries={summaries}
+        />
+      </PanelShell>
+
       <PanelShell title="Uso e faturamento E365" description="Usuários faturados e gastos do programa E365 por quarter.">
         <div className="flex flex-col gap-4 border-b border-brand-100 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-wrap items-end gap-3">
@@ -309,15 +318,6 @@ export function E365UsagePanel({
       </PanelShell>
 
       <div className="flex flex-col gap-6">
-        <PanelShell title="Evolução trimestral" description="Gasto líquido e usuários únicos em cada quarter importado.">
-          <E365EvolutionChart
-            currency={currency}
-            onSelectQuarter={setSelectedQuarter}
-            selectedQuarter={effectiveQuarter}
-            summaries={summaries}
-          />
-        </PanelShell>
-
         <PanelShell title="Gasto por aplicação" description={`Composição de ${formatE365Quarter(summary.quarter)}.`}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-sm">
