@@ -28,7 +28,6 @@ import { readMonitoringWorkbookFromUrl } from '@/services/excelService';
 import { importProjectWiseUsersFile } from '@/services/projectWiseUsersImportService';
 import {
   hasSupabaseProjectWiseUsersConfig,
-  readProjectWiseExplorerUsersFromSupabase,
   readProjectWisePortalUsersFromSupabase,
 } from '@/services/projectWiseUsersService';
 import {
@@ -144,12 +143,6 @@ const AUTO_TICKET_SOURCES = [
   'dados/chamados.xml',
 ];
 
-const AUTO_PROJECT_WISE_USER_SOURCES = [
-  'dados/usuarios-pw-explorer.xlsx',
-  'dados/usuarios-pw-explorer.xls',
-  'dados/usuarios-pw-explorer.csv',
-];
-
 const AUTO_PROJECT_WISE_PORTAL_USER_SOURCES = [
   'dados/usuarios-pw-portal.xlsx',
   'dados/usuarios-pw-portal.xls',
@@ -174,12 +167,10 @@ const TICKETS_UPDATE_STEPS = [
 ];
 
 const PROJECT_WISE_USERS_UPDATE_STEPS = [
-  'Conectando ao ProjectWise',
-  'Consultando usuários do PW Explorer',
-  'Consultando registros de acesso no Audit Trail',
-  'Aplicando regras de inatividade e excecoes',
-  'Gerando planilha Excel',
-  'Recarregando indicadores de usuários',
+  'Validando arquivo E365 Usage Data',
+  'Identificando quarters e aplicações',
+  'Atualizando usuários faturados',
+  'Recarregando indicadores E365',
 ];
 
 const PORTAL_USERS_UPDATE_STEPS = [
@@ -341,24 +332,6 @@ async function syncLocalTicketsSource(): Promise<StorageSyncInfo | undefined> {
   return result?.sync;
 }
 
-async function syncLocalProjectWiseUsersSource(): Promise<StorageSyncInfo | undefined> {
-  const response = await fetch('/api/sync-pw-users', {
-    method: 'POST',
-  });
-
-  if (response.status === 404) {
-    return undefined;
-  }
-
-  const result = (await response.json().catch(() => null)) as StorageSyncResponse | null;
-
-  if (!response.ok) {
-    throw new Error(result?.error ?? 'Não foi possível atualizar a fonte de usuários PW.');
-  }
-
-  return result?.sync;
-}
-
 async function syncLocalProjectWisePortalUsersSource(): Promise<StorageSyncInfo | undefined> {
   const response = await fetch('/api/sync-portal-users', {
     method: 'POST',
@@ -398,8 +371,6 @@ export function DashboardPage() {
   const [activeTab, setActiveTab] = useState<DashboardTab>('storage');
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
-  const [, setProjectWiseUsersData] =
-    useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
     useState<ImportedWorkbookData | null>(null);
   const [e365UsageRows, setE365UsageRows] = useState<E365UsageRow[]>([]);
@@ -627,10 +598,6 @@ export function DashboardPage() {
     setTicketsData(data);
   }
 
-  function applyProjectWiseUsersData(data: ImportedWorkbookData) {
-    setProjectWiseUsersData(data);
-  }
-
   function applyProjectWisePortalUsersData(data: ImportedWorkbookData) {
     setProjectWisePortalUsersData(data);
   }
@@ -779,31 +746,19 @@ export function DashboardPage() {
     setProjectWiseExplorerImportStatus({ state: 'importing' });
 
     try {
-      const validAccessToken = await getValidAccessToken();
-
-      if (!validAccessToken) {
-        throw new Error('Sessão expirada. Entre novamente para importar o arquivo.');
-      }
-
-      const result = await importProjectWiseUsersFile(
-        validAccessToken,
-        'explorer',
-        projectWiseExplorerFile,
-      );
-
+      const result = await importE365UsageFile(projectWiseExplorerFile);
+      const nextRows = await readE365UsageFromDatabase();
+      setE365UsageRows(nextRows);
       setProjectWiseExplorerImportStatus({
         state: 'success',
-        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} usuários PW importados.`,
+        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} registros E365 importados/atualizados.`,
       });
       setProjectWiseExplorerFile(null);
       await loadAutoProjectWiseUsersSource();
     } catch (error) {
       setProjectWiseExplorerImportStatus({
         state: 'error',
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível importar os usuários PW.',
+        message: error instanceof Error ? error.message : 'Não foi possível importar o arquivo E365.',
       });
     }
   }
@@ -1104,91 +1059,32 @@ export function DashboardPage() {
     );
   }
 
-  async function loadAutoProjectWiseUsersSource(options?: { syncBeforeRead?: boolean }) {
+  async function loadAutoProjectWiseUsersSource() {
     setAutoProjectWiseUsersStatus({ state: 'loading' });
 
-    if (hasSupabaseProjectWiseUsersConfig()) {
-      if (!accessToken) {
-        setAutoProjectWiseUsersStatus({
-          state: 'error',
-          message: 'Sessão autenticada indisponível para ler os usuários PW.',
-        });
-        return;
-      }
-
-      try {
-        const data = await readProjectWiseExplorerUsersFromSupabase(accessToken);
-
-        applyProjectWiseUsersData(data);
-        setAutoProjectWiseUsersStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-        });
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível carregar os usuários PW no Supabase.';
-
-        setAutoProjectWiseUsersStatus({ state: 'error', message });
-      }
-
+    if (!accessToken) {
+      setAutoProjectWiseUsersStatus({
+        state: 'error',
+        message: 'Sessão autenticada indisponível para ler os dados E365.',
+      });
       return;
     }
 
-    let lastError: unknown = null;
-    let syncInfo: StorageSyncInfo | undefined;
-    const localCacheKey = String(Date.now());
-
-    if (options?.syncBeforeRead) {
-      try {
-        syncInfo = await syncLocalProjectWiseUsersSource();
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível atualizar a fonte de usuários PW.';
-
-        setAutoProjectWiseUsersStatus({ state: 'error', message });
-        return;
-      }
+    try {
+      const data = await readE365UsageFromDatabase();
+      setE365UsageRows(data);
+      setAutoProjectWiseUsersStatus({
+        state: 'ready',
+        fileName: 'Azure PostgreSQL - e365_usage',
+        loadedAt: new Date(),
+        rowsCount: data.length,
+      });
+    } catch (error) {
+      setAutoProjectWiseUsersStatus({
+        state: 'error',
+        message: error instanceof Error ? error.message : 'Não foi possível carregar os dados E365.',
+      });
     }
-
-    for (const source of AUTO_PROJECT_WISE_USER_SOURCES.map((userSource) => ({
-      fileName: userSource,
-      url: getPublicUrl(userSource, localCacheKey),
-    }))) {
-      try {
-        const data = await readMonitoringWorkbookFromUrl(source.url, source.fileName);
-
-        if (data.kind !== 'projectWiseUsers') {
-          throw new Error('A fonte encontrada não possui os cabeçalhos de usuários PW.');
-        }
-
-        applyProjectWiseUsersData(data);
-        setAutoProjectWiseUsersStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-          syncInfo,
-        });
-        return;
-      } catch (error) {
-        lastError = error;
-      }
-    }
-
-    const message =
-      lastError instanceof Error
-        ? lastError.message
-        : 'Não foi possível carregar a fonte automática de usuários PW.';
-
-    setAutoProjectWiseUsersStatus(
-      hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' },
-    );
   }
 
   async function loadAutoProjectWisePortalUsersSource(options?: { syncBeforeRead?: boolean }) {
@@ -1596,28 +1492,28 @@ export function DashboardPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                    Fonte de usuários PW
+                    Fonte E365 Usage Data
                   </p>
                   <p className="mt-2 text-sm text-surface-700">
                     {autoProjectWiseUsersStatus.state === 'loading'
-                      ? 'Atualizando a extração de usuários ProjectWise...'
+                      ? 'Atualizando os dados de uso e faturamento E365...'
                       : autoProjectWiseUsersStatus.state === 'ready'
                         ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} ?s ${autoProjectWiseUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}. ${autoProjectWiseUsersStatus.rowsCount} registros lidos.`
                         : autoProjectWiseUsersStatus.state === 'missing'
-                          ? 'Atualize a fonte para gerar public/dados/usuarios-pw-explorer.xlsx.'
+                          ? 'Importe o relatório E365 Usage Data.'
                           : autoProjectWiseUsersStatus.state === 'error'
                             ? autoProjectWiseUsersStatus.message
-                            : 'O painel vai tentar carregar a planilha de usuários PW automaticamente.'}
+                            : 'O painel vai carregar os dados E365 armazenados no banco.'}
                   </p>
                 </div>
 
                 {profile?.role === 'admin' ? (
                   <div className="flex flex-col gap-3 sm:min-w-[360px]">
                     <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-                      Arquivo Explorer
+                      Arquivo E365 Usage Data
                       <input
                         type="file"
                         accept=".csv,.xlsx,.xls"
@@ -1639,7 +1535,7 @@ export function DashboardPage() {
                     >
                       {projectWiseExplorerImportStatus.state === 'importing'
                         ? 'Importando...'
-                        : 'Importar Explorer'}
+                        : 'Importar E365'}
                     </button>
                   </div>
                 ) : null}
