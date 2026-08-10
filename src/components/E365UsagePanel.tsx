@@ -128,6 +128,7 @@ export function E365UsagePanel({
   const [portalFileName, setPortalFileName] = useState('');
   const [selectedQuarter, setSelectedQuarter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [billingListFilter, setBillingListFilter] = useState<'all' | 'portal' | 'outside'>('all');
   const [isImporting, setIsImporting] = useState(false);
   const [isImportingPortal, setIsImportingPortal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -137,15 +138,6 @@ export function E365UsagePanel({
   const effectiveQuarter = selectedQuarter || summaries[summaries.length - 1]?.quarter || '';
   const summary = summaries.find((item) => item.quarter === effectiveQuarter);
   const currency = rows.find((row) => String(row.UsageQuarter).trim() === effectiveQuarter)?.Currency || 'BRL';
-  const quarterRows = useMemo(() => {
-    const term = searchTerm.trim().toLocaleLowerCase('pt-BR');
-    return rows
-      .filter((row) => String(row.UsageQuarter).trim() === effectiveQuarter)
-      .filter((row) => !term || String(row.UniquePersona ?? '')
-        .toLocaleLowerCase('pt-BR')
-        .includes(term))
-      .sort((a, b) => String(a.UniquePersona).localeCompare(String(b.UniquePersona), 'pt-BR'));
-  }, [effectiveQuarter, rows, searchTerm]);
   const comparison = useMemo(
     () => getE365RegistrationComparison(
       portalRows,
@@ -153,10 +145,27 @@ export function E365UsagePanel({
     ),
     [effectiveQuarter, portalRows, rows],
   );
+  const comparedUsers = useMemo(() => {
+    const source = billingListFilter === 'portal'
+      ? comparison.portalBilledUsers
+      : billingListFilter === 'outside'
+        ? comparison.billedOutsidePortalUsers
+        : [...comparison.portalBilledUsers, ...comparison.billedOutsidePortalUsers];
+    const term = searchTerm.trim().toLocaleLowerCase('pt-BR');
+    return source
+      .filter((user) => !term || user.email.toLocaleLowerCase('pt-BR').includes(term))
+      .sort((a, b) => a.email.localeCompare(b.email, 'pt-BR'));
+  }, [billingListFilter, comparison, searchTerm]);
+  const comparisonTotal = comparison.portalUsers + comparison.billedOutsidePortal;
+  const comparisonBarWidth = (value: number) => comparisonTotal ? (value / comparisonTotal) * 100 : 0;
 
   useEffect(() => {
     if (initialRows.length > 0) setRows(initialRows);
   }, [initialRows]);
+
+  useEffect(() => {
+    setBillingListFilter('all');
+  }, [effectiveQuarter]);
 
   async function handleFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files ?? [])];
@@ -355,19 +364,24 @@ export function E365UsagePanel({
           <div
             className="mt-4 flex h-7 w-full overflow-hidden rounded-md bg-surface-100"
             role="img"
-            aria-label={`${comparison.portalBilled} usuários cadastrados faturados e ${comparison.portalNotBilled} não faturados`}
+            aria-label={`${comparison.portalBilled} cadastrados faturados, ${comparison.portalNotBilled} cadastrados não faturados e ${comparison.billedOutsidePortal} faturados fora da base`}
           >
-            {comparison.portalUsers > 0 ? (
+            {comparisonTotal > 0 ? (
               <>
                 <div
                   className="h-full bg-brand-600"
-                  style={{ width: `${comparison.billingCoveragePercentage}%` }}
+                  style={{ width: `${comparisonBarWidth(comparison.portalBilled)}%` }}
                   title={`${comparison.portalBilled} cadastrados faturados`}
                 />
                 <div
                   className="h-full bg-amber-400"
-                  style={{ width: `${100 - comparison.billingCoveragePercentage}%` }}
+                  style={{ width: `${comparisonBarWidth(comparison.portalNotBilled)}%` }}
                   title={`${comparison.portalNotBilled} cadastrados não faturados`}
+                />
+                <div
+                  className="h-full bg-rose-500"
+                  style={{ width: `${comparisonBarWidth(comparison.billedOutsidePortal)}%` }}
+                  title={`${comparison.billedOutsidePortal} faturados fora da base`}
                 />
               </>
             ) : null}
@@ -376,14 +390,30 @@ export function E365UsagePanel({
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-surface-700">
             <span className="inline-flex items-center gap-2"><span className="h-3 w-3 bg-brand-600" /> Cadastrados faturados: {comparison.portalBilled}</span>
             <span className="inline-flex items-center gap-2"><span className="h-3 w-3 bg-amber-400" /> Cadastrados não faturados: {comparison.portalNotBilled}</span>
+            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 bg-rose-500" /> Faturados fora da base: {comparison.billedOutsidePortal}</span>
           </div>
 
+          <p className="mt-3 text-xs text-surface-600">
+            Total faturado: {comparison.quarterBilledUsers} = {comparison.portalBilled} cadastrados + {comparison.billedOutsidePortal} fora da base. Comparação por e-mail entre Portal PW e UniquePersona do E365.
+          </p>
+
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="border-l-4 border-brand-600 bg-brand-50 px-4 py-3"><p className="text-xs text-surface-600">Cadastrados</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalUsers}</p></div>
-            <div className="border-l-4 border-emerald-500 bg-emerald-50 px-4 py-3"><p className="text-xs text-surface-600">Cadastrados faturados</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalBilled}</p></div>
-            <div className="border-l-4 border-amber-400 bg-amber-50 px-4 py-3"><p className="text-xs text-surface-600">Sem faturamento</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalNotBilled}</p></div>
-            <div className="border-l-4 border-rose-400 bg-rose-50 px-4 py-3"><p className="text-xs text-surface-600">Faturados fora da base</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.billedOutsidePortal}</p></div>
+            <div className="border-l-4 border-brand-600 bg-brand-50 px-4 py-3"><p className="text-xs font-semibold text-surface-700">Cadastrados</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalUsers}</p><p className="mt-1 text-xs text-surface-600">Usuários existentes na base do Portal PW.</p></div>
+            <button type="button" onClick={() => setBillingListFilter('portal')} aria-pressed={billingListFilter === 'portal'} className={`border-l-4 px-4 py-3 text-left transition ${billingListFilter === 'portal' ? 'border-emerald-600 bg-emerald-100 ring-2 ring-emerald-200' : 'border-emerald-500 bg-emerald-50 hover:bg-emerald-100'}`}><p className="text-xs font-semibold text-surface-700">Cadastrados faturados</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalBilled}</p><p className="mt-1 text-xs text-surface-600">Encontrados no Portal PW e no E365. Clique para visualizar.</p></button>
+            <div className="border-l-4 border-amber-400 bg-amber-50 px-4 py-3"><p className="text-xs font-semibold text-surface-700">Sem faturamento</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalNotBilled}</p><p className="mt-1 text-xs text-surface-600">Cadastrados sem cobrança no quarter.</p></div>
+            <button type="button" onClick={() => setBillingListFilter('outside')} aria-pressed={billingListFilter === 'outside'} className={`border-l-4 px-4 py-3 text-left transition ${billingListFilter === 'outside' ? 'border-rose-600 bg-rose-100 ring-2 ring-rose-200' : 'border-rose-400 bg-rose-50 hover:bg-rose-100'}`}><p className="text-xs font-semibold text-surface-700">Faturados fora da base</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.billedOutsidePortal}</p><p className="mt-1 text-xs text-surface-600">Presentes no E365 e ausentes no Portal PW. Clique para visualizar.</p></button>
           </div>
+        </div>
+
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-surface-900">
+            {billingListFilter === 'portal'
+              ? 'Exibindo cadastrados faturados'
+              : billingListFilter === 'outside'
+                ? 'Exibindo faturados fora da base'
+                : 'Exibindo todos os usuários faturados'}
+          </p>
+          <p className="text-xs text-surface-600">{formatE365Quarter(summary.quarter)}</p>
         </div>
 
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -391,12 +421,18 @@ export function E365UsagePanel({
             <label className="flex flex-1 flex-col gap-2 text-sm font-medium text-surface-700">Pesquisar e-mail<input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="nome@empresa.com.br" className="h-11 rounded-lg border border-brand-100 bg-white px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100" /></label>
             <button type="button" onClick={() => setSearchTerm('')} disabled={!searchTerm} className="h-11 rounded-lg border border-brand-100 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">Limpar</button>
           </div>
-          <p className="text-xs font-medium text-surface-600">{quarterRows.length} de {rows.filter((row) => String(row.UsageQuarter).trim() === effectiveQuarter).length} registros</p>
+          <div className="flex items-center gap-3">
+            {billingListFilter !== 'all' ? <button type="button" onClick={() => setBillingListFilter('all')} className="text-xs font-semibold text-brand-700 hover:underline">Mostrar todos os faturados</button> : null}
+            <p className="text-xs font-medium text-surface-600">{comparedUsers.length} usuário(s)</p>
+          </div>
         </div>
         <div className="max-h-[480px] overflow-auto border-y border-brand-100">
           <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="sticky top-0 bg-brand-50 text-xs uppercase text-brand-700"><tr><th className="px-3 py-3 font-semibold">Persona</th><th className="px-3 py-3 font-semibold">Aplicação</th><th className="px-3 py-3 font-semibold">Data de uso</th><th className="px-3 py-3 text-right font-semibold">Gasto</th><th className="px-3 py-3 font-semibold">IMSID</th></tr></thead>
-            <tbody className="divide-y divide-brand-50">{quarterRows.map((row) => <tr key={`${row.UsageQuarter}-${row.ImsID}-${row.ProductID || row.Product}`} className="hover:bg-brand-50/60"><td className="px-3 py-3 font-medium text-surface-900">{row.UniquePersona || '-'}</td><td className="px-3 py-3 text-surface-700">{row.Product || '-'}</td><td className="whitespace-nowrap px-3 py-3">{formatE365Date(row.UsageDate)}</td><td className="whitespace-nowrap px-3 py-3 text-right">{formatE365Currency(Number(row.Net) || 0, row.Currency || currency)}</td><td className="px-3 py-3 font-mono text-xs text-surface-600">{row.ImsID || '-'}</td></tr>)}</tbody>
+            <thead className="sticky top-0 bg-brand-50 text-xs uppercase text-brand-700"><tr><th className="px-3 py-3 font-semibold">E-mail</th><th className="px-3 py-3 font-semibold">Situação</th><th className="px-3 py-3 font-semibold">Aplicações</th><th className="px-3 py-3 text-right font-semibold">Gasto</th><th className="px-3 py-3 font-semibold">Origem</th><th className="px-3 py-3 font-semibold">IMSID</th></tr></thead>
+            <tbody className="divide-y divide-brand-50">
+              {comparedUsers.map((user) => <tr key={`${user.status}-${user.email}`} className="hover:bg-brand-50/60"><td className="px-3 py-3 font-medium text-surface-900">{user.email}</td><td className="px-3 py-3 text-surface-700">{user.status}</td><td className="px-3 py-3 text-surface-700">{user.applications.join(', ') || '-'}</td><td className="whitespace-nowrap px-3 py-3 text-right">{formatE365Currency(user.spend, currency)}</td><td className="whitespace-nowrap px-3 py-3">{user.origin}</td><td className="px-3 py-3 font-mono text-xs text-surface-600">{user.imsIds.join(', ') || '-'}</td></tr>)}
+              {comparedUsers.length === 0 ? <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-surface-600">Nenhum usuário encontrado nesta seleção.</td></tr> : null}
+            </tbody>
           </table>
         </div>
       </PanelShell>
