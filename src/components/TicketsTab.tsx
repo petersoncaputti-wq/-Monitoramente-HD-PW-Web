@@ -149,11 +149,17 @@ function GaugeCard({
   value: number;
   valueLabel: string;
   variant?: 'progress' | 'segmented';
-  tone?: 'brand' | 'good' | 'warning';
+  tone?: 'brand' | 'good' | 'attention' | 'warning';
 }) {
   const normalizedValue = Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
   const strokeColor =
-    tone === 'good' ? '#059669' : tone === 'warning' ? '#e11d48' : '#056b28';
+    tone === 'good'
+      ? '#059669'
+      : tone === 'attention'
+        ? '#eab308'
+        : tone === 'warning'
+          ? '#e11d48'
+          : '#64748b';
 
   return (
     <article className="flex h-full min-h-[220px] flex-col rounded-[28px] border border-brand-100 bg-white p-6 shadow-soft">
@@ -208,6 +214,22 @@ export function TicketsTab({ rows }: TicketsTabProps) {
       }),
     [periodEndDate, periodStartDate, rows],
   );
+  const slaTone =
+    summary.slaApplicableTickets === 0
+      ? 'brand'
+      : summary.slaComplianceValue >= 90
+        ? 'good'
+        : summary.slaComplianceValue >= 75
+          ? 'attention'
+          : 'warning';
+  const slaLevel =
+    summary.slaApplicableTickets === 0
+      ? 'Sem chamados aplicáveis'
+      : summary.slaComplianceValue >= 90
+        ? 'Adequado'
+        : summary.slaComplianceValue >= 75
+          ? 'Atenção'
+          : 'Crítico';
 
   function clearPeriodFilter() {
     setPeriodStartDate(dateRange?.minDate ?? '');
@@ -280,9 +302,9 @@ export function TicketsTab({ rows }: TicketsTabProps) {
             value={summary.slaComplianceValue}
             valueLabel={summary.slaCompliancePercentage}
             maxLabel="100%"
-            helperText={`${summary.inSla} dentro do SLA em ${summary.slaApplicableTickets} chamados aplicáveis`}
+            helperText={`${slaLevel} · ${summary.inSla} dentro do SLA em ${summary.slaApplicableTickets} chamados aplicáveis`}
             variant="segmented"
-            tone={summary.violatedSla > 0 ? 'warning' : 'good'}
+            tone={slaTone}
           />
           <AverageResolutionCard value={summary.averageResolutionTime} />
         </div>
