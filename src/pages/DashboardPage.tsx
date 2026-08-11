@@ -147,7 +147,7 @@ const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
   storage: '/projectwise/armazenamento',
   projectWiseUsers: '/projectwise/usuarios-pw',
   tickets: '/projectwise/chamados',
-  settings: '/projectwise/configuracoes',
+  settings: '/configuracoes',
 };
 
 const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
@@ -161,7 +161,7 @@ const LEGACY_DASHBOARD_ROUTES: Record<string, string> = {
   '/armazenamento': DASHBOARD_ROUTES.storage,
   '/usuarios-pw': DASHBOARD_ROUTES.projectWiseUsers,
   '/chamados': DASHBOARD_ROUTES.tickets,
-  '/configuracoes': DASHBOARD_ROUTES.settings,
+  '/projectwise/configuracoes': DASHBOARD_ROUTES.settings,
 };
 
 function getDashboardTab(pathname: string): DashboardTab | null {
@@ -416,7 +416,7 @@ export function DashboardPage() {
   const activeTab = getDashboardTab(location.pathname);
   const normalizedPath = location.pathname.replace(/\/+$/, '') || '/';
   const isHomePage = normalizedPath === '/';
-  const isProjectWisePage = activeTab !== null;
+  const isProjectWisePage = activeTab !== null && activeTab !== 'settings';
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
@@ -1351,6 +1351,14 @@ export function DashboardPage() {
             <span className="text-xs uppercase tracking-[0.16em] text-brand-700">
               {profile?.role === 'admin' ? 'Administrador' : 'Usuário padrão'}
             </span>
+            {profile?.role === 'admin' ? (
+              <NavLink
+                to={DASHBOARD_ROUTES.settings}
+                className="text-xs font-semibold text-brand-700 transition hover:text-brand-900"
+              >
+                Configurações
+              </NavLink>
+            ) : null}
             <button
               type="button"
               onClick={() => void logout()}
@@ -1369,7 +1377,14 @@ export function DashboardPage() {
           ) : (
             <NavLink to="/" className="font-medium transition hover:text-brand-700">Início</NavLink>
           )}
-          {activeTab ? (
+          {activeTab === 'settings' ? (
+            <>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <span className="font-semibold text-surface-900" aria-current="page">
+                Configurações
+              </span>
+            </>
+          ) : activeTab ? (
             <>
               <span aria-hidden="true" className="text-brand-300">/</span>
               <NavLink to={DASHBOARD_ROUTES.storage} className="font-medium text-surface-700 transition hover:text-brand-700">
@@ -1383,7 +1398,7 @@ export function DashboardPage() {
           ) : null}
         </nav>
 
-        {activeTab ? (
+        {isProjectWisePage ? (
         <nav aria-label="Navegação do ProjectWise" className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
           <NavLink
             to={DASHBOARD_ROUTES.storage}
@@ -1415,18 +1430,6 @@ export function DashboardPage() {
           >
             Chamados
           </NavLink>
-          {profile?.role === 'admin' ? (
-            <NavLink
-              to={DASHBOARD_ROUTES.settings}
-              className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                isActive
-                  ? 'bg-brand-700 text-white shadow-soft'
-                  : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
-              }`}
-            >
-              Configurações
-            </NavLink>
-          ) : null}
         </nav>
         ) : null}
 
