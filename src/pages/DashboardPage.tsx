@@ -14,6 +14,7 @@ import { UsagePercentageCard } from '@/components/UsagePercentageCard';
 import { UsedSpaceCard } from '@/components/UsedSpaceCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserSettingsPage } from '@/pages/UserSettingsPage';
+import { EngineeringSystemsHomePage } from '@/pages/EngineeringSystemsHomePage';
 import {
   getDatePeriodPreset,
   getDefaultDatePeriod,
@@ -143,10 +144,24 @@ function filterRowsByPeriod(
 type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'settings';
 
 const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
-  storage: '/armazenamento',
-  projectWiseUsers: '/usuarios-pw',
-  tickets: '/chamados',
-  settings: '/configuracoes',
+  storage: '/projectwise/armazenamento',
+  projectWiseUsers: '/projectwise/usuarios-pw',
+  tickets: '/projectwise/chamados',
+  settings: '/projectwise/configuracoes',
+};
+
+const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
+  storage: 'Armazenamento',
+  projectWiseUsers: 'Usuários PW',
+  tickets: 'Chamados',
+  settings: 'Configurações',
+};
+
+const LEGACY_DASHBOARD_ROUTES: Record<string, string> = {
+  '/armazenamento': DASHBOARD_ROUTES.storage,
+  '/usuarios-pw': DASHBOARD_ROUTES.projectWiseUsers,
+  '/chamados': DASHBOARD_ROUTES.tickets,
+  '/configuracoes': DASHBOARD_ROUTES.settings,
 };
 
 function getDashboardTab(pathname: string): DashboardTab | null {
@@ -398,7 +413,10 @@ export function DashboardPage() {
   const { accessToken, getValidAccessToken, logout, profile } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const activeTab = getDashboardTab(location.pathname) ?? 'storage';
+  const activeTab = getDashboardTab(location.pathname);
+  const normalizedPath = location.pathname.replace(/\/+$/, '') || '/';
+  const isHomePage = normalizedPath === '/';
+  const isProjectWisePage = activeTab !== null;
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
@@ -591,9 +609,25 @@ export function DashboardPage() {
 
   useEffect(() => {
     const requestedTab = getDashboardTab(location.pathname);
+    const requestedPath = location.pathname.replace(/\/+$/, '') || '/';
+
+    if (requestedPath === '/') {
+      return;
+    }
+
+    if (requestedPath === '/projectwise') {
+      navigate(DASHBOARD_ROUTES.storage, { replace: true });
+      return;
+    }
+
+    const migratedRoute = LEGACY_DASHBOARD_ROUTES[requestedPath];
+    if (migratedRoute) {
+      navigate(migratedRoute, { replace: true });
+      return;
+    }
 
     if (!requestedTab) {
-      navigate(DASHBOARD_ROUTES.storage, { replace: true });
+      navigate('/', { replace: true });
       return;
     }
 
@@ -1254,13 +1288,13 @@ export function DashboardPage() {
   }
 
   useEffect(() => {
-    if (!hasSupabaseTicketsConfig()) {
+    if (isProjectWisePage && !hasSupabaseTicketsConfig()) {
       void loadAutoTicketsSource();
     }
-  }, []);
+  }, [isProjectWisePage]);
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!accessToken || !isProjectWisePage) {
       return;
     }
 
@@ -1271,7 +1305,7 @@ export function DashboardPage() {
     void readE365UsageFromDatabase()
       .then(setE365UsageRows)
       .catch((error) => console.error('Não foi possível carregar os dados E365.', error));
-  }, [accessToken]);
+  }, [accessToken, isProjectWisePage]);
 
   async function importE365Files(files: File[]) {
     for (const file of files) {
@@ -1300,7 +1334,7 @@ export function DashboardPage() {
               Painel institucional
             </p>
             <h1 className="mt-2 text-2xl font-semibold text-surface-900 md:text-3xl">
-              Painel Operacional ProjectWise
+              Painel de indicadores de Sistemas de Engenharia
             </h1>
           </div>
 
@@ -1329,7 +1363,28 @@ export function DashboardPage() {
       </header>
 
       <div className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <nav className="mt-2 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
+        <nav aria-label="Trilha de navegação" className="mt-1 flex flex-wrap items-center gap-2 text-sm text-surface-600">
+          {isHomePage ? (
+            <span className="font-semibold text-surface-900" aria-current="page">Início</span>
+          ) : (
+            <NavLink to="/" className="font-medium transition hover:text-brand-700">Início</NavLink>
+          )}
+          {activeTab ? (
+            <>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <NavLink to={DASHBOARD_ROUTES.storage} className="font-medium text-surface-700 transition hover:text-brand-700">
+                ProjectWise
+              </NavLink>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <span className="font-semibold text-surface-900" aria-current="page">
+                {DASHBOARD_TAB_LABELS[activeTab]}
+              </span>
+            </>
+          ) : null}
+        </nav>
+
+        {activeTab ? (
+        <nav aria-label="Navegação do ProjectWise" className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
           <NavLink
             to={DASHBOARD_ROUTES.storage}
             className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
@@ -1373,6 +1428,9 @@ export function DashboardPage() {
             </NavLink>
           ) : null}
         </nav>
+        ) : null}
+
+        {isHomePage ? <EngineeringSystemsHomePage /> : null}
 
         {activeTab === 'storage' ? (
           <>
