@@ -19,7 +19,8 @@
     "auth:create-user": "node scripts/create-auth-user.mjs",
     "auth:sync-profiles": "node scripts/sync-auth-profiles.mjs",
     "export:pw-users": "node scripts/export-pw-users-to-xlsx.mjs",
-    "dev": "npm run sync:data && vite",
+    "dev": "node scripts/dev-portal.mjs",
+    "dev:with-sync": "npm run sync:data && npm run dev",
     "build": "tsc -b && vite build",
     "build:with-sync": "npm run sync:data && npm run build",
     "preview": "vite preview"
