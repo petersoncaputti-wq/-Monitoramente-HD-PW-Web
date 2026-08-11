@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LoginPage } from '@/pages/LoginPage';
+import { BrowserRouter } from 'react-router-dom';
 
 function AuthenticatedApp() {
   const { status } = useAuth();
@@ -28,9 +29,11 @@ function AuthenticatedApp() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AuthenticatedApp />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AuthenticatedApp />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

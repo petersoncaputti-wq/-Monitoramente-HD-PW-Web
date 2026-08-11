@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AverageGrowthRateCard } from '@/components/AverageGrowthRateCard';
 import { FreeSpaceCard } from '@/components/FreeSpaceCard';
 import { LastUpdateCard } from '@/components/LastUpdateCard';
@@ -135,6 +136,21 @@ function filterRowsByPeriod(
 }
 
 type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'settings';
+
+const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
+  storage: '/armazenamento',
+  projectWiseUsers: '/usuarios-pw',
+  tickets: '/chamados',
+  settings: '/configuracoes',
+};
+
+function getDashboardTab(pathname: string): DashboardTab | null {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/';
+  const matchedRoute = Object.entries(DASHBOARD_ROUTES).find(
+    ([, route]) => route === normalizedPath,
+  );
+  return (matchedRoute?.[0] as DashboardTab | undefined) ?? null;
+}
 
 const AUTO_STORAGE_SOURCES = [
   'dados/armazenamento.xlsx',
@@ -375,7 +391,9 @@ function isProjectWiseWebUserRow(
 
 export function DashboardPage() {
   const { accessToken, getValidAccessToken, logout, profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<DashboardTab>('storage');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = getDashboardTab(location.pathname) ?? 'storage';
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
@@ -567,6 +585,19 @@ export function DashboardPage() {
   );
 
   useEffect(() => {
+    const requestedTab = getDashboardTab(location.pathname);
+
+    if (!requestedTab) {
+      navigate(DASHBOARD_ROUTES.storage, { replace: true });
+      return;
+    }
+
+    if (requestedTab === 'settings' && profile && profile.role !== 'admin') {
+      navigate(DASHBOARD_ROUTES.storage, { replace: true });
+    }
+  }, [location.pathname, navigate, profile]);
+
+  useEffect(() => {
     setTicketPage(1);
   }, [ticketSearchTerm, ticketColumnFilters]);
 
@@ -594,7 +625,7 @@ export function DashboardPage() {
     setStorageData(data);
 
     if (shouldOpenStorageTab) {
-      setActiveTab('storage');
+      navigate(DASHBOARD_ROUTES.storage);
     }
 
     setPeriodStartDate(range?.minDate ?? '');
@@ -1281,51 +1312,47 @@ export function DashboardPage() {
 
       <div className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
         <nav className="mt-2 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
-          <button
-            type="button"
-            onClick={() => setActiveTab('storage')}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'storage'
+          <NavLink
+            to={DASHBOARD_ROUTES.storage}
+            className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+              isActive
                 ? 'bg-brand-700 text-white shadow-soft'
                 : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
             }`}
           >
             Armazenamento
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('projectWiseUsers')}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'projectWiseUsers'
+          </NavLink>
+          <NavLink
+            to={DASHBOARD_ROUTES.projectWiseUsers}
+            className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+              isActive
                 ? 'bg-brand-700 text-white shadow-soft'
                 : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
             }`}
           >
             Usuários PW
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('tickets')}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'tickets'
+          </NavLink>
+          <NavLink
+            to={DASHBOARD_ROUTES.tickets}
+            className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+              isActive
                 ? 'bg-brand-700 text-white shadow-soft'
                 : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
             }`}
           >
             Chamados
-          </button>
+          </NavLink>
           {profile?.role === 'admin' ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('settings')}
-              className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                activeTab === 'settings'
+            <NavLink
+              to={DASHBOARD_ROUTES.settings}
+              className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                isActive
                   ? 'bg-brand-700 text-white shadow-soft'
                   : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
               }`}
             >
               Configurações
-            </button>
+            </NavLink>
           ) : null}
         </nav>
 
