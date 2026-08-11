@@ -61,13 +61,86 @@ function RankingList({
   );
 }
 
+function DistributionBars({
+  emptyText,
+  items,
+}: {
+  emptyText: string;
+  items: Array<{ label: string; count: number }>;
+}) {
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+
+  if (total === 0) {
+    return <p className="py-10 text-center text-sm text-surface-700">{emptyText}</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {items.map((item) => (
+        <div key={item.label}>
+          <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+            <span className="truncate font-medium text-surface-900">{item.label}</span>
+            <span className="shrink-0 font-semibold text-brand-700">
+              {item.count} · {((item.count / total) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+            </span>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-brand-50">
+            <div
+              className="h-full rounded-full bg-brand-600"
+              style={{ width: `${(item.count / total) * 100}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MonthlyVolumeChart({
+  items,
+}: {
+  items: Array<{ label: string; opened: number; closed: number }>;
+}) {
+  const maxValue = Math.max(...items.flatMap((item) => [item.opened, item.closed]), 1);
+
+  if (items.length === 0) {
+    return <p className="py-16 text-center text-sm text-surface-700">Nenhum volume no período.</p>;
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap gap-4 text-xs font-semibold text-surface-700">
+        <span className="inline-flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-brand-600" />Abertos</span>
+        <span className="inline-flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Encerrados</span>
+      </div>
+      <div className="flex h-56 items-end gap-2 border-b border-brand-100 pb-2 sm:gap-4">
+        {items.map((item) => (
+          <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
+            <div className="flex h-44 w-full items-end justify-center gap-1 sm:gap-2">
+              <div
+                title={`${item.opened} abertos`}
+                className="w-1/3 min-w-2 rounded-t-md bg-brand-600 transition hover:bg-brand-700"
+                style={{ height: `${Math.max(item.opened > 0 ? 5 : 0, (item.opened / maxValue) * 100)}%` }}
+              />
+              <div
+                title={`${item.closed} encerrados`}
+                className="w-1/3 min-w-2 rounded-t-md bg-emerald-500 transition hover:bg-emerald-600"
+                style={{ height: `${Math.max(item.closed > 0 ? 5 : 0, (item.closed / maxValue) * 100)}%` }}
+              />
+            </div>
+            <span className="w-full truncate text-center text-[10px] font-medium text-surface-600 sm:text-xs">{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function GaugeCard({
   helperText,
-  maxLabel,
   title,
   value,
   valueLabel,
-  variant = 'progress',
   tone = 'brand',
 }: {
   helperText: string;
@@ -79,81 +152,22 @@ function GaugeCard({
   tone?: 'brand' | 'good' | 'warning';
 }) {
   const normalizedValue = Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
-  const arcLength = 251;
-  const segmentGap = 4;
-  const segmentLength = (arcLength - segmentGap * 2) / 3;
-  const dashLength = (normalizedValue / 100) * arcLength;
-  const needleAngle = -90 + normalizedValue * 1.8;
   const strokeColor =
     tone === 'good' ? '#059669' : tone === 'warning' ? '#e11d48' : '#056b28';
-  const segmentedArcs = [
-    { color: '#dc2626', offset: 0 },
-    { color: '#facc15', offset: -(segmentLength + segmentGap) },
-    { color: '#16a34a', offset: -2 * (segmentLength + segmentGap) },
-  ];
 
   return (
     <article className="flex h-full min-h-[220px] flex-col rounded-[28px] border border-brand-100 bg-white p-6 shadow-soft">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">{title}</p>
 
-      <div className="relative mx-auto mt-4 h-[118px] w-full max-w-[220px]">
-        <svg viewBox="0 0 200 120" className="h-full w-full" role="img" aria-label={title}>
-          {variant === 'segmented' ? (
-            segmentedArcs.map((arc) => (
-              <path
-                key={arc.color}
-                d="M 20 100 A 80 80 0 0 1 180 100"
-                fill="none"
-                stroke={arc.color}
-                strokeDasharray={`${segmentLength} ${arcLength}`}
-                strokeDashoffset={arc.offset}
-                strokeLinecap="butt"
-                strokeWidth="18"
-              />
-            ))
-          ) : (
-            <>
-              <path
-                d="M 20 100 A 80 80 0 0 1 180 100"
-                fill="none"
-                stroke="#e8f2e4"
-                strokeLinecap="round"
-                strokeWidth="18"
-              />
-              <path
-                d="M 20 100 A 80 80 0 0 1 180 100"
-                fill="none"
-                stroke={strokeColor}
-                strokeDasharray={`${dashLength} ${arcLength}`}
-                strokeLinecap="round"
-                strokeWidth="18"
-              />
-            </>
-          )}
-          <line
-            x1="100"
-            x2="100"
-            y1="100"
-            y2="38"
-            stroke="#183224"
-            strokeLinecap="round"
-            strokeWidth="5"
-            style={{
-              transform: `rotate(${needleAngle}deg)`,
-              transformBox: 'fill-box',
-              transformOrigin: '100px 100px',
-            }}
-          />
-        </svg>
-
-        <div className="absolute inset-x-0 bottom-0 text-center">
+      <div
+        className="relative mx-auto mt-4 grid h-32 w-32 place-items-center rounded-full"
+        style={{ background: `conic-gradient(${strokeColor} ${normalizedValue}%, #e8f2e4 0)` }}
+        role="img"
+        aria-label={`${title}: ${valueLabel}`}
+      >
+        <div className="grid h-24 w-24 place-items-center rounded-full bg-white text-center">
           <p className="text-3xl font-semibold leading-none text-surface-900">{valueLabel}</p>
         </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between text-xs font-medium text-surface-600">
-        <span>0</span>
-        <span>{maxLabel}</span>
       </div>
       <p className="mt-auto pt-4 text-sm leading-6 text-surface-700">{helperText}</p>
     </article>
@@ -274,6 +288,61 @@ export function TicketsTab({ rows }: TicketsTabProps) {
         </div>
       </PanelShell>
 
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <PanelShell
+            title="Evolução dos chamados"
+            description="Aberturas e encerramentos por mês no período selecionado."
+          >
+            <MonthlyVolumeChart items={summary.monthlyVolume} />
+          </PanelShell>
+        </div>
+
+        <PanelShell
+          title="Distribuição por status"
+          description="Situação dos chamados registrados dentro do período."
+          tone="soft"
+        >
+          <DistributionBars
+            emptyText="Nenhum status encontrado no período."
+            items={summary.statusBreakdown}
+          />
+        </PanelShell>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <PanelShell
+          title="Pendentes por idade"
+          description="Tempo transcorrido desde a abertura dos chamados ainda pendentes."
+          tone="soft"
+        >
+          <DistributionBars emptyText="Nenhum chamado pendente." items={summary.pendingAging} />
+        </PanelShell>
+
+        <PanelShell
+          title="Tempo de resolução"
+          description={`Distribuição dos encerrados. Mediana: ${summary.medianResolutionTime}.`}
+          tone="soft"
+        >
+          <DistributionBars
+            emptyText="Nenhum chamado encerrado no período."
+            items={summary.resolutionTimeBuckets}
+          />
+        </PanelShell>
+
+        <PanelShell
+          title="Motivos"
+          description="Maiores motivos entre os chamados abertos no período."
+          tone="soft"
+        >
+          <RankingList
+            emptyText="Nenhum motivo informado no período."
+            items={summary.topCategories}
+            limit={6}
+          />
+        </PanelShell>
+      </div>
+
       <PanelShell
         title="Detalhamento dos chamados"
         description="Chamados abertos por empresa e principais solicitantes para o filtro atual."
@@ -312,13 +381,6 @@ export function TicketsTab({ rows }: TicketsTabProps) {
         </div>
       </PanelShell>
 
-      <PanelShell title="Motivos" description="Maiores motivos registrados nos chamados." tone="soft">
-        <RankingList
-          emptyText="Nenhum motivo informado na planilha."
-          items={summary.topCategories}
-          limit={10}
-        />
-      </PanelShell>
     </div>
   );
 }
