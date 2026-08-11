@@ -3,6 +3,11 @@ import { PanelShell } from '@/components/PanelShell';
 import { TicketKpiCard } from '@/components/TicketKpiCard';
 import type { TicketRow } from '@/types/monitoring';
 import { getTicketDateRange, getTicketsSummary } from '@/utils/ticketsKpis';
+import {
+  getDatePeriodPreset,
+  getDefaultDatePeriod,
+  type DatePeriodPreset,
+} from '@/utils/datePeriod';
 
 interface TicketsTabProps {
   rows: TicketRow[];
@@ -202,8 +207,9 @@ export function TicketsTab({ rows }: TicketsTabProps) {
   const [periodEndDate, setPeriodEndDate] = useState('');
 
   useEffect(() => {
-    setPeriodStartDate(dateRange?.minDate ?? '');
-    setPeriodEndDate(dateRange?.maxDate ?? '');
+    const defaultPeriod = getDefaultDatePeriod(dateRange?.maxDate);
+    setPeriodStartDate(defaultPeriod.startDate);
+    setPeriodEndDate(defaultPeriod.endDate);
   }, [dateRange?.maxDate, dateRange?.minDate]);
 
   const summary = useMemo(
@@ -214,6 +220,14 @@ export function TicketsTab({ rows }: TicketsTabProps) {
       }),
     [periodEndDate, periodStartDate, rows],
   );
+  const defaultTicketPeriod = useMemo(
+    () => getDefaultDatePeriod(dateRange?.maxDate),
+    [dateRange?.maxDate],
+  );
+  const isUsingLatestTicketMonth =
+    defaultTicketPeriod.usedLatestAvailableMonth &&
+    periodStartDate === defaultTicketPeriod.startDate &&
+    periodEndDate === defaultTicketPeriod.endDate;
   const slaTone =
     summary.slaApplicableTickets === 0
       ? 'brand'
@@ -231,9 +245,13 @@ export function TicketsTab({ rows }: TicketsTabProps) {
           ? 'Atenção'
           : 'Crítico';
 
-  function clearPeriodFilter() {
-    setPeriodStartDate(dateRange?.minDate ?? '');
-    setPeriodEndDate(dateRange?.maxDate ?? '');
+  function applyPeriodPreset(preset: DatePeriodPreset) {
+    const period = getDatePeriodPreset(preset, {
+      minDate: dateRange?.minDate,
+      maxDate: dateRange?.maxDate,
+    });
+    setPeriodStartDate(period.startDate);
+    setPeriodEndDate(period.endDate);
   }
 
   return (
@@ -242,14 +260,13 @@ export function TicketsTab({ rows }: TicketsTabProps) {
         title="Chamados"
         description="Indicadores de atendimento, SLA, categorias e distribuição por organização."
       >
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)_96px] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)] sm:items-end">
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
             Data inicial
             <input
               type="date"
               value={periodStartDate}
-              min={dateRange?.minDate}
-              max={periodEndDate || dateRange?.maxDate}
+              max={periodEndDate || undefined}
               disabled={rows.length === 0}
               onChange={(event) => setPeriodStartDate(event.target.value)}
               className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
@@ -261,23 +278,38 @@ export function TicketsTab({ rows }: TicketsTabProps) {
             <input
               type="date"
               value={periodEndDate}
-              min={periodStartDate || dateRange?.minDate}
-              max={dateRange?.maxDate}
+              min={periodStartDate || undefined}
               disabled={rows.length === 0}
               onChange={(event) => setPeriodEndDate(event.target.value)}
               className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
 
-          <button
-            type="button"
-            onClick={clearPeriodFilter}
-            disabled={rows.length === 0}
-            className="h-11 rounded-xl border border-brand-100 bg-white px-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Limpar
-          </button>
         </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {[
+            ['currentMonth', 'Mês atual'],
+            ['last3Months', 'Últimos 3 meses'],
+            ['last12Months', 'Últimos 12 meses'],
+            ['all', 'Todo o período'],
+          ].map(([preset, label]) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => applyPeriodPreset(preset as DatePeriodPreset)}
+              disabled={rows.length === 0}
+              className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-xs font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {isUsingLatestTicketMonth ? (
+          <p className="mt-3 text-xs font-medium text-amber-700">
+            Sem chamados no mês atual; exibindo o mês mais recente disponível.
+          </p>
+        ) : null}
 
         <div className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <TicketKpiCard

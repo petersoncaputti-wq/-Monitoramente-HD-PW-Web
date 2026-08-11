@@ -1,10 +1,13 @@
+import type { DatePeriodPreset } from '@/utils/datePeriod';
+
 interface PeriodFilterProps {
   endDate: string;
   filteredRowsCount: number;
+  isLatestAvailableMonth?: boolean;
   maxDate?: string;
   minDate?: string;
-  onClear: () => void;
   onEndDateChange: (value: string) => void;
+  onPresetChange: (preset: DatePeriodPreset) => void;
   onStartDateChange: (value: string) => void;
   startDate: string;
   totalRowsCount: number;
@@ -13,10 +16,9 @@ interface PeriodFilterProps {
 export function PeriodFilter({
   endDate,
   filteredRowsCount,
-  maxDate,
-  minDate,
-  onClear,
+  isLatestAvailableMonth = false,
   onEndDateChange,
+  onPresetChange,
   onStartDateChange,
   startDate,
   totalRowsCount,
@@ -34,16 +36,20 @@ export function PeriodFilter({
           <p className="mt-2 text-sm text-surface-700">
             {filteredRowsCount} de {totalRowsCount} registros exibidos
           </p>
+          {isLatestAvailableMonth ? (
+            <p className="mt-2 text-xs font-medium text-amber-700">
+              Sem registros no mês atual; exibindo o mês mais recente disponível.
+            </p>
+          ) : null}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)] sm:items-end">
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
             Data inicial
             <input
               type="date"
               value={startDate}
-              min={minDate}
-              max={endDate || maxDate}
+              max={endDate || undefined}
               disabled={!hasImportedRows}
               onChange={(event) => onStartDateChange(event.target.value)}
               className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
@@ -55,22 +61,31 @@ export function PeriodFilter({
             <input
               type="date"
               value={endDate}
-              min={startDate || minDate}
-              max={maxDate}
+              min={startDate || undefined}
               disabled={!hasImportedRows}
               onChange={(event) => onEndDateChange(event.target.value)}
               className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
 
-          <button
-            type="button"
-            onClick={onClear}
-            disabled={!hasImportedRows}
-            className="h-11 rounded-2xl border border-brand-100 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Limpar
-          </button>
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
+            {[
+              ['currentMonth', 'Mês atual'],
+              ['last3Months', 'Últimos 3 meses'],
+              ['last12Months', 'Últimos 12 meses'],
+              ['all', 'Todo o período'],
+            ].map(([preset, label]) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => onPresetChange(preset as DatePeriodPreset)}
+                disabled={!hasImportedRows}
+                className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-xs font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

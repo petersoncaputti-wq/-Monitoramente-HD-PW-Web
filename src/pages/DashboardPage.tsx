@@ -14,6 +14,11 @@ import { UsagePercentageCard } from '@/components/UsagePercentageCard';
 import { UsedSpaceCard } from '@/components/UsedSpaceCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserSettingsPage } from '@/pages/UserSettingsPage';
+import {
+  getDatePeriodPreset,
+  getDefaultDatePeriod,
+  type DatePeriodPreset,
+} from '@/utils/datePeriod';
 import type {
   ImportedWorkbookData,
   E365UsageRow,
@@ -605,6 +610,14 @@ export function DashboardPage() {
     setTicketPage((currentPage) => Math.min(currentPage, totalTicketPages));
   }, [totalTicketPages]);
   const dateRange = useMemo(() => getRowsDateRange(rows), [rows]);
+  const defaultStoragePeriod = useMemo(
+    () => getDefaultDatePeriod(dateRange?.maxDate),
+    [dateRange?.maxDate],
+  );
+  const isUsingLatestStorageMonth =
+    defaultStoragePeriod.usedLatestAvailableMonth &&
+    periodStartDate === defaultStoragePeriod.startDate &&
+    periodEndDate === defaultStoragePeriod.endDate;
   const filteredRows = useMemo(
     () => filterRowsByPeriod(rows, periodStartDate, periodEndDate),
     [periodEndDate, periodStartDate, rows],
@@ -628,8 +641,9 @@ export function DashboardPage() {
       navigate(DASHBOARD_ROUTES.storage);
     }
 
-    setPeriodStartDate(range?.minDate ?? '');
-    setPeriodEndDate(range?.maxDate ?? '');
+    const defaultPeriod = getDefaultDatePeriod(range?.maxDate);
+    setPeriodStartDate(defaultPeriod.startDate);
+    setPeriodEndDate(defaultPeriod.endDate);
   }
 
   function applyTicketsData(data: ImportedWorkbookData) {
@@ -1268,9 +1282,13 @@ export function DashboardPage() {
     return nextRows;
   }
 
-  function clearPeriodFilter() {
-    setPeriodStartDate(dateRange?.minDate ?? '');
-    setPeriodEndDate(dateRange?.maxDate ?? '');
+  function applyPeriodPreset(preset: DatePeriodPreset) {
+    const period = getDatePeriodPreset(preset, {
+      minDate: dateRange?.minDate,
+      maxDate: dateRange?.maxDate,
+    });
+    setPeriodStartDate(period.startDate);
+    setPeriodEndDate(period.endDate);
   }
 
   return (
@@ -1520,10 +1538,11 @@ export function DashboardPage() {
               <PeriodFilter
                 endDate={periodEndDate}
                 filteredRowsCount={filteredRows.length}
+                isLatestAvailableMonth={isUsingLatestStorageMonth}
                 maxDate={dateRange?.maxDate}
                 minDate={dateRange?.minDate}
-                onClear={clearPeriodFilter}
                 onEndDateChange={setPeriodEndDate}
+                onPresetChange={applyPeriodPreset}
                 onStartDateChange={setPeriodStartDate}
                 startDate={periodStartDate}
                 totalRowsCount={rows.length}
