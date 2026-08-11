@@ -397,44 +397,6 @@ export function TicketsTab({ rows }: TicketsTabProps) {
         </PanelShell>
       </div>
 
-      <PanelShell
-        title="Detalhamento dos chamados"
-        description="Chamados abertos por empresa e principais solicitantes para o filtro atual."
-        tone="soft"
-      >
-        <div className="mb-5 rounded-2xl border border-brand-100 bg-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-            Período selecionado
-          </p>
-          <p className="mt-3 text-3xl font-semibold text-surface-900">
-            {summary.selectedServiceOpenTickets}
-          </p>
-          <p className="mt-2 text-sm text-surface-700">
-            Chamados abertos no período selecionado.
-          </p>
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-2">
-          <div>
-            <h3 className="mb-4 text-base font-semibold text-surface-900">Abertos por empresa</h3>
-            <RankingList
-              emptyText="Nenhuma empresa encontrada para o serviço selecionado."
-              items={summary.selectedServiceOpenByCompany}
-              limit={10}
-            />
-          </div>
-
-          <div>
-            <h3 className="mb-4 text-base font-semibold text-surface-900">Top 10 solicitantes</h3>
-            <RankingList
-              emptyText="Nenhum solicitante encontrado para o serviço selecionado."
-              items={summary.selectedServiceTopRequesters}
-              limit={10}
-            />
-          </div>
-        </div>
-      </PanelShell>
-
     </div>
   );
 }
