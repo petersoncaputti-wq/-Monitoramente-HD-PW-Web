@@ -38,6 +38,7 @@ export interface TicketsSummary {
   pendingByPriority: Array<{ label: string; count: number }>;
   pendingAging: Array<{ label: string; count: number }>;
   statusBreakdown: Array<{ label: string; count: number }>;
+  monthlyVolume: Array<{ label: string; opened: number; closed: number }>;
 }
 
 function normalizeText(value: unknown): string {
@@ -330,6 +331,33 @@ function countResolutionTimeBuckets(durations: number[]) {
   return [...buckets.entries()].map(([label, count]) => ({ label, count }));
 }
 
+function countMonthlyVolume(openedRows: TicketRow[], closedRows: TicketRow[]) {
+  const months = new Map<string, { date: Date; opened: number; closed: number }>();
+
+  const addDate = (date: Date | null, field: 'opened' | 'closed') => {
+    if (!date) return;
+    const monthDate = new Date(date.getFullYear(), date.getMonth(), 1);
+    const key = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+    const current = months.get(key) ?? { date: monthDate, opened: 0, closed: 0 };
+    current[field] += 1;
+    months.set(key, current);
+  };
+
+  openedRows.forEach((row) => addDate(parseTicketDate(row.Abertoem), 'opened'));
+  closedRows.forEach((row) => addDate(parseTicketDate(getClosedAt(row)), 'closed'));
+
+  return [...months.values()]
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .slice(-12)
+    .map((item) => ({
+      label: new Intl.DateTimeFormat('pt-BR', { month: 'short', year: '2-digit' })
+        .format(item.date)
+        .replace('.', ''),
+      opened: item.opened,
+      closed: item.closed,
+    }));
+}
+
 function getClosedAt(row: TicketRow): unknown {
   return getRowValue(row, ['Fechadoem', 'Atualizado']);
 }
@@ -385,12 +413,15 @@ export function getTicketsSummary(
 
     return isDateInRange(parseTicketDate(row.Abertoem), startDate, endDate);
   });
-  const slaRows = openedRows.filter(
-    (row) => !normalizeComparable(row.StatusdoSLA).includes('nao aplicado'),
-  );
+  const slaRows = openedRows.filter((row) => {
+    const status = normalizeComparable(row.StatusdoSLA);
+    return status === 'no sla' || status === 'sla violado';
+  });
   const slaApplicableTickets = slaRows.length;
   const inSla = slaRows.filter((row) => normalizeText(row.StatusdoSLA) === 'No SLA').length;
-  const violatedSla = slaApplicableTickets - inSla;
+  const violatedSla = slaRows.filter(
+    (row) => normalizeComparable(row.StatusdoSLA) === 'sla violado',
+  ).length;
   const resolutionDurations = closedRows
     .map((row) => {
       const openedAt = parseTicketDate(row.Abertoem);
@@ -415,6 +446,7 @@ export function getTicketsSummary(
     selectedService && selectedService !== 'Todos os servicos'
       ? openedRows.filter((row) => normalizeText(getRowValue(row, TICKET_FIELDS.category)) === selectedService)
       : openedRows;
+  const selectedServiceOpenRows = selectedServiceRows.filter((row) => !isClosedStatus(row.Status));
 
   return {
     totalTickets,
@@ -438,16 +470,17 @@ export function getTicketsSummary(
     medianResolutionTime: formatDuration(medianResolution),
     resolutionTimeBuckets: countResolutionTimeBuckets(resolutionDurations),
     selectedService: selectedService || 'Todos os servicos',
-    selectedServiceOpenTickets: selectedServiceRows.length,
-    topCategories: countBy(rows, TICKET_FIELDS.reason),
+    selectedServiceOpenTickets: selectedServiceOpenRows.length,
+    topCategories: countBy(openedRows, TICKET_FIELDS.reason),
     topOrganizations: countBy(rows, TICKET_FIELDS.beneficiaryOrganization),
     topRequesterOrganizations: countBy(rows, TICKET_FIELDS.requesterOrganization),
     topRequesters: countBy(openedRows, 'Solicitante'),
-    selectedServiceOpenByCompany: countBy(selectedServiceRows, TICKET_FIELDS.beneficiaryOrganization),
-    selectedServiceTopRequesters: countBy(selectedServiceRows, 'Solicitante'),
+    selectedServiceOpenByCompany: countBy(selectedServiceOpenRows, TICKET_FIELDS.beneficiaryOrganization),
+    selectedServiceTopRequesters: countBy(selectedServiceOpenRows, 'Solicitante'),
     pendingByPriority: countBy(pendingRows, 'Prioridade'),
     pendingAging: countAging(pendingRows),
-    statusBreakdown: countBy(rows, 'Status'),
+    statusBreakdown: countBy(openedRows, 'Status'),
+    monthlyVolume: countMonthlyVolume(openedRows, closedRows),
   };
 }
 
