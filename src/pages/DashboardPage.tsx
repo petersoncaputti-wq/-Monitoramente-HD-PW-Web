@@ -1989,6 +1989,24 @@ export function DashboardPage() {
                   </p>
                 ) : null}
 
+              </section>
+            ) : null}
+
+            <section className="mt-6">
+              <TicketsTab rows={ticketRows} />
+            </section>
+
+            {profile?.role === 'admin' ? (
+              <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
+                    Lista de chamados
+                  </p>
+                  <p className="text-sm text-surface-700">
+                    Consulte, filtre e gerencie os chamados já cadastrados.
+                  </p>
+                </div>
+
                 <div className="mt-6 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
                     <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
@@ -2241,9 +2259,6 @@ export function DashboardPage() {
             </section>
             ) : null}
 
-            <section className="mt-6">
-              <TicketsTab rows={ticketRows} />
-            </section>
           </>
         ) : null}
 
