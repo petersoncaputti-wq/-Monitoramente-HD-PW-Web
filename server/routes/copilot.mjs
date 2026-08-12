@@ -2,6 +2,17 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db.mjs';
+import {
+  getToken,
+  listCompanies,
+  listUsers,
+  listReportings,
+  listInventoryCounts,
+  listJobProgress,
+  listFirmCounts,
+  listPhotosForCompany,
+} from '../services/kartado.service.mjs';
+import { buildConcessaoDashboard } from '../services/kartado-analytics.service.mjs';
 
 const router = Router();
 const limiter = rateLimit({
@@ -150,15 +161,180 @@ async function portal(input) {
   return { area: 'portal_users', filters: { search }, records: result.rows, summary: summary.rows[0] };
 }
 
+router.get('/openapi.json', (request, response) => {
+  const baseUrl = `${request.protocol}://${request.get('host')}`;
+  response.json({
+    openapi: '3.0.3',
+    info: {
+      title: 'Painel de Sistemas de Engenharia - Copilot API',
+      version: '1.0.0',
+      description: 'Ferramentas somente leitura para consultar ProjectWise, E365 e Kartado.',
+    },
+    servers: [{ url: `${baseUrl}/api/copilot` }],
+    paths: {
+      '/analytics': {
+        post: {
+          operationId: 'consultarDadosEngenharia',
+          summary: 'Consulta dados operacionais dos sistemas de engenharia',
+          description: 'Escolha uma área e envie filtros opcionais. Para Kartado, consulte primeiro sem company para obter as unidades e depois informe UUID ou nome.',
+          security: [{ CopilotApiKey: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['area'],
+                  properties: {
+                    area: { type: 'string', enum: ['overview', 'storage', 'tickets', 'explorer', 'portal', 'e365', 'kartado'], description: 'Fonte de dados a consultar.' },
+                    company: { type: 'string', description: 'Nome ou UUID da unidade Kartado.' },
+                    search: { type: 'string', maxLength: 200, description: 'Texto para pesquisar registros.' },
+                    status: { type: 'string', maxLength: 80 },
+                    priority: { type: 'string', maxLength: 80 },
+                    dateFrom: { type: 'string', format: 'date' },
+                    dateTo: { type: 'string', format: 'date' },
+                    quarter: { type: 'string', maxLength: 20, description: 'Quarter E365.' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Resultado da consulta.', content: { 'application/json': { schema: { type: 'object', additionalProperties: true } } } },
+            400: { description: 'Parâmetros inválidos.' },
+            401: { description: 'Chave ausente.' },
+            403: { description: 'Chave inválida.' },
+            429: { description: 'Limite de consultas excedido.' },
+          },
+        },
+      },
+    },
+    components: {
+      securitySchemes: {
+        CopilotApiKey: { type: 'apiKey', in: 'header', name: 'x-copilot-key' },
+      },
+    },
+  });
+});
+
+async function e365(input) {
+  const search = text(input.search);
+  const quarter = text(input.quarter, 20);
+  const params = [search || null, quarter || null];
+  const summary = await query(
+    `select count(*)::int as total,
+            count(distinct ims_id)::int as distinct_users,
+            count(distinct product_id)::int as distinct_products,
+            coalesce(sum(net_amount),0)::double precision as net_amount
+       from e365_usage
+      where ($1::text is null or concat_ws(' ',account_name,persona_email,product_name,ims_id) ilike '%' || $1 || '%')
+        and ($2::text is null or usage_quarter = $2)`,
+    params,
+  );
+  const byProduct = await query(
+    `select product_name as label,count(*)::int as total,
+            coalesce(sum(net_amount),0)::double precision as net_amount
+       from e365_usage
+      where ($1::text is null or concat_ws(' ',account_name,persona_email,product_name,ims_id) ilike '%' || $1 || '%')
+        and ($2::text is null or usage_quarter = $2)
+      group by product_name order by total desc limit 30`,
+    params,
+  );
+  const records = await query(
+    `select account_name,persona_email,product_name,connection_status,usage_date,
+            usage_quarter,currency,net_amount::double precision as net_amount
+       from e365_usage
+      where ($1::text is null or concat_ws(' ',account_name,persona_email,product_name,ims_id) ilike '%' || $1 || '%')
+        and ($2::text is null or usage_quarter = $2)
+      order by usage_quarter desc,persona_email asc nulls last limit 100`,
+    params,
+  );
+  return { area: 'e365', filters: { quarter, search }, summary: summary.rows[0], breakdown: { products: byProduct.rows }, records: records.rows };
+}
+
+function kartadoCredentials() {
+  const username = process.env.KARTADO_USERNAME?.trim();
+  const password = process.env.KARTADO_PASSWORD;
+  if (!username || !password) throw Object.assign(new Error('Integração Kartado não configurada.'), { status: 503 });
+  return { username, password };
+}
+
+function resolveCompany(companies, input) {
+  if (!input) return null;
+  const term = text(input, 200).toLocaleLowerCase('pt-BR');
+  const exact = companies.find((company) =>
+    company.uuid?.toLowerCase() === term || company.name?.toLocaleLowerCase('pt-BR') === term,
+  );
+  if (exact) return exact;
+  const matches = companies.filter((company) => company.name?.toLocaleLowerCase('pt-BR').includes(term));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+async function kartado(input) {
+  const credentials = kartadoCredentials();
+  const auth = await getToken(credentials.username, credentials.password);
+  const companies = await listCompanies(auth.token);
+  const companyInput = text(input.company, 200);
+  if (!companyInput) {
+    return { area: 'kartado', requiresCompany: true, companies: companies.map(({ uuid, name }) => ({ uuid, name })) };
+  }
+  const company = resolveCompany(companies, companyInput);
+  if (!company) {
+    return { area: 'kartado', requiresCompany: true, message: 'Unidade ausente ou ambígua.', companies: companies.map(({ uuid, name }) => ({ uuid, name })) };
+  }
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const fifteenDaysAgo = new Date(now.getTime() - 15 * 86_400_000).toISOString().slice(0, 10);
+  const search = text(input.search);
+  const [usersResult, reportingsResult, inventoryResult, jobsResult, firmsResult, monthResult, photosResult] = await Promise.allSettled([
+    listUsers(auth.token, company.uuid, { pageSize: search ? 100 : 25, search, maxPages: search ? 2 : 1 }),
+    listReportings(auth.token, company.uuid, { pageSize: 50 }),
+    listInventoryCounts(auth.token, company.uuid),
+    listJobProgress(auth.token, company.uuid),
+    listFirmCounts(auth.token, company.uuid),
+    listReportings(auth.token, company.uuid, { foundAtAfter: startOfMonth, pageSize: 100, maxPages: 3 }),
+    listPhotosForCompany(auth.token, company.uuid, { foundAtAfter: fifteenDaysAgo, pageSize: 100, maxPages: 5 }),
+  ]);
+  const value = (result, fallback) => result.status === 'fulfilled' ? result.value : { ...fallback, error: result.reason?.message };
+  const dashboard = buildConcessaoDashboard(
+    company,
+    value(usersResult, { users: [], totalCount: 0 }),
+    value(reportingsResult, { reportings: [], totalCount: 0 }),
+    value(inventoryResult, { totalCount: null, withImageCount: null, inventoryItems: [] }),
+    value(jobsResult, { totalJobs: null, totalThisMonth: null, dimProgramacoes: null }),
+    value(firmsResult, { total: null, firms: [] }),
+    value(monthResult, { reportings: [], totalCount: 0 }),
+    value(photosResult, { photos: [], reportingUuids: [], totalPhotos: null }),
+  );
+  return {
+    area: 'kartado',
+    company: dashboard.company,
+    summary: dashboard.summary,
+    alerts: dashboard.alerts,
+    breakdown: {
+      reportingStatus: dashboard.reportings.byStatus,
+      reportingTypes: dashboard.reportings.byType,
+      roads: dashboard.reportings.byRoad,
+      origins: dashboard.reportings.byOrigin,
+    },
+    users: dashboard.users.users.slice(0, 100),
+    reportings: dashboard.reportings.items.slice(0, 100),
+  };
+}
+
 router.post('/analytics', limiter, authenticate, async (request, response) => {
   const area = text(request.body?.area, 40).toLowerCase();
-  const handlers = { overview, storage, tickets, explorer, portal };
+  const handlers = { overview, storage, tickets, explorer, portal, e365, kartado };
   const handler = handlers[area];
   if (!handler) {
-    response.status(400).json({ error: 'Área inválida. Use overview, storage, tickets, explorer ou portal.' });
+    response.status(400).json({ error: 'Área inválida. Use overview, storage, tickets, explorer, portal, e365 ou kartado.' });
     return;
   }
-  response.json(await handler(request.body ?? {}));
+  try {
+    response.json(await handler(request.body ?? {}));
+  } catch (error) {
+    response.status(error.status || 500).json({ error: error.message || 'Falha ao consultar os dados.' });
+  }
 });
 
 export default router;
