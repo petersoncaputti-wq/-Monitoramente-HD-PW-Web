@@ -268,6 +268,74 @@ kartadoRouter.post('/reportings', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const DASHBOARD_CACHE_TTL_MS = Number(process.env.KARTADO_CACHE_TTL_MS || 10 * 60 * 1000);
 const dashboardCache = new Map();
+const healthCache = new Map();
+const healthInFlight = new Map();
+
+async function loadHealthDashboard(company, credentials) {
+  const auth = await getToken(credentials.username, credentials.password);
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const fifteenDaysAgo = new Date(now.getTime() - 15 * 86_400_000).toISOString().split('T')[0];
+  const [reportingsResult, monthResult, photosResult, jobsResult] = await Promise.allSettled([
+    listReportings(auth.token, company.uuid, { pageSize: 25 }),
+    listReportings(auth.token, company.uuid, { foundAtAfter: startOfMonth, pageSize: 100, maxPages: 3 }),
+    listPhotosForCompany(auth.token, company.uuid, { foundAtAfter: fifteenDaysAgo, pageSize: 100, maxPages: 5 }),
+    listJobProgress(auth.token, company.uuid),
+  ]);
+  const reportings = reportingsResult.status === 'fulfilled'
+    ? reportingsResult.value
+    : { reportings: [], totalCount: 0, error: reportingsResult.reason?.message };
+  const reportingsMonth = monthResult.status === 'fulfilled'
+    ? monthResult.value
+    : { reportings: [], totalCount: 0, error: monthResult.reason?.message };
+  const photos = photosResult.status === 'fulfilled'
+    ? photosResult.value
+    : { photos: [], reportingUuids: [], totalPhotos: null, error: photosResult.reason?.message };
+  const jobs = jobsResult.status === 'fulfilled'
+    ? jobsResult.value
+    : { totalJobs: null, totalThisMonth: null, dimProgramacoes: null, error: jobsResult.reason?.message };
+  return buildConcessaoDashboard(
+    company,
+    { users: [], totalCount: 0 },
+    reportings,
+    null,
+    jobs,
+    null,
+    reportingsMonth,
+    photos,
+  );
+}
+
+kartadoRouter.post('/health', async (req, res) => {
+  const credentials = requireCreds(req, res);
+  if (!credentials) return;
+  const { companyUuid, companyName, force = false } = req.body || {};
+  if (!companyUuid) return res.status(400).json({ success: false, error: 'companyUuid é obrigatório.' });
+  const cached = healthCache.get(companyUuid);
+  if (!force && cached && cached.expiresAt > Date.now()) {
+    return res.json({ success: true, dashboard: cached.dashboard, cache: { hit: true, expiresAt: cached.expiresAt } });
+  }
+  try {
+    let pending = healthInFlight.get(companyUuid);
+    if (!pending || force) {
+      pending = loadHealthDashboard(
+        { uuid: companyUuid, id: companyUuid, name: companyName || companyUuid },
+        credentials,
+      );
+      healthInFlight.set(companyUuid, pending);
+      void pending.then(() => {
+        if (healthInFlight.get(companyUuid) === pending) healthInFlight.delete(companyUuid);
+      }, () => {
+        if (healthInFlight.get(companyUuid) === pending) healthInFlight.delete(companyUuid);
+      });
+    }
+    const dashboard = await pending;
+    healthCache.set(companyUuid, { dashboard, expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS });
+    return res.json({ success: true, dashboard, cache: { hit: false, expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS } });
+  } catch (error) {
+    return res.status(error.httpStatus || 500).json({ success: false, error: error.message });
+  }
+});
 
 kartadoRouter.post('/dashboard', (req, res, next) => {
   const { companyUuid = '', summaryOnly = false, force = false } = req.body || {};

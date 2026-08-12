@@ -94,6 +94,25 @@ export async function loadKartadoConcession(
   return result.dashboard;
 }
 
+export async function loadKartadoHealth(
+  company: KartadoCompany,
+  options: { force?: boolean } = {},
+): Promise<KartadoConcessionDashboard> {
+  const result = await request<{
+    success: boolean;
+    dashboard: KartadoConcessionDashboard;
+    error?: string;
+  }>('/health', {
+    companyUuid: company.uuid || company.id,
+    companyName: company.name,
+    force: options.force || false,
+  });
+  if (!result.success || !result.dashboard) {
+    throw new Error(result.error || `Saúde de ${company.name} indisponível.`);
+  }
+  return result.dashboard;
+}
+
 async function request<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 90_000);

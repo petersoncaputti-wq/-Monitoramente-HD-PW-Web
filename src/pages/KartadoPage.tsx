@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   loadKartadoCompanies,
   loadKartadoConcession,
+  loadKartadoHealth,
   loadKartadoReportings,
   searchKartadoUsers,
   type KartadoConcessionDashboard,
@@ -146,11 +147,39 @@ function HealthPillar({ label, score, detail, available = true }: { label: strin
   );
 }
 
+function HealthUnitDetails({ unit }: { unit: KartadoConcessionDashboard }) {
+  const summary = unit.summary;
+  const score = Number(summary.saudeScore || 0);
+  const status = healthStatus(score);
+  const daysScore = Number(summary.diasUsoScore || 0);
+  const days15Score = Number(summary.dias15Score || 0);
+  const photosScore = Number(summary.pctFotosHistorico ?? summary.pctFotosNaAmostra ?? 0);
+  const programmingScore = Number(summary.programacaoDimScore || 0);
+  const programmingAvailable = summary.programacaoDimScore !== null && summary.programacaoDimScore !== undefined;
+  return (
+    <div className="rounded-b-2xl border border-t-0 border-brand-700 bg-brand-50/40 p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <HealthGauge score={score} />
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Detalhamento da unidade</p>
+          <h4 className="mt-1 text-xl font-semibold text-surface-900">{unit.company.name}</h4>
+          <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${status.background} ${status.color}`}>{status.label}</span>
+        </div>
+      </div>
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <HealthPillar label="Dias de uso no mês" score={daysScore} detail={`${formatNumber(Number(summary.diasUsados || 0))} de ${formatNumber(Number(summary.diasUteisDecorridos || 0))} dias úteis com atividade.`} />
+        <HealthPillar label="Atividade nos últimos 15 dias" score={days15Score} detail={`${formatNumber(Number(summary.dias15Usados || 0))} de ${formatNumber(Number(summary.diasUteisJanela || 0))} dias úteis com atividade.`} />
+        <HealthPillar label="Apontamentos com foto" score={photosScore} detail={`${formatNumber(Number(summary.apontamentosFotoComFoto || 0))} apontamentos com foto; ${formatNumber(Number(unit.photos15d?.totalPhotos || 0))} fotos encontradas.`} available={summary.pctFotosHistorico !== null || summary.pctFotosNaAmostra !== null} />
+        <HealthPillar label="Programações" score={programmingScore} detail={programmingAvailable ? `${formatNumber(Number(summary.programacaoConcluidas || 0))} concluídas, ${formatNumber(Number(summary.programacaoEmAndamento || 0))} em andamento e ${formatNumber(Number(summary.programacaoAtrasadas || 0))} atrasadas.` : 'Sem programações disponíveis para o período.'} available={programmingAvailable} />
+      </div>
+    </div>
+  );
+}
+
 function KartadoHealthPanel({ units, loading, completed, total }: { units: KartadoConcessionDashboard[]; loading: boolean; completed: number; total: number }) {
   const [selectedUuid, setSelectedUuid] = useState('');
   const [explanationOpen, setExplanationOpen] = useState(false);
   const ranked = [...units].sort((a, b) => Number(b.summary.saudeScore || 0) - Number(a.summary.saudeScore || 0));
-  const selected = ranked.find((unit) => unit.company.uuid === selectedUuid) || null;
   const average = ranked.length ? Math.round(ranked.reduce((sum, unit) => sum + Number(unit.summary.saudeScore || 0), 0) / ranked.length) : 0;
   const healthy = ranked.filter((unit) => Number(unit.summary.saudeScore || 0) >= 75).length;
   const attention = ranked.filter((unit) => Number(unit.summary.saudeScore || 0) >= 45 && Number(unit.summary.saudeScore || 0) < 75).length;
@@ -224,21 +253,11 @@ function KartadoHealthPanel({ units, loading, completed, total }: { units: Karta
           {ranked.map((unit, index) => {
             const score = Number(unit.summary.saudeScore || 0);
             const status = healthStatus(score);
-            return <button key={unit.company.uuid} type="button" onClick={() => setSelectedUuid(unit.company.uuid)} className={`grid w-full gap-3 rounded-2xl border p-4 text-left transition sm:grid-cols-[44px_1fr_100px] sm:items-center ${selectedUuid === unit.company.uuid ? 'border-brand-700 bg-brand-50' : 'border-brand-100 hover:bg-brand-50/50'}`}><span className="text-center text-lg font-semibold text-surface-500">{index + 1}</span><div><span className="font-semibold text-surface-900">{unit.company.name}</span><div className="mt-2 h-2 overflow-hidden rounded-full bg-brand-50"><div className={`h-full rounded-full ${status.bar}`} style={{ width: `${score}%` }} /></div></div><div className="text-right"><span className={`text-xl font-bold ${status.color}`}>{score}</span><span className={`block text-xs ${status.color}`}>{status.label}</span></div></button>;
+            const expanded = selectedUuid === unit.company.uuid;
+            return <div key={unit.company.uuid}><button type="button" aria-expanded={expanded} onClick={() => setSelectedUuid((current) => current === unit.company.uuid ? '' : unit.company.uuid)} className={`grid w-full gap-3 border p-4 text-left transition sm:grid-cols-[44px_1fr_100px] sm:items-center ${expanded ? 'rounded-t-2xl border-brand-700 bg-brand-50' : 'rounded-2xl border-brand-100 hover:bg-brand-50/50'}`}><span className="text-center text-lg font-semibold text-surface-500">{index + 1}</span><div><span className="font-semibold text-surface-900">{unit.company.name}</span><div className="mt-2 h-2 overflow-hidden rounded-full bg-brand-50"><div className={`h-full rounded-full ${status.bar}`} style={{ width: `${score}%` }} /></div></div><div className="text-right"><span className={`text-xl font-bold ${status.color}`}>{score}</span><span className={`block text-xs ${status.color}`}>{expanded ? 'Recolher detalhes' : status.label}</span></div></button>{expanded ? <HealthUnitDetails unit={unit} /> : null}</div>;
           })}
         </div>
       </div>
-      {selected ? (() => {
-        const summary = selected.summary;
-        const score = Number(summary.saudeScore || 0);
-        const status = healthStatus(score);
-        const daysScore = Number(summary.diasUsoScore || 0);
-        const days15Score = Number(summary.dias15Score || 0);
-        const photosScore = Number(summary.pctFotosHistorico ?? summary.pctFotosNaAmostra ?? 0);
-        const programmingScore = Number(summary.programacaoDimScore || 0);
-        const programmingAvailable = summary.programacaoDimScore !== null && summary.programacaoDimScore !== undefined;
-        return <div className="rounded-[28px] border border-brand-100 bg-white p-5 shadow-soft"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><HealthGauge score={score} /><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Detalhamento da unidade</p><h3 className="mt-1 text-xl font-semibold text-surface-900">{selected.company.name}</h3><span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${status.background} ${status.color}`}>{status.label}</span></div></div><div className="mt-6 grid gap-4 md:grid-cols-2"><HealthPillar label="Dias de uso no mês" score={daysScore} detail={`${formatNumber(Number(summary.diasUsados || 0))} de ${formatNumber(Number(summary.diasUteisDecorridos || 0))} dias úteis com atividade.`} /><HealthPillar label="Atividade nos últimos 15 dias" score={days15Score} detail={`${formatNumber(Number(summary.dias15Usados || 0))} de ${formatNumber(Number(summary.diasUteisJanela || 0))} dias úteis com atividade.`} /><HealthPillar label="Apontamentos com foto" score={photosScore} detail={`${formatNumber(Number(summary.apontamentosFotoComFoto || 0))} apontamentos com foto; ${formatNumber(Number(selected.photos15d?.totalPhotos || 0))} fotos encontradas.`} available={summary.pctFotosHistorico !== null || summary.pctFotosNaAmostra !== null} /><HealthPillar label="Programações" score={programmingScore} detail={programmingAvailable ? `${formatNumber(Number(summary.programacaoConcluidas || 0))} concluídas, ${formatNumber(Number(summary.programacaoEmAndamento || 0))} em andamento e ${formatNumber(Number(summary.programacaoAtrasadas || 0))} atrasadas.` : 'Sem programações disponíveis para o período.'} available={programmingAvailable} /></div></div>;
-      })() : null}
     </div>
   );
 }
@@ -253,8 +272,7 @@ function riskLabel(user: KartadoUser) {
         : 'Regular';
 }
 
-export function KartadoPage() {
-  const [area, setArea] = useState<KartadoArea>('audit');
+export function KartadoPage({ area }: { area: KartadoArea }) {
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
   const [concessions, setConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
   const [failedCompanies, setFailedCompanies] = useState<Record<string, string>>({});
@@ -275,6 +293,7 @@ export function KartadoPage() {
   const [reportingsLoaded, setReportingsLoaded] = useState<Set<string>>(() => new Set());
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthCompleted, setHealthCompleted] = useState(0);
+  const [healthConcessions, setHealthConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
   const [error, setError] = useState('');
 
   async function refresh(force = false) {
@@ -285,6 +304,7 @@ export function KartadoPage() {
     setFailedCompanies({});
     setDetailedCompanies(new Set());
     setReportingsLoaded(new Set());
+    setHealthConcessions({});
     setCompletedCount(0);
     try {
       const nextCompanies = await loadKartadoCompanies();
@@ -376,9 +396,9 @@ export function KartadoPage() {
   }
 
   async function openHealthArea() {
-    setArea('health');
+    if (healthLoading || !companies.length) return;
     const pending = companies.filter(
-      (company) => !detailedCompanies.has(company.uuid || company.id || ''),
+      (company) => !healthConcessions[company.uuid || company.id || ''],
     );
     setHealthCompleted(companies.length - pending.length);
     if (!pending.length) return;
@@ -388,9 +408,8 @@ export function KartadoPage() {
       pending.map(async (company) => {
         const uuid = company.uuid || company.id || '';
         try {
-          const concession = await loadKartadoConcession(company);
-          setConcessions((current) => ({ ...current, [uuid]: concession }));
-          setDetailedCompanies((current) => new Set(current).add(uuid));
+          const concession = await loadKartadoHealth(company);
+          setHealthConcessions((current) => ({ ...current, [uuid]: concession }));
           setFailedCompanies((current) => {
             const next = { ...current };
             delete next[uuid];
@@ -406,6 +425,10 @@ export function KartadoPage() {
     );
     setHealthLoading(false);
   }
+
+  useEffect(() => {
+    if (area === 'health' && companies.length) void openHealthArea();
+  }, [area, companies.length]);
 
   const users = useMemo(() => {
     const source = remoteUsers ?? selected?.users.users ?? [];
@@ -513,14 +536,9 @@ export function KartadoPage() {
         {error ? <p className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
       </div>
 
-      <nav className="flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft" aria-label="Áreas do Kartado">
-        <button type="button" onClick={() => setArea('audit')} className={`rounded-2xl px-4 py-3 text-sm font-semibold ${area === 'audit' ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>Auditoria</button>
-        <button type="button" onClick={() => void openHealthArea()} className={`rounded-2xl px-4 py-3 text-sm font-semibold ${area === 'health' ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>Saúde</button>
-      </nav>
-
       {area === 'health' ? (
         <KartadoHealthPanel
-          units={companies.map((company) => concessions[company.uuid || company.id || '']).filter((unit): unit is KartadoConcessionDashboard => Boolean(unit) && detailedCompanies.has(unit.company.uuid))}
+          units={companies.map((company) => healthConcessions[company.uuid || company.id || '']).filter((unit): unit is KartadoConcessionDashboard => Boolean(unit))}
           loading={healthLoading}
           completed={healthCompleted}
           total={companies.length}
