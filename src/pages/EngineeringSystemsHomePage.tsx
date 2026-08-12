@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
 
+const DEFAULT_TEAMS_AGENT_URL =
+  'https://teams.microsoft.com/l/app/?source=agent-details-page&sharedAppResource=TaosSharedApp&titleId=T_2a558888-08cb-4cfa-dc1d-4089d17e6e39';
+
 export function EngineeringSystemsHomePage() {
-  const teamsAgentUrl = import.meta.env.VITE_TEAMS_AGENT_URL?.trim();
+  const teamsAgentUrl =
+    import.meta.env.VITE_TEAMS_AGENT_URL?.trim() || DEFAULT_TEAMS_AGENT_URL;
 
   return (
     <section className="mt-6">
