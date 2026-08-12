@@ -142,13 +142,14 @@ function filterRowsByPeriod(
   });
 }
 
-type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartado' | 'settings';
+type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartadoAudit' | 'kartadoHealth' | 'settings';
 
 const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
   storage: '/projectwise/armazenamento',
   projectWiseUsers: '/projectwise/usuarios-pw',
   tickets: '/projectwise/chamados',
-  kartado: '/kartado',
+  kartadoAudit: '/kartado/auditoria',
+  kartadoHealth: '/kartado/saude',
   settings: '/configuracoes',
 };
 
@@ -156,7 +157,8 @@ const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
   storage: 'Armazenamento',
   projectWiseUsers: 'Usuários PW',
   tickets: 'Chamados',
-  kartado: 'Kartado',
+  kartadoAudit: 'Auditoria',
+  kartadoHealth: 'Saúde',
   settings: 'Configurações',
 };
 
@@ -421,6 +423,7 @@ export function DashboardPage() {
   const isHomePage = normalizedPath === '/';
   const isProjectWisePage =
     activeTab === 'storage' || activeTab === 'projectWiseUsers' || activeTab === 'tickets';
+  const isKartadoPage = activeTab === 'kartadoAudit' || activeTab === 'kartadoHealth';
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
@@ -621,6 +624,11 @@ export function DashboardPage() {
 
     if (requestedPath === '/projectwise') {
       navigate(DASHBOARD_ROUTES.storage, { replace: true });
+      return;
+    }
+
+    if (requestedPath === '/kartado') {
+      navigate(DASHBOARD_ROUTES.kartadoAudit, { replace: true });
       return;
     }
 
@@ -1388,12 +1396,14 @@ export function DashboardPage() {
                 Configurações
               </span>
             </>
-          ) : activeTab === 'kartado' ? (
+          ) : isKartadoPage ? (
             <>
               <span aria-hidden="true" className="text-brand-300">/</span>
-              <span className="font-semibold text-surface-900" aria-current="page">
+              <NavLink to={DASHBOARD_ROUTES.kartadoAudit} className="font-medium text-surface-700 transition hover:text-brand-700">
                 Kartado
-              </span>
+              </NavLink>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <span className="font-semibold text-surface-900" aria-current="page">{activeTab ? DASHBOARD_TAB_LABELS[activeTab] : ''}</span>
             </>
           ) : activeTab ? (
             <>
@@ -1444,9 +1454,17 @@ export function DashboardPage() {
         </nav>
         ) : null}
 
+        {isKartadoPage ? (
+          <nav aria-label="Navegação do Kartado" className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
+            <NavLink to={DASHBOARD_ROUTES.kartadoAudit} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Auditoria</NavLink>
+            <NavLink to={DASHBOARD_ROUTES.kartadoHealth} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Saúde</NavLink>
+          </nav>
+        ) : null}
+
         {isHomePage ? <EngineeringSystemsHomePage /> : null}
 
-        {activeTab === 'kartado' ? <KartadoPage /> : null}
+        {activeTab === 'kartadoAudit' ? <KartadoPage area="audit" /> : null}
+        {activeTab === 'kartadoHealth' ? <KartadoPage area="health" /> : null}
 
         {activeTab === 'storage' ? (
           <>
