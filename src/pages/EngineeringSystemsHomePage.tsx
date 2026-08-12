@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 
 export function EngineeringSystemsHomePage() {
+  const teamsAgentUrl = import.meta.env.VITE_TEAMS_AGENT_URL?.trim();
+
   return (
     <section className="mt-6">
       <div className="rounded-[28px] border border-brand-100 bg-white px-6 py-7 shadow-soft md:px-8">
@@ -46,6 +48,39 @@ export function EngineeringSystemsHomePage() {
               Acessar painel →
             </span>
           </Link>
+
+          {teamsAgentUrl ? (
+            <a
+              href={teamsAgentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="group flex min-h-56 flex-col rounded-[26px] border border-brand-100 bg-brand-50/50 p-6 transition hover:-translate-y-1 hover:border-brand-300 hover:bg-white hover:shadow-panel focus:outline-none focus:ring-2 focus:ring-brand-300"
+            >
+              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-700 text-lg font-bold text-white shadow-soft">
+                IA
+              </div>
+              <h3 className="mt-6 text-xl font-semibold text-surface-900">Agente IA</h3>
+              <p className="mt-2 text-sm leading-6 text-surface-700">
+                Converse com o agente de Sistemas de Engenharia usando sua conta corporativa.
+              </p>
+              <span className="mt-auto pt-5 text-sm font-semibold text-brand-700 transition group-hover:text-brand-900">
+                Conversar no Microsoft Teams ↗
+              </span>
+            </a>
+          ) : (
+            <article className="flex min-h-56 flex-col rounded-[26px] border border-dashed border-brand-200 bg-surface-50 p-6">
+              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-surface-700 text-lg font-bold text-white shadow-soft">
+                IA
+              </div>
+              <h3 className="mt-6 text-xl font-semibold text-surface-900">Agente IA</h3>
+              <p className="mt-2 text-sm leading-6 text-surface-700">
+                O acesso pelo Microsoft Teams está aguardando a configuração do link do agente.
+              </p>
+              <span className="mt-auto pt-5 text-sm font-semibold text-surface-600">
+                Configuração pendente
+              </span>
+            </article>
+          )}
         </div>
       </div>
     </section>
