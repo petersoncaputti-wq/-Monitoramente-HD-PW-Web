@@ -51,6 +51,12 @@ export interface KartadoConcessionDashboard {
     byType?: Array<{ name: string; count: number }>;
     byRoad?: Array<{ name: string; count: number }>;
   };
+  photos15d?: {
+    reportingUuids?: string[];
+    totalPhotos?: number | null;
+    totalFetched?: number;
+    error?: string | null;
+  } | null;
 }
 
 export interface KartadoDashboard {
