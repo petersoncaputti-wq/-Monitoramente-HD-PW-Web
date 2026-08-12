@@ -30,6 +30,22 @@ export function EngineeringSystemsHomePage() {
               Acessar indicadores →
             </span>
           </Link>
+
+          <Link
+            to="/kartado"
+            className="group flex min-h-56 flex-col rounded-[26px] border border-brand-100 bg-brand-50/50 p-6 transition hover:-translate-y-1 hover:border-brand-300 hover:bg-white hover:shadow-panel focus:outline-none focus:ring-2 focus:ring-brand-300"
+          >
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-700 text-lg font-bold text-white shadow-soft">
+              KA
+            </div>
+            <h3 className="mt-6 text-xl font-semibold text-surface-900">Kartado</h3>
+            <p className="mt-2 text-sm leading-6 text-surface-700">
+              Auditoria de usuários, concessões, apontamentos, saúde e integrações do Kartado.
+            </p>
+            <span className="mt-auto pt-5 text-sm font-semibold text-brand-700 transition group-hover:text-brand-900">
+              Acessar painel →
+            </span>
+          </Link>
         </div>
       </div>
     </section>
