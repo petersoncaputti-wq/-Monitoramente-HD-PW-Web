@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   loadKartadoCompanies,
   loadKartadoConcession,
+  loadKartadoReportings,
   searchKartadoUsers,
   type KartadoConcessionDashboard,
   type KartadoCompany,
@@ -98,6 +99,8 @@ export function KartadoPage() {
   const [remoteUsers, setRemoteUsers] = useState<KartadoUser[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [reportingsLoading, setReportingsLoading] = useState(false);
+  const [reportingsError, setReportingsError] = useState('');
   const [error, setError] = useState('');
 
   async function refresh() {
@@ -221,6 +224,28 @@ export function KartadoPage() {
     }
   }
 
+  async function openTab(nextTab: KartadoTab) {
+    setTab(nextTab);
+    if (nextTab !== 'reportings' || !selected) return;
+    if (selected.reportings.items?.length) return;
+
+    setReportingsLoading(true);
+    setReportingsError('');
+    try {
+      const reportings = await loadKartadoReportings(selected.company.uuid);
+      setConcessions((current) => ({
+        ...current,
+        [selected.company.uuid]: { ...selected, reportings },
+      }));
+    } catch (reason) {
+      setReportingsError(
+        reason instanceof Error ? reason.message : 'Não foi possível carregar os apontamentos.',
+      );
+    } finally {
+      setReportingsLoading(false);
+    }
+  }
+
   return (
     <section className="mt-6 space-y-5">
       <div className="rounded-[28px] border border-brand-100 bg-white px-6 py-7 shadow-soft md:px-8">
@@ -316,7 +341,7 @@ export function KartadoPage() {
         <div className="rounded-[28px] border border-brand-100 bg-white p-3 shadow-soft sm:p-5">
           <nav className="flex flex-wrap gap-2" aria-label="Navegação Kartado">
             {tabs.map((item) => (
-              <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`rounded-2xl px-4 py-3 text-sm font-semibold ${tab === item.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>
+              <button key={item.id} type="button" onClick={() => void openTab(item.id)} className={`rounded-2xl px-4 py-3 text-sm font-semibold ${tab === item.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>
                 {item.label}
               </button>
             ))}
@@ -376,7 +401,21 @@ export function KartadoPage() {
           ) : null}
 
           {tab === 'reportings' ? (
-            <div className="mt-5 overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600"><tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th></tr></thead><tbody>{(selected.reportings.items || selected.reportings.recent || []).map((item, index) => <tr key={item.id || index} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td></tr>)}</tbody></table></div>
+            <div className="mt-5">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-surface-700">
+                <span>
+                  Exibindo {formatNumber(selected.reportings.items?.length || 0)} de{' '}
+                  {formatNumber(Number(selected.summary.apontamentosTotal || 0))} apontamentos.
+                </span>
+                <button type="button" onClick={() => void loadKartadoReportings(selected.company.uuid).then((reportings) => setConcessions((current) => ({ ...current, [selected.company.uuid]: { ...selected, reportings } }))).catch((reason: unknown) => setReportingsError(reason instanceof Error ? reason.message : 'Falha ao atualizar apontamentos.'))} disabled={reportingsLoading} className="rounded-xl border border-brand-100 px-3 py-2 text-xs font-semibold text-brand-700 disabled:opacity-50">
+                  Atualizar apontamentos
+                </button>
+              </div>
+              {reportingsLoading ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-700">Carregando apontamentos da unidade...</p> : null}
+              {reportingsError ? <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{reportingsError}</p> : null}
+              {!reportingsLoading && !reportingsError && !selected.reportings.items?.length ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-surface-700">A API informou apontamentos para esta unidade, mas não retornou registros para exibição.</p> : null}
+              {selected.reportings.items?.length ? <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600"><tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th></tr></thead><tbody>{selected.reportings.items.map((item, index) => <tr key={item.id || index} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td></tr>)}</tbody></table></div> : null}
+            </div>
           ) : null}
 
           {tab === 'alerts' ? (
