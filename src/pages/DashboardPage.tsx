@@ -632,6 +632,11 @@ export function DashboardPage() {
       return;
     }
 
+    if (requestedPath === '/kartado/score') {
+      navigate(DASHBOARD_ROUTES.kartadoHealth, { replace: true });
+      return;
+    }
+
     const migratedRoute = LEGACY_DASHBOARD_ROUTES[requestedPath];
     if (migratedRoute) {
       navigate(migratedRoute, { replace: true });

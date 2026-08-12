@@ -179,11 +179,17 @@ function HealthUnitDetails({ unit }: { unit: KartadoConcessionDashboard }) {
 function KartadoHealthPanel({ units, loading, completed, total }: { units: KartadoConcessionDashboard[]; loading: boolean; completed: number; total: number }) {
   const [selectedUuid, setSelectedUuid] = useState('');
   const [explanationOpen, setExplanationOpen] = useState(false);
-  const ranked = [...units].sort((a, b) => Number(b.summary.saudeScore || 0) - Number(a.summary.saudeScore || 0));
-  const average = ranked.length ? Math.round(ranked.reduce((sum, unit) => sum + Number(unit.summary.saudeScore || 0), 0) / ranked.length) : 0;
-  const healthy = ranked.filter((unit) => Number(unit.summary.saudeScore || 0) >= 75).length;
-  const attention = ranked.filter((unit) => Number(unit.summary.saudeScore || 0) >= 45 && Number(unit.summary.saudeScore || 0) < 75).length;
-  const critical = ranked.filter((unit) => Number(unit.summary.saudeScore || 0) < 45).length;
+  const [filter, setFilter] = useState<'all' | 'healthy' | 'attention' | 'critical'>('all');
+  const [order, setOrder] = useState<'score' | 'volume' | 'name'>('score');
+  const globalRanking = [...units].sort((a, b) => Number(b.summary.saudeScore || 0) - Number(a.summary.saudeScore || 0));
+  const ranked = units.filter((unit) => {
+    const score = Number(unit.summary.saudeScore || 0);
+    return filter === 'all' || (filter === 'healthy' && score >= 75) || (filter === 'attention' && score >= 45 && score < 75) || (filter === 'critical' && score < 45);
+  }).sort((a, b) => order === 'name' ? a.company.name.localeCompare(b.company.name, 'pt-BR') : order === 'volume' ? Number(b.summary.apontamentosTotal || 0) - Number(a.summary.apontamentosTotal || 0) : Number(b.summary.saudeScore || 0) - Number(a.summary.saudeScore || 0));
+  const average = units.length ? Math.round(units.reduce((sum, unit) => sum + Number(unit.summary.saudeScore || 0), 0) / units.length) : 0;
+  const healthy = units.filter((unit) => Number(unit.summary.saudeScore || 0) >= 75).length;
+  const attention = units.filter((unit) => Number(unit.summary.saudeScore || 0) >= 45 && Number(unit.summary.saudeScore || 0) < 75).length;
+  const critical = units.filter((unit) => Number(unit.summary.saudeScore || 0) < 45).length;
 
   return (
     <div className="space-y-5">
@@ -246,16 +252,21 @@ function KartadoHealthPanel({ units, loading, completed, total }: { units: Karta
         <MetricCard label="Atenção" value={attention} />
         <MetricCard label="Críticas" value={critical} />
       </div>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <ChartCard title="Score por unidade" description="Visão gerencial comparativa da saúde operacional." data={globalRanking.map((unit) => ({ label: unit.company.name, value: Number(unit.summary.saudeScore || 0) }))} />
+        <ChartCard title="Volume por unidade" description="Quantidade de apontamentos para comparação com o score." data={[...units].sort((a, b) => Number(b.summary.apontamentosTotal || 0) - Number(a.summary.apontamentosTotal || 0)).map((unit) => ({ label: unit.company.name, value: Number(unit.summary.apontamentosTotal || 0) }))} />
+      </div>
       <div className="rounded-[28px] border border-brand-100 bg-white p-5 shadow-soft">
-        <h3 className="text-lg font-semibold text-surface-900">Ranking de saúde</h3>
-        <p className="mt-1 text-sm text-surface-700">Selecione uma unidade para analisar os quatro pilares.</p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h3 className="text-lg font-semibold text-surface-900">Ranking e diagnóstico</h3><p className="mt-1 text-sm text-surface-700">Compare as unidades e selecione uma para analisar os quatro pilares.</p></div><div className="flex flex-wrap gap-2"><select value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)} className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm"><option value="all">Todas as situações</option><option value="healthy">Saudáveis</option><option value="attention">Atenção</option><option value="critical">Críticas</option></select><select value={order} onChange={(event) => setOrder(event.target.value as typeof order)} className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm"><option value="score">Ordenar por score</option><option value="volume">Ordenar por volume</option><option value="name">Ordenar por nome</option></select></div></div>
         <div className="mt-5 space-y-3">
-          {ranked.map((unit, index) => {
+          {ranked.map((unit) => {
             const score = Number(unit.summary.saudeScore || 0);
             const status = healthStatus(score);
             const expanded = selectedUuid === unit.company.uuid;
-            return <div key={unit.company.uuid}><button type="button" aria-expanded={expanded} onClick={() => setSelectedUuid((current) => current === unit.company.uuid ? '' : unit.company.uuid)} className={`grid w-full gap-3 border p-4 text-left transition sm:grid-cols-[44px_1fr_100px] sm:items-center ${expanded ? 'rounded-t-2xl border-brand-700 bg-brand-50' : 'rounded-2xl border-brand-100 hover:bg-brand-50/50'}`}><span className="text-center text-lg font-semibold text-surface-500">{index + 1}</span><div><span className="font-semibold text-surface-900">{unit.company.name}</span><div className="mt-2 h-2 overflow-hidden rounded-full bg-brand-50"><div className={`h-full rounded-full ${status.bar}`} style={{ width: `${score}%` }} /></div></div><div className="text-right"><span className={`text-xl font-bold ${status.color}`}>{score}</span><span className={`block text-xs ${status.color}`}>{expanded ? 'Recolher detalhes' : status.label}</span></div></button>{expanded ? <HealthUnitDetails unit={unit} /> : null}</div>;
+            const globalRank = globalRanking.findIndex((item) => item.company.uuid === unit.company.uuid) + 1;
+            return <div key={unit.company.uuid}><button type="button" aria-expanded={expanded} onClick={() => setSelectedUuid((current) => current === unit.company.uuid ? '' : unit.company.uuid)} className={`grid w-full gap-3 border p-4 text-left transition sm:grid-cols-[44px_1fr_100px] sm:items-center ${expanded ? 'rounded-t-2xl border-brand-700 bg-brand-50' : 'rounded-2xl border-brand-100 hover:bg-brand-50/50'}`}><span className="text-center text-lg font-semibold text-surface-500">#{globalRank}</span><div><span className="font-semibold text-surface-900">{unit.company.name}</span><p className="mt-1 text-xs text-surface-600">{formatNumber(Number(unit.summary.apontamentosTotal || 0))} apontamentos</p><div className="mt-2 h-2 overflow-hidden rounded-full bg-brand-50"><div className={`h-full rounded-full ${status.bar}`} style={{ width: `${score}%` }} /></div></div><div className="text-right"><span className={`text-xl font-bold ${status.color}`}>{score}</span><span className={`block text-xs ${status.color}`}>{expanded ? 'Recolher detalhes' : status.label}</span></div></button>{expanded ? <HealthUnitDetails unit={unit} /> : null}</div>;
           })}
+          {!ranked.length ? <p className="py-8 text-center text-sm text-surface-600">Nenhuma unidade corresponde ao filtro selecionado.</p> : null}
         </div>
       </div>
     </div>
@@ -263,6 +274,7 @@ function KartadoHealthPanel({ units, loading, completed, total }: { units: Karta
 }
 
 function riskLabel(user: KartadoUser) {
+
   return user.riskLevel === 'danger'
     ? 'Crítico'
     : user.riskLevel === 'warning'
@@ -544,6 +556,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           total={companies.length}
         />
       ) : null}
+
 
       {area === 'audit' && companies.length ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

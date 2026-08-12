@@ -50,6 +50,7 @@ export interface KartadoConcessionDashboard {
     byStatus?: Array<{ name: string; count: number }>;
     byType?: Array<{ name: string; count: number }>;
     byRoad?: Array<{ name: string; count: number }>;
+    byOrigin?: Array<{ name: string; count: number }>;
   };
   photos15d?: {
     reportingUuids?: string[];
