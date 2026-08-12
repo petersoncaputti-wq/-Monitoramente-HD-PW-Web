@@ -17,12 +17,63 @@ const tabs: Array<{ id: KartadoTab; label: string }> = [
   { id: 'alerts', label: 'Alertas' },
 ];
 
+const numberFormatter = new Intl.NumberFormat('pt-BR');
+
+function formatNumber(value: number) {
+  return numberFormatter.format(Number.isFinite(value) ? value : 0);
+}
+
 function MetricCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-[22px] border border-brand-100 bg-white p-5 shadow-soft">
       <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-700">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-surface-900">{value}</p>
+      <p className="mt-3 text-3xl font-semibold text-surface-900">
+        {typeof value === 'number' ? formatNumber(value) : value}
+      </p>
     </div>
+  );
+}
+
+interface ChartDatum {
+  label: string;
+  value: number;
+}
+
+function BarChart({ data, emptyMessage = 'Sem dados disponíveis.' }: { data: ChartDatum[]; emptyMessage?: string }) {
+  const visible = data.filter((item) => item.value >= 0).slice(0, 12);
+  const maximum = Math.max(...visible.map((item) => item.value), 1);
+
+  if (!visible.length) {
+    return <p className="py-8 text-center text-sm text-surface-600">{emptyMessage}</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {visible.map((item) => (
+        <div key={item.label} title={`${item.label}: ${formatNumber(item.value)}`}>
+          <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+            <span className="truncate font-medium text-surface-700">{item.label}</span>
+            <span className="shrink-0 font-semibold tabular-nums text-surface-900">{formatNumber(item.value)}</span>
+          </div>
+          <div className="h-3 overflow-hidden rounded-full bg-brand-50">
+            <div
+              className="h-full min-w-1 rounded-full bg-brand-700 transition-all duration-500"
+              style={{ width: item.value === 0 ? '0%' : `${Math.max(2, (item.value / maximum) * 100)}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChartCard({ title, description, data }: { title: string; description: string; data: ChartDatum[] }) {
+  return (
+    <article className="rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
+      <h3 className="text-base font-semibold text-surface-900">{title}</h3>
+      <p className="mt-1 text-xs leading-5 text-surface-600">{description}</p>
+      <div className="mt-5"><BarChart data={data} /></div>
+    </article>
   );
 }
 
@@ -104,6 +155,23 @@ export function KartadoPage() {
       ),
     [concessions],
   );
+
+  const loadedConcessions = useMemo(
+    () =>
+      companies
+        .map((company) => concessions[company.uuid || company.id || ''])
+        .filter((item): item is KartadoConcessionDashboard => Boolean(item)),
+    [companies, concessions],
+  );
+
+  const usersByCompany = loadedConcessions.map((item) => ({
+    label: item.company.name,
+    value: Number(item.summary.usuariosAtivos || 0),
+  }));
+  const reportingsByCompany = loadedConcessions.map((item) => ({
+    label: item.company.name,
+    value: Number(item.summary.apontamentosTotal || 0),
+  }));
 
   async function selectCompany(company: KartadoCompany) {
     const uuid = company.uuid || company.id || '';
@@ -198,6 +266,21 @@ export function KartadoPage() {
         </div>
       ) : null}
 
+      {loadedConcessions.length ? (
+        <div className="grid gap-5 xl:grid-cols-2">
+          <ChartCard
+            title="Usuários ativos por unidade"
+            description="Comparativo das unidades já carregadas nesta atualização."
+            data={[...usersByCompany].sort((a, b) => b.value - a.value)}
+          />
+          <ChartCard
+            title="Apontamentos por unidade"
+            description="Volume total informado pela API para cada unidade carregada."
+            data={[...reportingsByCompany].sort((a, b) => b.value - a.value)}
+          />
+        </div>
+      ) : null}
+
       {companies.length ? (
         <div className="rounded-[28px] border border-brand-100 bg-white p-5 shadow-soft">
           <div className="flex flex-col gap-1">
@@ -220,7 +303,7 @@ export function KartadoPage() {
                 >
                   <span className="block font-semibold text-surface-900">{company.name}</span>
                   <span className={`mt-2 block text-xs ${failure ? 'text-red-700' : 'text-surface-600'}`}>
-                    {isPending ? 'Carregando...' : failure ? 'Indisponível — clique para tentar novamente' : `${Number(concession.summary.usuariosAtivos || 0)} usuários · ${Number(concession.summary.apontamentosTotal || 0)} apontamentos`}
+                    {isPending ? 'Carregando...' : failure ? 'Indisponível — clique para tentar novamente' : `${formatNumber(Number(concession.summary.usuariosAtivos || 0))} usuários · ${formatNumber(Number(concession.summary.apontamentosTotal || 0))} apontamentos`}
                   </span>
                 </button>
               );
@@ -240,11 +323,40 @@ export function KartadoPage() {
           </nav>
 
           {tab === 'overview' ? (
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="Concessão" value={selected.company.name} />
-              <MetricCard label="Usuários" value={Number(selected.summary.usuariosAtivos || 0)} />
-              <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
-              <MetricCard label="Saúde" value={`${Number(selected.summary.saudeScore || 0)}/100`} />
+            <div className="mt-5 space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <MetricCard label="Concessão" value={selected.company.name} />
+                <MetricCard label="Usuários" value={Number(selected.summary.usuariosAtivos || 0)} />
+                <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
+                <MetricCard label="Saúde" value={`${Number(selected.summary.saudeScore || 0)}/100`} />
+              </div>
+              <div className="grid gap-5 xl:grid-cols-2">
+                <ChartCard
+                  title="Perfil dos usuários"
+                  description="Distribuição dos usuários retornados para a unidade."
+                  data={[
+                    { label: 'Internos', value: Number(selected.users.counts.internos || 0) },
+                    { label: 'Terceiros', value: Number(selected.users.counts.terceiros || 0) },
+                    { label: 'Supervisores', value: Number(selected.users.counts.supervisores || 0) },
+                    { label: 'Sem acesso há 60 dias', value: Number(selected.users.counts.semAcesso60d || 0) },
+                  ]}
+                />
+                <ChartCard
+                  title="Apontamentos por status"
+                  description="Distribuição baseada nos registros retornados pela API."
+                  data={(selected.reportings.byStatus || []).map((item) => ({ label: item.name, value: item.count }))}
+                />
+                <ChartCard
+                  title="Apontamentos por tipo"
+                  description="Principais tipos de ocorrência encontrados na unidade."
+                  data={(selected.reportings.byType || []).map((item) => ({ label: item.name, value: item.count }))}
+                />
+                <ChartCard
+                  title="Apontamentos por rodovia"
+                  description="Rodovias com maior volume na amostra retornada."
+                  data={(selected.reportings.byRoad || []).map((item) => ({ label: item.name, value: item.count }))}
+                />
+              </div>
             </div>
           ) : null}
 
