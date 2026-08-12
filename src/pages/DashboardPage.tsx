@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AverageGrowthRateCard } from '@/components/AverageGrowthRateCard';
 import { FreeSpaceCard } from '@/components/FreeSpaceCard';
+import { FloatingAgentButton } from '@/components/FloatingAgentButton';
 import { LastUpdateCard } from '@/components/LastUpdateCard';
 import { PeriodFilter } from '@/components/PeriodFilter';
 import { PeriodVariationCard } from '@/components/PeriodVariationCard';
@@ -2407,6 +2408,7 @@ export function DashboardPage() {
 
         {activeTab === 'settings' ? <UserSettingsPage /> : null}
       </div>
+      <FloatingAgentButton />
     </main>
   );
 }
