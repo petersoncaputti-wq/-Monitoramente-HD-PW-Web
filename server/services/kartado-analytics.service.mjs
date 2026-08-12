@@ -218,9 +218,51 @@ export function buildUserMetrics(rawUsers, totalCount) {
   const cutoff60s = cutoff60.toISOString().split('T')[0];
   const semAcesso60d = users.filter(u => !u.lastLogin || u.lastLogin < cutoff60s);
 
-  // Criticidade baseada exclusivamente em métricas operacionais (apontamentos, fotos, acesso)
-  // Alertas de conta de usuário (expirados, sem e-mail, etc.) removidos da criticidade
-  const alertas = [];
+  const expirados = users.filter(u => u.expirationDate && u.expirationDate < today);
+  const semEmail = users.filter(u => !u.email);
+  const expirando = users.filter(
+    u => u.expirationDate && u.expirationDate >= today && u.expirationDate <= in30s,
+  );
+  const userDetails = list => ({
+    label: 'Usuários afetados:',
+    usuarios: list.slice(0, 20).map(u => ({
+      fullName: u.fullName,
+      username: u.username,
+      email: u.email,
+      expirationDate: u.expirationDate,
+    })),
+    hasMore: list.length > 20,
+  });
+  const alertas = [
+    expirados.length > 0 && {
+      id: 'users-expired', severity: 'danger', count: expirados.length,
+      title: `${expirados.length} usuário(s) com acesso expirado`,
+      desc: 'Contas ativas na consulta com data de expiração anterior à data atual.',
+      action: 'Revisar a necessidade de acesso e renovar ou desativar as contas.',
+      details: userDetails(expirados),
+    },
+    semEmail.length > 0 && {
+      id: 'users-without-email', severity: 'warning', count: semEmail.length,
+      title: `${semEmail.length} usuário(s) sem e-mail`,
+      desc: 'Contas sem endereço de e-mail cadastrado na amostra retornada.',
+      action: 'Completar o cadastro dos usuários afetados.',
+      details: userDetails(semEmail),
+    },
+    expirando.length > 0 && {
+      id: 'users-expiring', severity: 'info', count: expirando.length,
+      title: `${expirando.length} usuário(s) expirando em até 30 dias`,
+      desc: 'Acessos próximos da data de expiração.',
+      action: 'Validar antecipadamente quais acessos devem ser renovados.',
+      details: userDetails(expirando),
+    },
+    semAcesso60d.length > 0 && {
+      id: 'users-inactive-60d', severity: 'info', count: semAcesso60d.length,
+      title: `${semAcesso60d.length} usuário(s) sem acesso há 60 dias`,
+      desc: 'Contas sem login recente ou sem data de último acesso informada.',
+      action: 'Revisar contas inativas e confirmar a necessidade de manutenção do acesso.',
+      details: userDetails(semAcesso60d),
+    },
+  ].filter(Boolean);
 
   return {
     counts: {
@@ -389,6 +431,7 @@ export function buildConcessaoDashboard(company, usersData, reportingsData, inve
 
   return {
     company,
+    alerts: allAlerts,
     users,
     reportings,
     reportingsMes: { items: mesItems, totalCount: reportingsMonthData?.totalCount ?? mesItems.length },
@@ -493,4 +536,3 @@ export function buildMultiDashboard(concessoesData) {
     source:      'api.kartado.com.br — dados em tempo real — somente usuários ativos',
   };
 }
-

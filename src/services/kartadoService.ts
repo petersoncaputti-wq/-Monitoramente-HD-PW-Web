@@ -39,6 +39,7 @@ export interface KartadoAlert {
 
 export interface KartadoConcessionDashboard {
   company: KartadoCompany;
+  alerts?: KartadoAlert[];
   summary: Record<string, number | string | null>;
   users: { users: KartadoUser[]; counts: Record<string, number>; alertas?: KartadoAlert[] };
   reportings: {
@@ -69,6 +70,7 @@ export async function loadKartadoCompanies(): Promise<KartadoCompany[]> {
 
 export async function loadKartadoConcession(
   company: KartadoCompany,
+  options: { summaryOnly?: boolean; force?: boolean } = {},
 ): Promise<KartadoConcessionDashboard> {
   const result = await request<{
     success: boolean;
@@ -77,6 +79,8 @@ export async function loadKartadoConcession(
   }>('/dashboard', {
     companyUuid: company.uuid || company.id,
     companyName: company.name,
+    summaryOnly: options.summaryOnly || false,
+    force: options.force || false,
   });
   if (!result.success || !result.dashboard) {
     throw new Error(result.error || `Dados de ${company.name} indisponíveis.`);
@@ -133,7 +137,7 @@ export async function loadKartadoReportings(
     success: boolean;
     metrics?: KartadoConcessionDashboard['reportings'];
     error?: string;
-  }>('/reportings', { companyUuid, pageSize: 50 });
+  }>('/reportings', { companyUuid, pageSize: 100, maxPages: 2 });
   if (!result.success || !result.metrics) {
     throw new Error(result.error || 'Apontamentos Kartado indisponíveis.');
   }

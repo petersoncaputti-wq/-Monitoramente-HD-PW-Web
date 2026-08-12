@@ -19,6 +19,7 @@ const tabs: Array<{ id: KartadoTab; label: string }> = [
 ];
 
 const numberFormatter = new Intl.NumberFormat('pt-BR');
+const PAGE_SIZE_OPTIONS = [20, 40, 80, 160, 200] as const;
 
 function formatNumber(value: number) {
   return numberFormatter.format(Number.isFinite(value) ? value : 0);
@@ -78,6 +79,36 @@ function ChartCard({ title, description, data }: { title: string; description: s
   );
 }
 
+function Pagination({ page, pageSize, total, onPageChange, onPageSizeChange }: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const first = total ? (safePage - 1) * pageSize + 1 : 0;
+  const last = Math.min(safePage * pageSize, total);
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-brand-100 pt-4 text-sm text-surface-700 sm:flex-row sm:items-center sm:justify-between">
+      <span>Exibindo {formatNumber(first)}–{formatNumber(last)} de {formatNumber(total)}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2">
+          <span className="text-xs">Por página</span>
+          <select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))} className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm">
+            {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </label>
+        <button type="button" disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)} className="rounded-xl border border-brand-100 px-3 py-2 font-semibold text-brand-700 disabled:opacity-40">Anterior</button>
+        <span className="min-w-20 text-center text-xs">{safePage} de {totalPages}</span>
+        <button type="button" disabled={safePage >= totalPages} onClick={() => onPageChange(safePage + 1)} className="rounded-xl border border-brand-100 px-3 py-2 font-semibold text-brand-700 disabled:opacity-40">Próxima</button>
+      </div>
+    </div>
+  );
+}
+
 function riskLabel(user: KartadoUser) {
   return user.riskLevel === 'danger'
     ? 'Crítico'
@@ -92,6 +123,7 @@ export function KartadoPage() {
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
   const [concessions, setConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
   const [failedCompanies, setFailedCompanies] = useState<Record<string, string>>({});
+  const [detailedCompanies, setDetailedCompanies] = useState<Set<string>>(() => new Set());
   const [completedCount, setCompletedCount] = useState(0);
   const [selectedUuid, setSelectedUuid] = useState('');
   const [tab, setTab] = useState<KartadoTab>('overview');
@@ -101,14 +133,21 @@ export function KartadoPage() {
   const [searching, setSearching] = useState(false);
   const [reportingsLoading, setReportingsLoading] = useState(false);
   const [reportingsError, setReportingsError] = useState('');
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersPageSize, setUsersPageSize] = useState(20);
+  const [reportingsPage, setReportingsPage] = useState(1);
+  const [reportingsPageSize, setReportingsPageSize] = useState(20);
+  const [reportingsLoaded, setReportingsLoaded] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState('');
 
-  async function refresh() {
+  async function refresh(force = false) {
     setLoading(true);
     setError('');
     setSelectedUuid('');
     setConcessions({});
     setFailedCompanies({});
+    setDetailedCompanies(new Set());
+    setReportingsLoaded(new Set());
     setCompletedCount(0);
     try {
       const nextCompanies = await loadKartadoCompanies();
@@ -119,7 +158,7 @@ export function KartadoPage() {
         nextCompanies.map(async (company) => {
           const uuid = company.uuid || company.id || '';
           try {
-            const concession = await loadKartadoConcession(company);
+            const concession = await loadKartadoConcession(company, { summaryOnly: true, force });
             setConcessions((current) => ({ ...current, [uuid]: concession }));
           } catch (reason) {
             const message = reason instanceof Error ? reason.message : 'Unidade indisponível.';
@@ -180,12 +219,13 @@ export function KartadoPage() {
     const uuid = company.uuid || company.id || '';
     setSelectedUuid(uuid);
     setRemoteUsers(null);
-    if (concessions[uuid]) return;
+    if (detailedCompanies.has(uuid)) return;
     setLoading(true);
     setError('');
     try {
       const concession = await loadKartadoConcession(company);
       setConcessions((current) => ({ ...current, [uuid]: concession }));
+      setDetailedCompanies((current) => new Set(current).add(uuid));
       setFailedCompanies((current) => {
         const next = { ...current };
         delete next[uuid];
@@ -209,7 +249,24 @@ export function KartadoPage() {
     );
   }, [remoteUsers, search, selected]);
 
-  const alerts = [...(selected?.users.alertas || []), ...(selected?.reportings.alerts || [])];
+  const alerts = selected?.alerts || [
+    ...(selected?.users.alertas || []),
+    ...(selected?.reportings.alerts || []),
+  ];
+  const paginatedUsers = users.slice((usersPage - 1) * usersPageSize, usersPage * usersPageSize);
+  const reportingItems = selected?.reportings.items || [];
+  const paginatedReportings = reportingItems.slice(
+    (reportingsPage - 1) * reportingsPageSize,
+    reportingsPage * reportingsPageSize,
+  );
+
+  useEffect(() => {
+    setUsersPage(1);
+  }, [search, selectedUuid, usersPageSize]);
+
+  useEffect(() => {
+    setReportingsPage(1);
+  }, [selectedUuid, reportingsPageSize]);
 
   async function searchRemote() {
     if (!selected || !search.trim()) return;
@@ -227,7 +284,7 @@ export function KartadoPage() {
   async function openTab(nextTab: KartadoTab) {
     setTab(nextTab);
     if (nextTab !== 'reportings' || !selected) return;
-    if (selected.reportings.items?.length) return;
+    if (reportingsLoaded.has(selected.company.uuid)) return;
 
     setReportingsLoading(true);
     setReportingsError('');
@@ -235,8 +292,13 @@ export function KartadoPage() {
       const reportings = await loadKartadoReportings(selected.company.uuid);
       setConcessions((current) => ({
         ...current,
-        [selected.company.uuid]: { ...selected, reportings },
+        [selected.company.uuid]: {
+          ...selected,
+          reportings,
+          alerts: [...(selected.users.alertas || []), ...(reportings.alerts || [])],
+        },
       }));
+      setReportingsLoaded((current) => new Set(current).add(selected.company.uuid));
     } catch (reason) {
       setReportingsError(
         reason instanceof Error ? reason.message : 'Não foi possível carregar os apontamentos.',
@@ -258,7 +320,7 @@ export function KartadoPage() {
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => void refresh()}
+              onClick={() => void refresh(true)}
               disabled={loading}
               className="rounded-2xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
@@ -339,6 +401,11 @@ export function KartadoPage() {
 
       {selected ? (
         <div className="rounded-[28px] border border-brand-100 bg-white p-3 shadow-soft sm:p-5">
+          {loading && !detailedCompanies.has(selectedUuid) ? (
+            <p className="mb-4 rounded-2xl bg-brand-50 p-4 text-sm font-medium text-brand-700">
+              Carregando dados completos de {selected.company.name}...
+            </p>
+          ) : null}
           <nav className="flex flex-wrap gap-2" aria-label="Navegação Kartado">
             {tabs.map((item) => (
               <button key={item.id} type="button" onClick={() => void openTab(item.id)} className={`rounded-2xl px-4 py-3 text-sm font-semibold ${tab === item.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>
@@ -394,9 +461,10 @@ export function KartadoPage() {
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
                   <thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600"><tr><th className="p-3">Risco</th><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">E-mail</th><th className="p-3">Expiração</th></tr></thead>
-                  <tbody>{users.map((user, index) => <tr key={user.id || index} className="border-b border-brand-50"><td className="p-3">{riskLabel(user)}</td><td className="p-3 font-medium text-surface-900">{user.fullName || '—'}</td><td className="p-3">{user.username || '—'}</td><td className="p-3">{user.email || '—'}</td><td className="p-3">{user.expirationDate || '—'}</td></tr>)}</tbody>
+                  <tbody>{paginatedUsers.map((user, index) => <tr key={user.id || index} className="border-b border-brand-50"><td className="p-3">{riskLabel(user)}</td><td className="p-3 font-medium text-surface-900">{user.fullName || '—'}</td><td className="p-3">{user.username || '—'}</td><td className="p-3">{user.email || '—'}</td><td className="p-3">{user.expirationDate || '—'}</td></tr>)}</tbody>
                 </table>
               </div>
+              <Pagination page={usersPage} pageSize={usersPageSize} total={users.length} onPageChange={setUsersPage} onPageSizeChange={setUsersPageSize} />
             </div>
           ) : null}
 
@@ -407,14 +475,14 @@ export function KartadoPage() {
                   Exibindo {formatNumber(selected.reportings.items?.length || 0)} de{' '}
                   {formatNumber(Number(selected.summary.apontamentosTotal || 0))} apontamentos.
                 </span>
-                <button type="button" onClick={() => void loadKartadoReportings(selected.company.uuid).then((reportings) => setConcessions((current) => ({ ...current, [selected.company.uuid]: { ...selected, reportings } }))).catch((reason: unknown) => setReportingsError(reason instanceof Error ? reason.message : 'Falha ao atualizar apontamentos.'))} disabled={reportingsLoading} className="rounded-xl border border-brand-100 px-3 py-2 text-xs font-semibold text-brand-700 disabled:opacity-50">
+                <button type="button" onClick={() => void loadKartadoReportings(selected.company.uuid).then((reportings) => setConcessions((current) => ({ ...current, [selected.company.uuid]: { ...selected, reportings, alerts: [...(selected.users.alertas || []), ...(reportings.alerts || [])] } }))).catch((reason: unknown) => setReportingsError(reason instanceof Error ? reason.message : 'Falha ao atualizar apontamentos.'))} disabled={reportingsLoading} className="rounded-xl border border-brand-100 px-3 py-2 text-xs font-semibold text-brand-700 disabled:opacity-50">
                   Atualizar apontamentos
                 </button>
               </div>
               {reportingsLoading ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-700">Carregando apontamentos da unidade...</p> : null}
               {reportingsError ? <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{reportingsError}</p> : null}
               {!reportingsLoading && !reportingsError && !selected.reportings.items?.length ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-surface-700">A API informou apontamentos para esta unidade, mas não retornou registros para exibição.</p> : null}
-              {selected.reportings.items?.length ? <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600"><tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th></tr></thead><tbody>{selected.reportings.items.map((item, index) => <tr key={item.id || index} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td></tr>)}</tbody></table></div> : null}
+              {reportingItems.length ? <><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600"><tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th></tr></thead><tbody>{paginatedReportings.map((item, index) => <tr key={item.id || index} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td></tr>)}</tbody></table></div><Pagination page={reportingsPage} pageSize={reportingsPageSize} total={reportingItems.length} onPageChange={setReportingsPage} onPageSizeChange={setReportingsPageSize} /></> : null}
             </div>
           ) : null}
 
