@@ -7,6 +7,8 @@ import {
   searchKartadoUsers,
   type KartadoConcessionDashboard,
   type KartadoCompany,
+  type KartadoAlert,
+  type KartadoReporting,
   type KartadoUser,
 } from '@/services/kartadoService';
 
@@ -107,6 +109,94 @@ function Pagination({ page, pageSize, total, onPageChange, onPageSizeChange }: {
         <span className="min-w-20 text-center text-xs">{safePage} de {totalPages}</span>
         <button type="button" disabled={safePage >= totalPages} onClick={() => onPageChange(safePage + 1)} className="rounded-xl border border-brand-100 px-3 py-2 font-semibold text-brand-700 disabled:opacity-40">Próxima</button>
       </div>
+    </div>
+  );
+}
+
+function AlertDetails({ alert, users, reportings }: {
+  alert: KartadoAlert;
+  users: KartadoUser[];
+  reportings: KartadoReporting[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const today = new Date().toISOString().slice(0, 10);
+  const in30 = new Date();
+  in30.setDate(in30.getDate() + 30);
+  const in30Date = in30.toISOString().slice(0, 10);
+  const cutoff60 = new Date();
+  cutoff60.setDate(cutoff60.getDate() - 60);
+  const cutoff60Date = cutoff60.toISOString().slice(0, 10);
+
+  const affectedUsers = useMemo(() => {
+    if (alert.id === 'users-expired') {
+      return users.filter((user) => user.expirationDate && user.expirationDate < today);
+    }
+    if (alert.id === 'users-without-email') {
+      return users.filter((user) => !user.email);
+    }
+    if (alert.id === 'users-expiring') {
+      return users.filter((user) => user.expirationDate && user.expirationDate >= today && user.expirationDate <= in30Date);
+    }
+    if (alert.id === 'users-inactive-60d') {
+      return users.filter((user) => !user.lastLogin || user.lastLogin < cutoff60Date);
+    }
+    return [];
+  }, [alert.id, cutoff60Date, in30Date, today, users]);
+
+  const affectedReportings = useMemo(() => {
+    if (alert.id !== 'open') return [];
+    const openStatuses = ['aberto', 'open', 'pendente', 'pending', 'em andamento', 'in progress', 'novo', 'new', 'aguardando'];
+    return reportings.filter((item) =>
+      openStatuses.some((status) => String(item.status || '').toLocaleLowerCase('pt-BR').includes(status)),
+    );
+  }, [alert.id, reportings]);
+
+  const isUserAlert = alert.id.startsWith('users-');
+  const hasDetails = isUserAlert ? affectedUsers.length > 0 : affectedReportings.length > 0;
+  const term = search.trim().toLocaleLowerCase('pt-BR');
+  const filteredUsers = affectedUsers.filter((user) =>
+    !term || [user.fullName, user.username, user.email, user.expirationDate, user.lastLogin]
+      .some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(term)),
+  );
+  const filteredReportings = affectedReportings.filter((item) =>
+    !term || [item.number, item.roadName, item.km, item.occurrenceType, item.status, item.foundAt]
+      .some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(term)),
+  );
+  const records = isUserAlert ? filteredUsers : filteredReportings;
+  const visible = records.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => setPage(1), [search, pageSize]);
+
+  if (!hasDetails) return null;
+
+  return (
+    <div className="mt-4 border-t border-brand-100 pt-4">
+      <button type="button" onClick={() => setOpen((current) => !current)} className="rounded-xl border border-brand-200 bg-white px-4 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50" aria-expanded={open}>
+        {open ? 'Recolher detalhes' : `Ver ${formatNumber(records.length)} ${isUserAlert ? 'usuário(s)' : 'apontamento(s)'}`}
+      </button>
+      {open ? (
+        <div className="mt-4 rounded-2xl border border-brand-100 bg-white p-4">
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={isUserAlert ? 'Buscar por nome, usuário ou e-mail' : 'Buscar por número, rodovia, km, tipo ou status'} className="w-full rounded-xl border border-brand-100 px-4 py-3 text-sm" />
+          <div className="mt-3 overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600">
+                {isUserAlert ? <tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">E-mail</th><th className="p-3">Expiração</th><th className="p-3">Último acesso</th></tr> : <tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th><th className="p-3">Data</th></tr>}
+              </thead>
+              <tbody>
+                {isUserAlert
+                  ? (visible as KartadoUser[]).map((user, index) => <tr key={user.id || `${user.username}-${index}`} className="border-b border-brand-50"><td className="p-3 font-medium text-surface-900">{user.fullName || '—'}</td><td className="p-3">{user.username || '—'}</td><td className="p-3">{user.email || '—'}</td><td className="p-3">{user.expirationDate || '—'}</td><td className="p-3">{user.lastLogin || '—'}</td></tr>)
+                  : (visible as KartadoReporting[]).map((item, index) => <tr key={item.id || `${item.number}-${index}`} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td><td className="p-3">{item.foundAt || item.createdAt || '—'}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+          {!records.length ? <p className="py-5 text-center text-sm text-surface-600">Nenhum registro corresponde à busca.</p> : null}
+          <Pagination page={page} pageSize={pageSize} total={records.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
+          {!isUserAlert && Number(alert.count || 0) > affectedReportings.length ? <p className="mt-3 text-xs text-amber-700">A lista apresenta os registros carregados na amostra atual; o total informado pela API é {formatNumber(Number(alert.count || 0))}.</p> : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -701,7 +791,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           ) : null}
 
           {tab === 'alerts' ? (
-            <div className="mt-5 grid gap-3">{alerts.length ? alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4"><div className="flex justify-between gap-4"><h3 className="font-semibold text-surface-900">{alert.title}</h3><span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span></div>{alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}{alert.action ? <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p> : null}</article>) : <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>}</div>
+            <div className="mt-5 grid gap-3">{alerts.length ? alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4"><div className="flex justify-between gap-4"><h3 className="font-semibold text-surface-900">{alert.title}</h3><span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span></div>{alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}{alert.action ? <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p> : null}<AlertDetails alert={alert} users={selected.users.users || []} reportings={selected.reportings.items || []} /></article>) : <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>}</div>
           ) : null}
         </div>
       ) : null}

@@ -26,6 +26,7 @@ export interface KartadoReporting {
   occurrenceType?: string | null;
   foundAt?: string | null;
   createdAt?: string | null;
+  prazo?: string | null;
 }
 
 export interface KartadoAlert {
@@ -35,6 +36,7 @@ export interface KartadoAlert {
   desc?: string;
   action?: string;
   count?: number;
+  details?: Record<string, unknown> | null;
 }
 
 export interface KartadoConcessionDashboard {
