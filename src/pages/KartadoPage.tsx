@@ -39,6 +39,8 @@ function riskLabel(user: KartadoUser) {
 export function KartadoPage() {
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
   const [concessions, setConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
+  const [failedCompanies, setFailedCompanies] = useState<Record<string, string>>({});
+  const [completedCount, setCompletedCount] = useState(0);
   const [selectedUuid, setSelectedUuid] = useState('');
   const [tab, setTab] = useState<KartadoTab>('overview');
   const [search, setSearch] = useState('');
@@ -50,16 +52,29 @@ export function KartadoPage() {
   async function refresh() {
     setLoading(true);
     setError('');
+    setSelectedUuid('');
+    setConcessions({});
+    setFailedCompanies({});
+    setCompletedCount(0);
     try {
       const nextCompanies = await loadKartadoCompanies();
       setCompanies(nextCompanies);
       if (!nextCompanies.length) throw new Error('A conta Kartado não possui concessões ativas disponíveis.');
-      const selectedCompany =
-        nextCompanies.find((item) => (item.uuid || item.id) === selectedUuid) || nextCompanies[0];
-      const uuid = selectedCompany.uuid || selectedCompany.id || '';
-      setSelectedUuid(uuid);
-      const concession = await loadKartadoConcession(selectedCompany);
-      setConcessions((current) => ({ ...current, [uuid]: concession }));
+
+      await Promise.allSettled(
+        nextCompanies.map(async (company) => {
+          const uuid = company.uuid || company.id || '';
+          try {
+            const concession = await loadKartadoConcession(company);
+            setConcessions((current) => ({ ...current, [uuid]: concession }));
+          } catch (reason) {
+            const message = reason instanceof Error ? reason.message : 'Unidade indisponível.';
+            setFailedCompanies((current) => ({ ...current, [uuid]: message }));
+          } finally {
+            setCompletedCount((current) => current + 1);
+          }
+        }),
+      );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Não foi possível carregar o Kartado.');
     } finally {
@@ -76,6 +91,20 @@ export function KartadoPage() {
     [concessions, selectedUuid],
   );
 
+  const totals = useMemo(
+    () =>
+      Object.values(concessions).reduce(
+        (result, concession) => ({
+          users: result.users + Number(concession.summary.usuariosAtivos || 0),
+          reportings: result.reportings + Number(concession.summary.apontamentosTotal || 0),
+          alerts: result.alerts + Number(concession.summary.alertasTotal || 0),
+          critical: result.critical + Number(concession.summary.alertasCriticos || 0),
+        }),
+        { users: 0, reportings: 0, alerts: 0, critical: 0 },
+      ),
+    [concessions],
+  );
+
   async function selectCompany(company: KartadoCompany) {
     const uuid = company.uuid || company.id || '';
     setSelectedUuid(uuid);
@@ -86,6 +115,11 @@ export function KartadoPage() {
     try {
       const concession = await loadKartadoConcession(company);
       setConcessions((current) => ({ ...current, [uuid]: concession }));
+      setFailedCompanies((current) => {
+        const next = { ...current };
+        delete next[uuid];
+        return next;
+      });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Não foi possível carregar a concessão.');
     } finally {
@@ -129,20 +163,6 @@ export function KartadoPage() {
             <p className="mt-2 text-sm text-surface-700">Dados em tempo real da API Kartado.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {companies.length ? (
-              <select
-                value={selectedUuid}
-                onChange={(event) => {
-                  const company = companies.find((item) => (item.uuid || item.id) === event.target.value);
-                  if (company) void selectCompany(company);
-                }}
-                className="rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-surface-900"
-              >
-                {companies.map((item) => (
-                  <option key={item.uuid || item.id} value={item.uuid || item.id}>{item.name}</option>
-                ))}
-              </select>
-            ) : null}
             <button
               type="button"
               onClick={() => void refresh()}
@@ -153,21 +173,59 @@ export function KartadoPage() {
             </button>
           </div>
         </div>
+        {companies.length ? (
+          <div className="mt-5">
+            <div className="flex items-center justify-between gap-4 text-sm text-surface-700">
+              <span>{completedCount} de {companies.length} unidades carregadas</span>
+              {Object.keys(failedCompanies).length ? (
+                <span className="font-semibold text-red-700">{Object.keys(failedCompanies).length} indisponível(is)</span>
+              ) : null}
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-brand-50">
+              <div className="h-full rounded-full bg-brand-700 transition-all" style={{ width: `${Math.round((completedCount / companies.length) * 100)}%` }} />
+            </div>
+          </div>
+        ) : null}
         {error ? <p className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
       </div>
 
-      {selected ? (
+      {companies.length ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Usuários ativos" value={Number(selected.summary.usuariosAtivos || 0)} />
-          <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
-          <MetricCard label="Alertas" value={Number(selected.summary.alertasTotal || 0)} />
-          <MetricCard label="Críticos" value={Number(selected.summary.alertasCriticos || 0)} />
+          <MetricCard label="Usuários ativos" value={totals.users} />
+          <MetricCard label="Apontamentos" value={totals.reportings} />
+          <MetricCard label="Alertas" value={totals.alerts} />
+          <MetricCard label="Críticos" value={totals.critical} />
         </div>
       ) : null}
 
-      {!loading && !error && companies.length > 0 && !selected ? (
-        <div className="rounded-[24px] border border-brand-100 bg-white p-6 text-sm text-surface-700 shadow-soft">
-          A concessão foi encontrada, mas a API não retornou dados para o painel.
+      {companies.length ? (
+        <div className="rounded-[28px] border border-brand-100 bg-white p-5 shadow-soft">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-lg font-semibold text-surface-900">Unidades</h3>
+            <p className="text-sm text-surface-700">Selecione uma unidade para consultar seus dados detalhados.</p>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {companies.map((company) => {
+              const uuid = company.uuid || company.id || '';
+              const concession = concessions[uuid];
+              const failure = failedCompanies[uuid];
+              const isPending = !concession && !failure;
+              return (
+                <button
+                  key={uuid}
+                  type="button"
+                  onClick={() => void selectCompany(company)}
+                  disabled={isPending}
+                  className={`rounded-2xl border p-4 text-left transition ${selectedUuid === uuid ? 'border-brand-700 bg-brand-50 ring-2 ring-brand-100' : 'border-brand-100 bg-white hover:border-brand-300 hover:bg-brand-50/50'} disabled:cursor-wait disabled:opacity-60`}
+                >
+                  <span className="block font-semibold text-surface-900">{company.name}</span>
+                  <span className={`mt-2 block text-xs ${failure ? 'text-red-700' : 'text-surface-600'}`}>
+                    {isPending ? 'Carregando...' : failure ? 'Indisponível — clique para tentar novamente' : `${Number(concession.summary.usuariosAtivos || 0)} usuários · ${Number(concession.summary.apontamentosTotal || 0)} apontamentos`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : null}
 
