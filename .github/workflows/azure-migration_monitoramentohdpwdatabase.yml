@@ -29,6 +29,8 @@ jobs:
 
       - name: Build application
         run: npm run build
+        env:
+          VITE_TEAMS_AGENT_URL: "https://teams.microsoft.com/l/app/?source=agent-details-page&sharedAppResource=TaosSharedApp&titleId=T_2a558888-08cb-4cfa-dc1d-4089d17e6e39"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4

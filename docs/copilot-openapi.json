@@ -1,0 +1,101 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Painel de Sistemas de Engenharia - Copilot API",
+    "version": "1.0.0",
+    "description": "Ferramentas somente leitura para consultar ProjectWise, E365 e Kartado."
+  },
+  "servers": [
+    {
+      "url": "https://monitoramentohdpwdatabase-d0fqc8ajavavchh6.brazilsouth-01.azurewebsites.net/api/copilot"
+    }
+  ],
+  "paths": {
+    "/analytics": {
+      "post": {
+        "operationId": "consultarDadosEngenharia",
+        "summary": "Consulta dados operacionais dos sistemas de engenharia",
+        "description": "Escolha uma área e envie filtros opcionais. Para Kartado, consulte primeiro sem company para obter as unidades e depois informe UUID ou nome.",
+        "security": [
+          {
+            "CopilotApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["area"],
+                "properties": {
+                  "area": {
+                    "type": "string",
+                    "enum": ["overview", "storage", "tickets", "explorer", "portal", "e365", "kartado"],
+                    "description": "Fonte de dados a consultar."
+                  },
+                  "company": {
+                    "type": "string",
+                    "description": "Nome ou UUID da unidade Kartado."
+                  },
+                  "search": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "Texto para pesquisar registros."
+                  },
+                  "status": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "priority": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "dateFrom": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "dateTo": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "quarter": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "description": "Quarter E365."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado da consulta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": { "description": "Parâmetros inválidos." },
+          "401": { "description": "Chave ausente." },
+          "403": { "description": "Chave inválida." },
+          "429": { "description": "Limite de consultas excedido." }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "CopilotApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-copilot-key"
+      }
+    }
+  }
+}
