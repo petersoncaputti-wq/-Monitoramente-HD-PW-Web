@@ -56,13 +56,51 @@ export interface KartadoDashboard {
   source: string;
 }
 
-async function request<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
-  const response = await fetch(`/api/v1/kartado${path}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+export async function loadKartadoCompanies(): Promise<KartadoCompany[]> {
+  const result = await request<{ success: boolean; companies: KartadoCompany[]; error?: string }>(
+    '/companies',
+  );
+  if (!result.success) throw new Error(result.error || 'Concessões Kartado indisponíveis.');
+  return result.companies || [];
+}
+
+export async function loadKartadoConcession(
+  company: KartadoCompany,
+): Promise<KartadoConcessionDashboard> {
+  const result = await request<{
+    success: boolean;
+    dashboard: KartadoConcessionDashboard;
+    error?: string;
+  }>('/dashboard', {
+    companyUuid: company.uuid || company.id,
+    companyName: company.name,
   });
+  if (!result.success || !result.dashboard) {
+    throw new Error(result.error || `Dados de ${company.name} indisponíveis.`);
+  }
+  return result.dashboard;
+}
+
+async function request<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 90_000);
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/kartado${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('A consulta ao Kartado excedeu 90 segundos. Tente novamente.');
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
   const payload = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
   if (!response.ok || !payload) {
     throw new Error(payload?.error || `Falha ao consultar o Kartado (${response.status}).`);
