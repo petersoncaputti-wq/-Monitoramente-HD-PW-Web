@@ -46,6 +46,9 @@ export interface KartadoConcessionDashboard {
     recent?: KartadoReporting[];
     alerts?: KartadoAlert[];
     counts: Record<string, number>;
+    byStatus?: Array<{ name: string; count: number }>;
+    byType?: Array<{ name: string; count: number }>;
+    byRoad?: Array<{ name: string; count: number }>;
   };
 }
 
