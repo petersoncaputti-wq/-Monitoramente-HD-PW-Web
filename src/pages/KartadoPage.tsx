@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  loadKartadoDashboard,
+  loadKartadoCompanies,
+  loadKartadoConcession,
   searchKartadoUsers,
   type KartadoConcessionDashboard,
-  type KartadoDashboard,
+  type KartadoCompany,
   type KartadoUser,
 } from '@/services/kartadoService';
 
@@ -36,7 +37,8 @@ function riskLabel(user: KartadoUser) {
 }
 
 export function KartadoPage() {
-  const [dashboard, setDashboard] = useState<KartadoDashboard | null>(null);
+  const [companies, setCompanies] = useState<KartadoCompany[]>([]);
+  const [concessions, setConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
   const [selectedUuid, setSelectedUuid] = useState('');
   const [tab, setTab] = useState<KartadoTab>('overview');
   const [search, setSearch] = useState('');
@@ -49,13 +51,15 @@ export function KartadoPage() {
     setLoading(true);
     setError('');
     try {
-      const next = await loadKartadoDashboard();
-      setDashboard(next);
-      setSelectedUuid((current) =>
-        next.concessoes.some((item) => item.company.uuid === current)
-          ? current
-          : next.concessoes[0]?.company.uuid || '',
-      );
+      const nextCompanies = await loadKartadoCompanies();
+      setCompanies(nextCompanies);
+      if (!nextCompanies.length) throw new Error('A conta Kartado não possui concessões ativas disponíveis.');
+      const selectedCompany =
+        nextCompanies.find((item) => (item.uuid || item.id) === selectedUuid) || nextCompanies[0];
+      const uuid = selectedCompany.uuid || selectedCompany.id || '';
+      setSelectedUuid(uuid);
+      const concession = await loadKartadoConcession(selectedCompany);
+      setConcessions((current) => ({ ...current, [uuid]: concession }));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Não foi possível carregar o Kartado.');
     } finally {
@@ -68,9 +72,26 @@ export function KartadoPage() {
   }, []);
 
   const selected = useMemo<KartadoConcessionDashboard | null>(
-    () => dashboard?.concessoes.find((item) => item.company.uuid === selectedUuid) || null,
-    [dashboard, selectedUuid],
+    () => concessions[selectedUuid] || null,
+    [concessions, selectedUuid],
   );
+
+  async function selectCompany(company: KartadoCompany) {
+    const uuid = company.uuid || company.id || '';
+    setSelectedUuid(uuid);
+    setRemoteUsers(null);
+    if (concessions[uuid]) return;
+    setLoading(true);
+    setError('');
+    try {
+      const concession = await loadKartadoConcession(company);
+      setConcessions((current) => ({ ...current, [uuid]: concession }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Não foi possível carregar a concessão.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const users = useMemo(() => {
     const source = remoteUsers ?? selected?.users.users ?? [];
@@ -108,17 +129,17 @@ export function KartadoPage() {
             <p className="mt-2 text-sm text-surface-700">Dados em tempo real da API Kartado.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {dashboard?.concessoes.length ? (
+            {companies.length ? (
               <select
                 value={selectedUuid}
                 onChange={(event) => {
-                  setSelectedUuid(event.target.value);
-                  setRemoteUsers(null);
+                  const company = companies.find((item) => (item.uuid || item.id) === event.target.value);
+                  if (company) void selectCompany(company);
                 }}
                 className="rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-surface-900"
               >
-                {dashboard.concessoes.map((item) => (
-                  <option key={item.company.uuid} value={item.company.uuid}>{item.company.name}</option>
+                {companies.map((item) => (
+                  <option key={item.uuid || item.id} value={item.uuid || item.id}>{item.name}</option>
                 ))}
               </select>
             ) : null}
@@ -135,12 +156,18 @@ export function KartadoPage() {
         {error ? <p className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
       </div>
 
-      {dashboard ? (
+      {selected ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Usuários ativos" value={dashboard.totals.usuariosAtivos} />
-          <MetricCard label="Apontamentos" value={dashboard.totals.apontamentos} />
-          <MetricCard label="Alertas" value={dashboard.totals.alertas} />
-          <MetricCard label="Críticos" value={dashboard.totals.criticos} />
+          <MetricCard label="Usuários ativos" value={Number(selected.summary.usuariosAtivos || 0)} />
+          <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
+          <MetricCard label="Alertas" value={Number(selected.summary.alertasTotal || 0)} />
+          <MetricCard label="Críticos" value={Number(selected.summary.alertasCriticos || 0)} />
+        </div>
+      ) : null}
+
+      {!loading && !error && companies.length > 0 && !selected ? (
+        <div className="rounded-[24px] border border-brand-100 bg-white p-6 text-sm text-surface-700 shadow-soft">
+          A concessão foi encontrada, mas a API não retornou dados para o painel.
         </div>
       ) : null}
 
