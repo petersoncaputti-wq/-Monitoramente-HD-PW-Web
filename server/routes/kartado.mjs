@@ -218,7 +218,7 @@ kartadoRouter.post('/search', async (req, res) => {
 kartadoRouter.post('/reportings', async (req, res) => {
   const creds = requireCreds(req, res);
   if (!creds) return;
-  const { companyUuid, foundAtAfter = '', foundAtBefore = '', origin = '', pageSize = 50 } = req.body;
+  const { companyUuid, foundAtAfter = '', foundAtBefore = '', origin = '', pageSize = 100, maxPages = 2 } = req.body;
   if (!companyUuid) return res.status(400).json({ success: false, error: 'companyUuid é obrigatório.' });
 
   try {
@@ -231,6 +231,7 @@ kartadoRouter.post('/reportings', async (req, res) => {
         foundAtAfter,
         foundAtBefore,
         origin,
+        maxPages: Math.min(Math.max(parseInt(maxPages) || 1, 1), 2),
       });
     } catch (initialError) {
       if (requestedPageSize <= 25) throw initialError;
@@ -239,6 +240,7 @@ kartadoRouter.post('/reportings', async (req, res) => {
         foundAtAfter,
         foundAtBefore,
         origin,
+        maxPages: 2,
       });
       data.warning = `Consulta reduzida para 25 registros: ${initialError.message}`;
     }
@@ -264,11 +266,41 @@ kartadoRouter.post('/reportings', async (req, res) => {
 // POST /dashboard  — uma concessão
 // Body: { username, password, companyUuid?, pageSize? }
 // ─────────────────────────────────────────────────────────────────────────────
+const DASHBOARD_CACHE_TTL_MS = Number(process.env.KARTADO_CACHE_TTL_MS || 10 * 60 * 1000);
+const dashboardCache = new Map();
+
+kartadoRouter.post('/dashboard', (req, res, next) => {
+  const { companyUuid = '', summaryOnly = false, force = false } = req.body || {};
+  const cacheKey = `${companyUuid}:${summaryOnly ? 'summary' : 'full'}`;
+  const cached = dashboardCache.get(cacheKey);
+
+  if (!force && cached && cached.expiresAt > Date.now()) {
+    return res.json({ ...cached.payload, cache: { hit: true, expiresAt: cached.expiresAt } });
+  }
+
+  if (cached) dashboardCache.delete(cacheKey);
+  const sendJson = res.json.bind(res);
+  res.json = (payload) => {
+    if (payload?.success && payload?.dashboard) {
+      dashboardCache.set(cacheKey, {
+        payload,
+        expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS,
+      });
+      if (dashboardCache.size > 100) {
+        const oldestKey = dashboardCache.keys().next().value;
+        if (oldestKey) dashboardCache.delete(oldestKey);
+      }
+    }
+    return sendJson(payload);
+  };
+  next();
+});
+
 kartadoRouter.post('/dashboard', async (req, res) => {
   const creds = requireCreds(req, res);
   if (!creds) return;
 
-  const { companyUuid, companyName, concessaoNome, pageSize = 100 } = req.body;
+  const { companyUuid, companyName, concessaoNome, pageSize = 100, summaryOnly = false } = req.body;
   const { log, add } = makeLogger('dash');
 
   // Detecta se o valor passado é um UUID real (contém '-') ou um nome/texto livre
@@ -340,20 +372,20 @@ kartadoRouter.post('/dashboard', async (req, res) => {
       }
     }
 
-    const ps = Math.min(parseInt(pageSize) || 100, 100);
+    const ps = summaryOnly ? 25 : Math.min(parseInt(pageSize) || 100, 100);
     const now2 = new Date();
     const startOfMonth    = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString().split('T')[0];
     const quinzeDiasAtras = new Date(now2.getTime() - 15 * 86_400_000).toISOString().split('T')[0];
 
-    add('3', 'run', `GET /User/ + /Reporting/ + /Inventory/ + /Job/ + /Firm/ + /Reporting(mês) + /Photo/(15d) — company=${selected.uuid}`);
+    add('3', 'run', `${summaryOnly ? 'Carga resumida' : 'Carga completa'} — company=${selected.uuid}`);
     const [uR, rR, invR, jobR, firmR, rMesR, photosR] = await Promise.allSettled([
-      listUsers(auth.token, selected.uuid, { pageSize: ps }),
+      listUsers(auth.token, selected.uuid, { pageSize: ps, maxPages: summaryOnly ? 1 : 10 }),
       listReportings(auth.token, selected.uuid, { pageSize: ps }),
-      listInventoryCounts(auth.token, selected.uuid),
-      listJobProgress(auth.token, selected.uuid),
-      listFirmCounts(auth.token, selected.uuid),
-      listReportings(auth.token, selected.uuid, { foundAtAfter: startOfMonth, pageSize: ps, maxPages: 3 }),
-      listPhotosForCompany(auth.token, selected.uuid, { foundAtAfter: quinzeDiasAtras, pageSize: 100, maxPages: 5 }),
+      summaryOnly ? Promise.resolve({ totalCount: null, withImageCount: null, inventoryItems: [] }) : listInventoryCounts(auth.token, selected.uuid),
+      summaryOnly ? Promise.resolve({ totalJobs: null, totalThisMonth: null, avgProgress: null }) : listJobProgress(auth.token, selected.uuid),
+      summaryOnly ? Promise.resolve({ total: null, firms: [] }) : listFirmCounts(auth.token, selected.uuid),
+      summaryOnly ? Promise.resolve({ reportings: [], totalCount: 0 }) : listReportings(auth.token, selected.uuid, { foundAtAfter: startOfMonth, pageSize: ps, maxPages: 3 }),
+      summaryOnly ? Promise.resolve({ photos: [], reportingUuids: [], totalPhotos: null }) : listPhotosForCompany(auth.token, selected.uuid, { foundAtAfter: quinzeDiasAtras, pageSize: 100, maxPages: 5 }),
     ]);
 
     const ud = uR.status === 'fulfilled'
@@ -400,7 +432,7 @@ kartadoRouter.post('/dashboard', async (req, res) => {
         users:      { returned: ud.users.length,      totalApi: ud.totalCount,      totalPages: ud.totalPages },
         reportings: { returned: rd.reportings.length, totalApi: rd.totalCount,      totalPages: rd.totalPages },
       },
-      dashboard: dash, log,
+      dashboard: dash, summaryOnly, log,
     });
   } catch (err) {
     add(err.step || 'error', 'err', err.message);

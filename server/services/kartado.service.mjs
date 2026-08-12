@@ -242,7 +242,7 @@ export async function listReportings(token, companyUuid, { pageSize = 100, found
   // Só busca todas as páginas quando há filtro de DATA — origem sozinha fica em pg1
   // para evitar timeout por volume excessivo de requisições
   // maxPages > 0 limita o número de páginas mesmo com filtro de data
-  const result = hasDateFilter
+  const result = hasDateFilter || maxPages > 0
     ? await fetchPages(token, '/Reporting/Spreadsheet/', params, maxPages)
     : await fetchPages(token, '/Reporting/Spreadsheet/', params, 1);
 
@@ -826,4 +826,3 @@ export async function runDiagnostics(token, sampleCompanyUuid = null) {
 
   return Object.fromEntries(results);
 }
-
