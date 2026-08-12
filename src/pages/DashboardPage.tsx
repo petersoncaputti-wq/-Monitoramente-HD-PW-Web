@@ -15,6 +15,7 @@ import { UsedSpaceCard } from '@/components/UsedSpaceCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserSettingsPage } from '@/pages/UserSettingsPage';
 import { EngineeringSystemsHomePage } from '@/pages/EngineeringSystemsHomePage';
+import { KartadoPage } from '@/pages/KartadoPage';
 import {
   getDatePeriodPreset,
   getDefaultDatePeriod,
@@ -141,12 +142,13 @@ function filterRowsByPeriod(
   });
 }
 
-type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'settings';
+type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartado' | 'settings';
 
 const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
   storage: '/projectwise/armazenamento',
   projectWiseUsers: '/projectwise/usuarios-pw',
   tickets: '/projectwise/chamados',
+  kartado: '/kartado',
   settings: '/configuracoes',
 };
 
@@ -154,6 +156,7 @@ const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
   storage: 'Armazenamento',
   projectWiseUsers: 'Usuários PW',
   tickets: 'Chamados',
+  kartado: 'Kartado',
   settings: 'Configurações',
 };
 
@@ -416,7 +419,8 @@ export function DashboardPage() {
   const activeTab = getDashboardTab(location.pathname);
   const normalizedPath = location.pathname.replace(/\/+$/, '') || '/';
   const isHomePage = normalizedPath === '/';
-  const isProjectWisePage = activeTab !== null && activeTab !== 'settings';
+  const isProjectWisePage =
+    activeTab === 'storage' || activeTab === 'projectWiseUsers' || activeTab === 'tickets';
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
@@ -1384,6 +1388,13 @@ export function DashboardPage() {
                 Configurações
               </span>
             </>
+          ) : activeTab === 'kartado' ? (
+            <>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <span className="font-semibold text-surface-900" aria-current="page">
+                Kartado
+              </span>
+            </>
           ) : activeTab ? (
             <>
               <span aria-hidden="true" className="text-brand-300">/</span>
@@ -1434,6 +1445,8 @@ export function DashboardPage() {
         ) : null}
 
         {isHomePage ? <EngineeringSystemsHomePage /> : null}
+
+        {activeTab === 'kartado' ? <KartadoPage /> : null}
 
         {activeTab === 'storage' ? (
           <>
