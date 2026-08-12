@@ -148,6 +148,7 @@ function HealthPillar({ label, score, detail, available = true }: { label: strin
 
 function KartadoHealthPanel({ units, loading, completed, total }: { units: KartadoConcessionDashboard[]; loading: boolean; completed: number; total: number }) {
   const [selectedUuid, setSelectedUuid] = useState('');
+  const [explanationOpen, setExplanationOpen] = useState(false);
   const ranked = [...units].sort((a, b) => Number(b.summary.saudeScore || 0) - Number(a.summary.saudeScore || 0));
   const selected = ranked.find((unit) => unit.company.uuid === selectedUuid) || null;
   const average = ranked.length ? Math.round(ranked.reduce((sum, unit) => sum + Number(unit.summary.saudeScore || 0), 0) / ranked.length) : 0;
@@ -157,6 +158,58 @@ function KartadoHealthPanel({ units, loading, completed, total }: { units: Karta
 
   return (
     <div className="space-y-5">
+      <div className="rounded-[24px] border border-brand-100 bg-white shadow-soft">
+        <button
+          type="button"
+          onClick={() => setExplanationOpen((current) => !current)}
+          aria-expanded={explanationOpen}
+          className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+        >
+          <div>
+            <h3 className="font-semibold text-surface-900">Entenda o Score de Saúde</h3>
+            <p className="mt-1 text-sm text-surface-600">
+              Veja como o indicador representa o uso operacional do Kartado.
+            </p>
+          </div>
+          <span className="shrink-0 text-sm font-semibold text-brand-700">
+            {explanationOpen ? 'Recolher' : 'Ver explicação'}
+          </span>
+        </button>
+        {explanationOpen ? (
+          <div className="border-t border-brand-100 px-5 py-5">
+            <p className="max-w-4xl text-sm leading-6 text-surface-700">
+              O Score de Saúde indica como cada unidade utiliza o Kartado no dia a dia. A nota
+              considera frequência de registros, atividade recente, evidências fotográficas e
+              execução das programações. Quanto mais próxima de 100, mais contínuo e completo é o
+              uso da plataforma.
+            </p>
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                ['Dias de uso', 'Frequência de registros nos dias úteis do mês.'],
+                ['Últimos 15 dias', 'Continuidade da atividade nos dias úteis mais recentes.'],
+                ['Com foto', 'Presença de evidências fotográficas nos apontamentos.'],
+                ['Programações', 'Execução das atividades planejadas, com impacto dos atrasos.'],
+              ].map(([title, description]) => (
+                <div key={title} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+                  <p className="text-sm font-semibold text-surface-900">{title}</p>
+                  <p className="mt-2 text-xs leading-5 text-surface-600">{description}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold">
+              <span className="rounded-full bg-emerald-50 px-3 py-2 text-emerald-700">75–100 · Saudável</span>
+              <span className="rounded-full bg-amber-50 px-3 py-2 text-amber-700">45–74 · Atenção</span>
+              <span className="rounded-full bg-red-50 px-3 py-2 text-red-700">0–44 · Crítico</span>
+            </div>
+            <p className="mt-4 text-xs leading-5 text-surface-600">
+              Pilares sem dados disponíveis são desconsiderados da média, em vez de receber nota
+              zero. Quando a unidade não possui apontamentos, o score final é zero. O indicador
+              avalia o uso operacional da plataforma; não representa disponibilidade técnica,
+              desempenho contratual ou avaliação individual de pessoas.
+            </p>
+          </div>
+        ) : null}
+      </div>
       {loading ? <div className="rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-700">Calculando saúde das unidades: {completed} de {total} concluídas.</div> : null}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Score médio" value={`${average}/100`} />
