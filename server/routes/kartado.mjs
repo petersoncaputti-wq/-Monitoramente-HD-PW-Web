@@ -12,7 +12,7 @@ import {
   loadAllCompanies, runDiagnostics, validateProgramacoes, getReportingPhotos,
   listPhotosForCompany, extractPage,
 } from '../services/kartado.service.mjs';
-import { buildConcessaoDashboard, buildMultiDashboard } from '../services/kartado-analytics.service.mjs';
+import { buildConcessaoDashboard, buildMultiDashboard, buildReportingMetrics } from '../services/kartado-analytics.service.mjs';
 
 export const kartadoRouter = Router();
 
@@ -218,17 +218,31 @@ kartadoRouter.post('/search', async (req, res) => {
 kartadoRouter.post('/reportings', async (req, res) => {
   const creds = requireCreds(req, res);
   if (!creds) return;
-  const { companyUuid, foundAtAfter = '', foundAtBefore = '', origin = '', pageSize = 100 } = req.body;
+  const { companyUuid, foundAtAfter = '', foundAtBefore = '', origin = '', pageSize = 50 } = req.body;
   if (!companyUuid) return res.status(400).json({ success: false, error: 'companyUuid é obrigatório.' });
 
   try {
     const { token, latencyMs: authMs } = await getToken(creds.username, creds.password);
-    const data = await listReportings(token, companyUuid, {
-      pageSize: Math.min(parseInt(pageSize) || 100, 100),
-      foundAtAfter,
-      foundAtBefore,
-      origin,
-    });
+    const requestedPageSize = Math.min(parseInt(pageSize) || 50, 100);
+    let data;
+    try {
+      data = await listReportings(token, companyUuid, {
+        pageSize: requestedPageSize,
+        foundAtAfter,
+        foundAtBefore,
+        origin,
+      });
+    } catch (initialError) {
+      if (requestedPageSize <= 25) throw initialError;
+      data = await listReportings(token, companyUuid, {
+        pageSize: 25,
+        foundAtAfter,
+        foundAtBefore,
+        origin,
+      });
+      data.warning = `Consulta reduzida para 25 registros: ${initialError.message}`;
+    }
+    const metrics = buildReportingMetrics(data.reportings, data.totalCount, null, data.isFirstPage);
     res.json({
       success: true, ...SOURCE,
       auth:        { latencyMs: authMs },
@@ -236,6 +250,7 @@ kartadoRouter.post('/reportings', async (req, res) => {
       filter:      { foundAtAfter, foundAtBefore },
       pagination:  { returned: data.reportings.length, totalApi: data.totalCount, totalPages: data.totalPages, isFirstPage: data.isFirstPage },
       reportings:  data.reportings,
+      metrics,
       note: data.isFirstPage
         ? `Exibindo 100 mais recentes. Total na base: ${data.totalCount}. Use foundAtAfter/foundAtBefore para filtrar por período.`
         : `${data.reportings.length} apontamentos retornados para o período ${foundAtAfter || '*'} → ${foundAtBefore || '*'}`,
@@ -350,8 +365,11 @@ kartadoRouter.post('/dashboard', async (req, res) => {
       rd = rR.value;
     } else {
       try {
-        const fallback = await listReportings(auth.token, selected.uuid, { pageSize: 1 });
-        rd = { ...fallback, reportings: [], error: `Apontamentos parcialmente indisponíveis: ${rR.reason?.message}` };
+        const fallback = await listReportings(auth.token, selected.uuid, { pageSize: 25 });
+        rd = {
+          ...fallback,
+          warning: `Consulta reduzida após falha na carga de 100 registros: ${rR.reason?.message}`,
+        };
       } catch {
         rd = { reportings: [], totalCount: 0, page1Count: 0, totalPages: 0, latencyMs: 0, error: rR.reason?.message };
       }
@@ -697,4 +715,3 @@ kartadoRouter.post('/validate-programacoes', async (req, res) => {
     return res.status((err.httpStatus || 500) < 500 ? 400 : 500).json({ success: false, error: err.message, ...SOURCE });
   }
 });
-

@@ -125,3 +125,17 @@ export async function searchKartadoUsers(companyUuid: string, query: string): Pr
   if (!result.success) throw new Error(result.error || 'Busca Kartado indisponível.');
   return result.users || [];
 }
+
+export async function loadKartadoReportings(
+  companyUuid: string,
+): Promise<KartadoConcessionDashboard['reportings']> {
+  const result = await request<{
+    success: boolean;
+    metrics?: KartadoConcessionDashboard['reportings'];
+    error?: string;
+  }>('/reportings', { companyUuid, pageSize: 50 });
+  if (!result.success || !result.metrics) {
+    throw new Error(result.error || 'Apontamentos Kartado indisponíveis.');
+  }
+  return result.metrics;
+}
