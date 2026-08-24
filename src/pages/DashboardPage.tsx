@@ -333,6 +333,16 @@ function formatTechnicalDate(value: string | Date) {
   });
 }
 
+function formatLoadedAt(date: Date) {
+  const formattedDate = date.toLocaleDateString('pt-BR');
+  const formattedTime = date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return `${formattedDate} às ${formattedTime}`;
+}
+
 function formatBytes(value: number) {
   return new Intl.NumberFormat('pt-BR').format(value);
 }
@@ -1485,10 +1495,7 @@ export function DashboardPage() {
                     {autoStorageStatus.state === 'loading'
                       ? 'Atualizando a leitura no Supabase...'
                       : autoStorageStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoStorageStatus.fileName} ?s ${autoStorageStatus.loadedAt.toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. ${autoStorageStatus.rowsCount} registros lidos.`
+                        ? `Fonte carregada: ${autoStorageStatus.fileName} em ${formatLoadedAt(autoStorageStatus.loadedAt)}. ${autoStorageStatus.rowsCount} registros lidos.`
                         : autoStorageStatus.state === 'missing'
                           ? 'Configure o Supabase ou mantenha uma fonte Excel em public/dados/armazenamento.xlsx.'
                           : autoStorageStatus.state === 'error'
@@ -1674,10 +1681,7 @@ export function DashboardPage() {
                     {autoProjectWiseUsersStatus.state === 'loading'
                       ? 'Atualizando os dados de uso e faturamento E365...'
                       : autoProjectWiseUsersStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} ?s ${autoProjectWiseUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. ${autoProjectWiseUsersStatus.rowsCount} registros lidos.`
+                        ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} em ${formatLoadedAt(autoProjectWiseUsersStatus.loadedAt)}. ${autoProjectWiseUsersStatus.rowsCount} registros lidos.`
                         : autoProjectWiseUsersStatus.state === 'missing'
                           ? 'Importe o relatório E365 Usage Data.'
                           : autoProjectWiseUsersStatus.state === 'error'
@@ -1812,10 +1816,7 @@ export function DashboardPage() {
                     {autoProjectWisePortalUsersStatus.state === 'loading'
                       ? 'Atualizando a leitura do CSV exportado do Portal Bentley...'
                       : autoProjectWisePortalUsersStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoProjectWisePortalUsersStatus.fileName} ?s ${autoProjectWisePortalUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. ${autoProjectWisePortalUsersStatus.rowsCount} registros lidos.`
+                        ? `Fonte carregada: ${autoProjectWisePortalUsersStatus.fileName} em ${formatLoadedAt(autoProjectWisePortalUsersStatus.loadedAt)}. ${autoProjectWisePortalUsersStatus.rowsCount} registros lidos.`
                         : autoProjectWisePortalUsersStatus.state === 'missing'
                           ? 'Configure PORTAL_USERS_SOURCE_PATH no .env.local ou coloque o Excel em public/dados/usuarios-pw-portal.xlsx.'
                           : autoProjectWisePortalUsersStatus.state === 'error'
@@ -2320,10 +2321,7 @@ export function DashboardPage() {
                     {autoTicketsStatus.state === 'loading'
                       ? 'Atualizando a leitura da planilha de chamados...'
                       : autoTicketsStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoTicketsStatus.fileName} ?s ${autoTicketsStatus.loadedAt.toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. ${autoTicketsStatus.rowsCount} registros lidos.`
+                        ? `Fonte carregada: ${autoTicketsStatus.fileName} em ${formatLoadedAt(autoTicketsStatus.loadedAt)}. ${autoTicketsStatus.rowsCount} registros lidos.`
                         : autoTicketsStatus.state === 'missing'
                           ? 'Coloque a planilha de chamados em public/dados/chamados.xlsx.'
                           : autoTicketsStatus.state === 'error'
