@@ -8,7 +8,6 @@ import adminUsersRouter from './routes/admin-users.mjs';
 import dataRouter from './routes/data.mjs';
 import ticketsRouter from './routes/tickets.mjs';
 import importsRouter from './routes/imports.mjs';
-import copilotRouter from './routes/copilot.mjs';
 import { kartadoRouter } from './routes/kartado.mjs';
 import { requireUser } from './auth.mjs';
 
@@ -64,7 +63,6 @@ app.use('/api/e365-import', (request, response, next) => {
   request.url = '/e365';
   importsRouter(request, response, next);
 });
-app.use('/api/copilot', copilotRouter);
 app.use('/api/v1/kartado', requireUser, kartadoRouter);
 
 if (existsSync(distPath)) {
