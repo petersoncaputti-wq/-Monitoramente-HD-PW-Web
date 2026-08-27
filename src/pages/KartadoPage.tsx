@@ -126,10 +126,6 @@ function AlertDetails({ alert, users, reportings }: {
   const in30 = new Date();
   in30.setDate(in30.getDate() + 30);
   const in30Date = in30.toISOString().slice(0, 10);
-  const cutoff60 = new Date();
-  cutoff60.setDate(cutoff60.getDate() - 60);
-  const cutoff60Date = cutoff60.toISOString().slice(0, 10);
-
   const affectedUsers = useMemo(() => {
     if (alert.id === 'users-expired') {
       return users.filter((user) => user.expirationDate && user.expirationDate < today);
@@ -140,11 +136,8 @@ function AlertDetails({ alert, users, reportings }: {
     if (alert.id === 'users-expiring') {
       return users.filter((user) => user.expirationDate && user.expirationDate >= today && user.expirationDate <= in30Date);
     }
-    if (alert.id === 'users-inactive-60d') {
-      return users.filter((user) => !user.lastLogin || user.lastLogin < cutoff60Date);
-    }
     return [];
-  }, [alert.id, cutoff60Date, in30Date, today, users]);
+  }, [alert.id, in30Date, today, users]);
 
   const affectedReportings = useMemo(() => {
     if (alert.id !== 'open') return [];
@@ -158,7 +151,7 @@ function AlertDetails({ alert, users, reportings }: {
   const hasDetails = isUserAlert ? affectedUsers.length > 0 : affectedReportings.length > 0;
   const term = search.trim().toLocaleLowerCase('pt-BR');
   const filteredUsers = affectedUsers.filter((user) =>
-    !term || [user.fullName, user.username, user.email, user.expirationDate, user.lastLogin]
+    !term || [user.fullName, user.username, user.email, user.expirationDate]
       .some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(term)),
   );
   const filteredReportings = affectedReportings.filter((item) =>
@@ -183,11 +176,11 @@ function AlertDetails({ alert, users, reportings }: {
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600">
-                {isUserAlert ? <tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">E-mail</th><th className="p-3">Expiração</th><th className="p-3">Último acesso</th></tr> : <tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th><th className="p-3">Data</th></tr>}
+                {isUserAlert ? <tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">E-mail</th><th className="p-3">Expiração</th></tr> : <tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th><th className="p-3">Data</th></tr>}
               </thead>
               <tbody>
                 {isUserAlert
-                  ? (visible as KartadoUser[]).map((user, index) => <tr key={user.id || `${user.username}-${index}`} className="border-b border-brand-50"><td className="p-3 font-medium text-surface-900">{user.fullName || '—'}</td><td className="p-3">{user.username || '—'}</td><td className="p-3">{user.email || '—'}</td><td className="p-3">{user.expirationDate || '—'}</td><td className="p-3">{user.lastLogin || '—'}</td></tr>)
+                  ? (visible as KartadoUser[]).map((user, index) => <tr key={user.id || `${user.username}-${index}`} className="border-b border-brand-50"><td className="p-3 font-medium text-surface-900">{user.fullName || '—'}</td><td className="p-3">{user.username || '—'}</td><td className="p-3">{user.email || '—'}</td><td className="p-3">{user.expirationDate || '—'}</td></tr>)
                   : (visible as KartadoReporting[]).map((item, index) => <tr key={item.id || `${item.number}-${index}`} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td><td className="p-3">{item.foundAt || item.createdAt || '—'}</td></tr>)}
               </tbody>
             </table>
@@ -734,7 +727,6 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                     { label: 'Internos', value: Number(selected.users.counts.internos || 0) },
                     { label: 'Terceiros', value: Number(selected.users.counts.terceiros || 0) },
                     { label: 'Supervisores', value: Number(selected.users.counts.supervisores || 0) },
-                    { label: 'Sem acesso há 60 dias', value: Number(selected.users.counts.semAcesso60d || 0) },
                   ]}
                 />
                 <ChartCard
@@ -753,6 +745,9 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                   data={(selected.reportings.byRoad || []).map((item) => ({ label: item.name, value: item.count }))}
                 />
               </div>
+              <p className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-surface-700">
+                A API do Kartado não disponibiliza o histórico de login dos usuários; por isso, o painel não calcula inatividade por último acesso.
+              </p>
             </div>
           ) : null}
 
