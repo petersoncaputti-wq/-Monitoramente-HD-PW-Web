@@ -374,6 +374,10 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   const [detailedCompanies, setDetailedCompanies] = useState<Set<string>>(() => new Set());
   const [completedCount, setCompletedCount] = useState(0);
   const [selectedUuid, setSelectedUuid] = useState('');
+  const [filteredConcession, setFilteredConcession] = useState<KartadoConcessionDashboard | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [appliedPeriod, setAppliedPeriod] = useState<{ from: string; to: string } | null>(null);
   const [tab, setTab] = useState<KartadoTab>('overview');
   const [search, setSearch] = useState('');
   const [remoteUsers, setRemoteUsers] = useState<KartadoUser[] | null>(null);
@@ -395,6 +399,10 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     setLoading(true);
     setError('');
     setSelectedUuid('');
+    setFilteredConcession(null);
+    setDateFrom('');
+    setDateTo('');
+    setAppliedPeriod(null);
     setConcessions({});
     setFailedCompanies({});
     setDetailedCompanies(new Set());
@@ -432,8 +440,10 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   }, []);
 
   const selected = useMemo<KartadoConcessionDashboard | null>(
-    () => concessions[selectedUuid] || null,
-    [concessions, selectedUuid],
+    () => filteredConcession?.company.uuid === selectedUuid
+      ? filteredConcession
+      : concessions[selectedUuid] || null,
+    [concessions, filteredConcession, selectedUuid],
   );
 
   const totals = useMemo(
@@ -470,6 +480,11 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   async function selectCompany(company: KartadoCompany) {
     const uuid = company.uuid || company.id || '';
     setSelectedUuid(uuid);
+    setFilteredConcession(null);
+    setDateFrom('');
+    setDateTo('');
+    setAppliedPeriod(null);
+    setReportingsError('');
     setRemoteUsers(null);
     if (detailedCompanies.has(uuid)) return;
     setLoading(true);
@@ -571,6 +586,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   async function openTab(nextTab: KartadoTab) {
     setTab(nextTab);
     if (nextTab !== 'reportings' || !selected) return;
+    if (appliedPeriod) return;
     if (reportingsLoaded.has(selected.company.uuid)) return;
 
     setReportingsLoading(true);
@@ -590,6 +606,89 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
       setReportingsError(
         reason instanceof Error ? reason.message : 'Não foi possível carregar os apontamentos.',
       );
+    } finally {
+      setReportingsLoading(false);
+    }
+  }
+
+  function withReportings(
+    concession: KartadoConcessionDashboard,
+    reportings: KartadoConcessionDashboard['reportings'],
+  ): KartadoConcessionDashboard {
+    const alerts = [...(concession.users.alertas || []), ...(reportings.alerts || [])];
+    return {
+      ...concession,
+      reportings,
+      alerts,
+      summary: {
+        ...concession.summary,
+        apontamentosTotal: Number(reportings.counts.totalApi || 0),
+        alertasTotal: alerts.length,
+        alertasCriticos: alerts.filter((alert) => alert.severity === 'danger').length,
+      },
+    };
+  }
+
+  async function applyDateFilter() {
+    if (!selected) return;
+    if (!dateFrom && !dateTo) {
+      setFilteredConcession(null);
+      setAppliedPeriod(null);
+      setReportingsError('');
+      setReportingsPage(1);
+      return;
+    }
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      setReportingsError('A data inicial não pode ser posterior à data final.');
+      return;
+    }
+
+    setReportingsLoading(true);
+    setReportingsError('');
+    try {
+      const reportings = await loadKartadoReportings(selected.company.uuid, {
+        foundAtAfter: dateFrom,
+        foundAtBefore: dateTo,
+      });
+      setFilteredConcession(withReportings(concessions[selected.company.uuid] || selected, reportings));
+      setAppliedPeriod({ from: dateFrom, to: dateTo });
+      setReportingsPage(1);
+    } catch (reason) {
+      setReportingsError(reason instanceof Error ? reason.message : 'Não foi possível aplicar o período.');
+    } finally {
+      setReportingsLoading(false);
+    }
+  }
+
+  function clearDateFilter() {
+    setDateFrom('');
+    setDateTo('');
+    setAppliedPeriod(null);
+    setFilteredConcession(null);
+    setReportingsError('');
+    setReportingsPage(1);
+  }
+
+  async function refreshReportings() {
+    if (!selected) return;
+    setReportingsLoading(true);
+    setReportingsError('');
+    try {
+      const reportings = await loadKartadoReportings(selected.company.uuid, {
+        foundAtAfter: appliedPeriod?.from,
+        foundAtBefore: appliedPeriod?.to,
+      });
+      if (appliedPeriod) {
+        setFilteredConcession(withReportings(concessions[selected.company.uuid] || selected, reportings));
+      } else {
+        setConcessions((current) => ({
+          ...current,
+          [selected.company.uuid]: withReportings(selected, reportings),
+        }));
+      }
+      setReportingsPage(1);
+    } catch (reason) {
+      setReportingsError(reason instanceof Error ? reason.message : 'Falha ao atualizar apontamentos.');
     } finally {
       setReportingsLoading(false);
     }
@@ -711,13 +810,36 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             ))}
           </nav>
 
+          <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-semibold text-surface-900">Filtrar apontamentos por data</h3>
+              <p className="text-xs text-surface-600">O período usa a data em que o apontamento foi encontrado e atualiza totais, gráficos, lista e alertas da unidade selecionada.</p>
+            </div>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
+                De
+                <input type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => setDateFrom(event.target.value)} className="rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900" />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
+                Até
+                <input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900" />
+              </label>
+              <button type="button" onClick={() => void applyDateFilter()} disabled={reportingsLoading || (!dateFrom && !dateTo)} className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                {reportingsLoading ? 'Consultando...' : 'Aplicar período'}
+              </button>
+              {appliedPeriod ? <button type="button" onClick={clearDateFilter} disabled={reportingsLoading} className="rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 disabled:opacity-50">Limpar</button> : null}
+            </div>
+            {appliedPeriod ? <p className="mt-3 text-xs font-medium text-brand-700">Período aplicado: {appliedPeriod.from || 'início da base'} até {appliedPeriod.to || 'hoje'}.</p> : null}
+            {reportingsError ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reportingsError}</p> : null}
+          </div>
+
           {tab === 'overview' ? (
             <div className="mt-5 space-y-5">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard label="Concessão" value={selected.company.name} />
                 <MetricCard label="Usuários" value={Number(selected.summary.usuariosAtivos || 0)} />
                 <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
-                <MetricCard label="Saúde" value={`${Number(selected.summary.saudeScore || 0)}/100`} />
+                <MetricCard label={appliedPeriod ? 'Saúde geral' : 'Saúde'} value={`${Number(selected.summary.saudeScore || 0)}/100`} />
               </div>
               <div className="grid gap-5 xl:grid-cols-2">
                 <ChartCard
@@ -774,12 +896,11 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                   Exibindo {formatNumber(selected.reportings.items?.length || 0)} de{' '}
                   {formatNumber(Number(selected.summary.apontamentosTotal || 0))} apontamentos.
                 </span>
-                <button type="button" onClick={() => void loadKartadoReportings(selected.company.uuid).then((reportings) => setConcessions((current) => ({ ...current, [selected.company.uuid]: { ...selected, reportings, alerts: [...(selected.users.alertas || []), ...(reportings.alerts || [])] } }))).catch((reason: unknown) => setReportingsError(reason instanceof Error ? reason.message : 'Falha ao atualizar apontamentos.'))} disabled={reportingsLoading} className="rounded-xl border border-brand-100 px-3 py-2 text-xs font-semibold text-brand-700 disabled:opacity-50">
+                <button type="button" onClick={() => void refreshReportings()} disabled={reportingsLoading} className="rounded-xl border border-brand-100 px-3 py-2 text-xs font-semibold text-brand-700 disabled:opacity-50">
                   Atualizar apontamentos
                 </button>
               </div>
               {reportingsLoading ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-700">Carregando apontamentos da unidade...</p> : null}
-              {reportingsError ? <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{reportingsError}</p> : null}
               {!reportingsLoading && !reportingsError && !selected.reportings.items?.length ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-surface-700">A API informou apontamentos para esta unidade, mas não retornou registros para exibição.</p> : null}
               {reportingItems.length ? <><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600"><tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th></tr></thead><tbody>{paginatedReportings.map((item, index) => <tr key={item.id || index} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td></tr>)}</tbody></table></div><Pagination page={reportingsPage} pageSize={reportingsPageSize} total={reportingItems.length} onPageChange={setReportingsPage} onPageSizeChange={setReportingsPageSize} /></> : null}
             </div>
