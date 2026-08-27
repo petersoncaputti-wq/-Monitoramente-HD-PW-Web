@@ -159,12 +159,19 @@ export async function searchKartadoUsers(companyUuid: string, query: string): Pr
 
 export async function loadKartadoReportings(
   companyUuid: string,
+  options: { foundAtAfter?: string; foundAtBefore?: string } = {},
 ): Promise<KartadoConcessionDashboard['reportings']> {
   const result = await request<{
     success: boolean;
     metrics?: KartadoConcessionDashboard['reportings'];
     error?: string;
-  }>('/reportings', { companyUuid, pageSize: 100, maxPages: 2 });
+  }>('/reportings', {
+    companyUuid,
+    foundAtAfter: options.foundAtAfter || '',
+    foundAtBefore: options.foundAtBefore || '',
+    pageSize: 100,
+    maxPages: 2,
+  });
   if (!result.success || !result.metrics) {
     throw new Error(result.error || 'Apontamentos Kartado indisponíveis.');
   }
