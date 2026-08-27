@@ -116,7 +116,6 @@ function normalizeUser(raw) {
     isSupervisor:   a.isSupervisor ?? a.is_supervisor ?? false,
     isInternal:     a.isInternal   ?? a.is_internal   ?? true,
     expirationDate: exp,
-    lastLogin:      a.lastLogin || a.last_login || a.lastActivity || a.last_activity || null,
     dateJoined:     a.dateJoined || a.date_joined || null,
     phone:          a.phone || null,
     companyId:      rel.companies?.data?.id || a.company || null,
@@ -213,11 +212,6 @@ export function buildUserMetrics(rawUsers, totalCount) {
   const internos      = users.filter(u => u.isInternal);
   const terceiros     = users.filter(u => !u.isInternal);
 
-  // Quarentena: usuários sem login nos últimos 60 dias (informativo, não crítico)
-  const cutoff60  = new Date(); cutoff60.setDate(cutoff60.getDate() - 60);
-  const cutoff60s = cutoff60.toISOString().split('T')[0];
-  const semAcesso60d = users.filter(u => !u.lastLogin || u.lastLogin < cutoff60s);
-
   const expirados = users.filter(u => u.expirationDate && u.expirationDate < today);
   const semEmail = users.filter(u => !u.email);
   const expirando = users.filter(
@@ -255,13 +249,6 @@ export function buildUserMetrics(rawUsers, totalCount) {
       action: 'Validar antecipadamente quais acessos devem ser renovados.',
       details: userDetails(expirando),
     },
-    semAcesso60d.length > 0 && {
-      id: 'users-inactive-60d', severity: 'info', count: semAcesso60d.length,
-      title: `${semAcesso60d.length} usuário(s) sem acesso há 60 dias`,
-      desc: 'Contas sem login recente ou sem data de último acesso informada.',
-      action: 'Revisar contas inativas e confirmar a necessidade de manutenção do acesso.',
-      details: userDetails(semAcesso60d),
-    },
   ].filter(Boolean);
 
   return {
@@ -271,17 +258,7 @@ export function buildUserMetrics(rawUsers, totalCount) {
       supervisores:  supervisores.length,
       internos:      internos.length,
       terceiros:     terceiros.length,
-      semAcesso60d:  semAcesso60d.length,
     },
-    quarentena: semAcesso60d.map(u => ({
-      fullName:     u.fullName,
-      username:     u.username     || '',
-      email:        u.email        || '',
-      isSupervisor: u.isSupervisor,
-      isInternal:   u.isInternal,
-      lastLogin:    u.lastLogin    || null,
-      dateJoined:   u.dateJoined   || null,
-    })),
     alertas,
     users,
     detectedFields: rawUsers[0] ? {

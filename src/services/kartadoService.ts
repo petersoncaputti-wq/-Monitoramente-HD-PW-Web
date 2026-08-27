@@ -12,7 +12,6 @@ export interface KartadoUser {
   isInternal?: boolean;
   isSupervisor?: boolean;
   expirationDate?: string | null;
-  lastLogin?: string | null;
   riskLevel?: 'danger' | 'warning' | 'info' | 'ok';
   risks?: Array<{ level: string; msg: string }>;
 }
