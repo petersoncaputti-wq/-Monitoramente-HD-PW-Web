@@ -15,7 +15,7 @@ let imports;
 try { imports = JSON.parse(await readFile(filePath, 'utf8')); }
 catch (error) {
   if (error.code !== 'ENOENT') throw error;
-  const payload = selectTotvsPayload(parseTotvsZip(await readFile(resolve(zipPath)), period));
+  const payload = selectTotvsPayload(parseTotvsZip(await readFile(resolve(zipPath)), period, { totvsOnly: true }));
   imports = [{ id: '1', payload, imported_at: new Date().toISOString() }];
   await writeFile(filePath, JSON.stringify(imports));
 }
@@ -32,7 +32,7 @@ app.post('/api/totvs', express.raw({ type: 'application/zip', limit: '10mb' }), 
   // Reject cross-origin browser writes to the local test data.
   if (request.headers.origin && request.headers.origin !== 'http://127.0.0.1:5175') return response.status(403).json({ error: 'Origem não permitida.' });
   let payload;
-  try { if (!Buffer.isBuffer(request.body)) throw new Error('Envie um ZIP.'); payload = selectTotvsPayload(parseTotvsZip(request.body, String(request.query.period || ''))); }
+  try { if (!Buffer.isBuffer(request.body)) throw new Error('Envie um ZIP.'); payload = selectTotvsPayload(parseTotvsZip(request.body, String(request.query.period || ''), { totvsOnly: true })); }
   catch (error) { return response.status(400).json({ error: error.message }); }
   const operation = queue.then(async () => {
     const existing = imports.find(row => row.payload.reportPeriod === payload.reportPeriod);

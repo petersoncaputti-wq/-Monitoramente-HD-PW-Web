@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
+import { parseTotvsZip } from '../server/services/totvs-import.service.mjs';
+
+const oldZip = await readFile(process.argv[2]);
+const newZip = await readFile(process.argv[3]);
+const parse = (zip, period = '2026-09') => parseTotvsZip(zip, period, { totvsOnly: true });
+assert.throws(() => parseTotvsZip(newZip, '2026-09'), /Valor numérico ausente/);
+assert.equal(parse(oldZip, '2026-08').lists.categories.reduce((sum,row) => sum + row.count, 0), 97);
+const current = parse(newZip);
+assert.equal(current.sourceUpdatedAt, '2026-09-09T10:00:43');
+assert.deepEqual(current.lists.categories.map(row => row.count), [2,2,11]);
+assert.equal(current.lists.categories.reduce((sum,row) => sum + row.count, 0), 15);
+const files = unzipSync(newZip);
+const categoryName = Object.keys(files).find(name => name.endsWith('Top_10_CCTI.csv'));
+const categoryText = strFromU8(files[categoryName]);
+files[categoryName] = strToU8(categoryText.replace('11,"TI - TOTVs', ',"TI - TOTVs'));
+assert.throws(() => parse(zipSync(files)), error => error.message.includes(categoryName) && error.message.includes('linha 10') && error.message.includes('Valor numérico ausente'));
+files[categoryName] = strToU8(categoryText.replace('11,"TI - TOTVs', '0,"TI - TOTVs'));
+assert.equal(parse(zipSync(files)).lists.categories.reduce((sum,row) => sum + row.count, 0), 4);
+files[categoryName] = strToU8(categoryText.replace('15,"TI - MGI', ',"TI - MGI'));
+assert.equal(parse(zipSync(files)).lists.categories.reduce((sum,row) => sum + row.count, 0), 15);
+files['Tempo_de_Atendimento_Médio_Horas_-_Empresas.csv'] = strToU8('x,"aspas abertas');
+assert.equal(parse(zipSync(files)).lists.categories.reduce((sum,row) => sum + row.count, 0), 15);
+delete files[categoryName];
+assert.throws(() => parse(zipSync(files)), /Arquivo obrigatório ausente/);
+console.log('Novo ZIP aceito: 15 aberturas TOTVS. Campos alheios ignorados; quantidade TOTVS ausente rejeitada com arquivo/linha; zero preservado.');

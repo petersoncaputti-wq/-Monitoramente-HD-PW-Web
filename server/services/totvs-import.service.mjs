@@ -11,10 +11,11 @@ export function selectTotvsPayload(parsed) {
 }
 
 export function parseCsv(text) {
-  const rows = []; let row = [], cell = '', quoted = false;
+  const rows = []; let row = [], cell = '', quoted = false, line = 1, rowLine = 1;
   text = text.replace(/^\uFEFF/, '');
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
+    if (char === '\r' || (char === '\n' && text[i - 1] !== '\r')) line++;
     if (char === '"') {
       if (quoted && text[i + 1] === '"') { cell += '"'; i++; }
       else if (quoted || cell === '') quoted = !quoted;
@@ -23,14 +24,15 @@ export function parseCsv(text) {
       row.push(cell); cell = '';
       if (char !== ',') {
         if (char === '\r' && text[i + 1] === '\n') i++;
-        if (row.some((value) => value.trim())) rows.push(row);
+        if (row.some((value) => value.trim())) { Object.defineProperty(row, 'sourceLine', { value: rowLine }); rows.push(row); }
         row = [];
+        rowLine = line;
       }
     } else cell += char;
   }
   if (quoted) throw new Error('CSV contém aspas sem fechamento.');
   row.push(cell);
-  if (row.some((value) => value.trim())) rows.push(row);
+  if (row.some((value) => value.trim())) { Object.defineProperty(row, 'sourceLine', { value: rowLine }); rows.push(row); }
   return rows;
 }
 
@@ -71,7 +73,7 @@ function number(value) {
   return result;
 }
 
-export function parseTotvsZip(buffer, reportPeriod) {
+export function parseTotvsZip(buffer, reportPeriod, { totvsOnly = false } = {}) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(reportPeriod)) throw new Error('Informe o mês e ano selecionados na exportação.');
   if (buffer.length > 10 * 1024 * 1024) throw new Error('O ZIP deve ter no máximo 10 MB.');
   let size = 0, count = 0;
@@ -84,11 +86,14 @@ export function parseTotvsZip(buffer, reportPeriod) {
   for (const [path, bytes] of Object.entries(files)) {
     const name = path.split(/[\\/]/).pop();
     const key = normalizeName(name);
+    if (totvsOnly && ![names.categories, names.monthly, names.opened, names.closed, 'Status_cargas.csv'].some(required => normalizeName(required) === key)) continue;
     if (tables.has(key)) throw new Error(`Arquivo duplicado: ${name}`);
     let text;
     try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
     catch { text = new TextDecoder('windows-1252').decode(bytes); }
-    const rows = parseCsv(text);
+    let rows;
+    try { rows = parseCsv(text); }
+    catch (error) { throw new Error(`${name}: ${error.message}`); }
     // Exported blank headers (",") are discarded by parseCsv; named headers remain.
     if (text.replace(/^\uFEFF/, '').split(/\r?\n/)[0].replace(/,/g, '').trim()) rows.shift();
     tables.set(key, rows);
@@ -101,6 +106,22 @@ export function parseTotvsZip(buffer, reportPeriod) {
   const source = tables.get(normalizeName('Status_cargas.csv'))?.[0]?.[0];
   if (!source || !/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(source)) throw new Error('Status_cargas.csv ausente ou sem data válida.');
   const sourceUpdatedAt = `${source.slice(6,10)}-${source.slice(3,5)}-${source.slice(0,2)}T${source.slice(11)}`;
+  if (totvsOnly) {
+    if (!tables.has(normalizeName(names.categories))) throw new Error(`Arquivo obrigatório ausente: ${names.categories}`);
+    const periods = table('monthly').length ? table('monthly').filter(row => row[2] === 'Abertos') : table('opened').filter(row => row[3] === 'Real');
+    if (!periods.some(row => monthKey(row[0]) === reportPeriod)) throw new Error('O período informado não consta na evolução de aberturas.');
+    const categories = [];
+    for (const row of table('categories')) {
+      const label = row[1] ?? '';
+      if (!/(^|[^a-z0-9])totvs(?=$|[^a-z0-9])/i.test(label)) continue;
+      try {
+        const count = number(row[0]);
+        if (!Number.isSafeInteger(count)) throw new Error('Quantidade de chamados deve ser um número inteiro.');
+        categories.push({ label, count });
+      } catch (error) { throw new Error(`${names.categories}, linha ${row.sourceLine}, categoria "${label.trim()}": ${error.message}`); }
+    }
+    return { reportPeriod, sourceUpdatedAt, lists: { categories } };
+  }
   const byMonth = new Map();
   function month(value) {
     const key = monthKey(value);

@@ -19,7 +19,7 @@ router.post('/', requireAdmin, express.raw({ type: 'application/zip', limit: '10
   let payload;
   try {
     if (!Buffer.isBuffer(request.body)) throw new Error('Envie um arquivo ZIP.');
-    const parsed = parseTotvsZip(request.body, String(request.query.period || ''));
+    const parsed = parseTotvsZip(request.body, String(request.query.period || ''), { totvsOnly: true });
     payload = selectTotvsPayload(parsed);
   } catch (error) { return response.status(400).json({ error: error.message || 'ZIP inválido.' }); }
   const result = await query(
