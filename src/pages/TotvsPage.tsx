@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { PanelShell } from '@/components/PanelShell';
 import { TicketKpiCard } from '@/components/TicketKpiCard';
 import { getTotvsCategories } from '@/utils/totvsKpis';
+import { TotvsMonthlyEvolution } from '@/components/TotvsMonthlyEvolution';
 
 interface TotvsData {
   reportPeriod: string; sourceUpdatedAt: string;
   lists: Record<string, { label: string; count: number }[]>;
 }
-interface Snapshot { id: string; report_period: string; source_updated_at: string; imported_at: string }
+interface Snapshot { id: string; report_period: string; source_updated_at: string; imported_at: string; categories?: ChartItem[] }
 const format = (value?: number) => value === undefined ? 'Não disponível' : value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 const periodLabel = (period: string) => new Date(`${period}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
 const sourceLabel = (value: string) => `${value.slice(8,10)}/${value.slice(5,7)}/${value.slice(0,4)} ${value.slice(11)}`;
@@ -130,11 +131,11 @@ export function TotvsPage({ canManage }: { canManage: boolean }) {
       {snapshots.length > 0 && <label className="mt-5 flex max-w-xl flex-col gap-2 text-sm font-medium text-surface-700">Mês de análise<select className={inputClass} value={snapshotId} disabled={busy} onChange={event => void selectSnapshot(event.target.value)}>{snapshots.map(row => <option key={row.id} value={row.id}>{periodLabel(row.report_period)} · atualizado em {sourceLabel(row.source_updated_at)}</option>)}</select></label>}
       {!data && !busy && <p className="mt-5 rounded-2xl border border-dashed border-brand-100 p-8 text-center text-surface-700">Nenhuma importação disponível. Importe o ZIP para visualizar os indicadores.</p>}
     </PanelShell>
-    {data && <TotvsIndicators data={data} />}
+    {data && <TotvsIndicators data={data} snapshots={snapshots} />}
   </div>;
 }
 
-export function TotvsIndicators({ data }: { data: TotvsData }) {
+export function TotvsIndicators({ data, snapshots = [] }: { data: TotvsData; snapshots?: Snapshot[] }) {
   const { items, identifiedOpened } = getTotvsCategories(data.lists.categories);
   return <>
     <PanelShell title="Chamados TOTVS" description={`Período exportado: ${periodLabel(data.reportPeriod)} · Carga: ${sourceLabel(data.sourceUpdatedAt)}.`}>
@@ -144,8 +145,9 @@ export function TotvsIndicators({ data }: { data: TotvsData }) {
         <TicketKpiCard title="Volume do principal motivo" value={format(items[0].count)} helperText={shortCategory(items[0].label)} />
         <LeadingCategoryGauge item={items[0]} total={identifiedOpened ?? 0} />
       </div> : <p role="status" className="rounded-2xl border border-dashed border-brand-100 p-6 text-sm text-surface-700">Nenhuma categoria identificada como TOTVS nesta importação. Isso não confirma ausência de chamados; confira o relatório de categorias exportado.</p>}
-      <p className="mt-5 text-sm leading-6 text-surface-700">SLA, encerramentos, tempo médio, backlog, satisfação e evolução não estão disponíveis exclusivamente para TOTVS neste pacote.</p>
+      <p className="mt-5 text-sm leading-6 text-surface-700">SLA, encerramentos, tempo médio, backlog e satisfação não estão disponíveis exclusivamente para TOTVS neste pacote.</p>
     </PanelShell>
+    <TotvsMonthlyEvolution snapshots={snapshots} endPeriod={data.reportPeriod} />
     {items.length > 0 && <>
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2"><PanelShell title="Volume por motivo" description={`Aberturas identificadas nas categorias TOTVS · ${periodLabel(data.reportPeriod)}.`}><CategoryVolumeChart items={items} /></PanelShell></div>

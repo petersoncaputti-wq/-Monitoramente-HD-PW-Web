@@ -10,7 +10,24 @@ import { parseTotvsZip } from '../server/services/totvs-import.service.mjs';
 const payload = parseTotvsZip(await readFile(process.argv[2]), '2026-08');
 const vite = await createServer({ configFile: false, envFile: false, plugins: [react()], resolve: { alias: { '@': resolve('src') } }, server: { middlewareMode: true, watch: null, hmr: false }, appType: 'custom' });
 try {
-  const { getTotvsCategories } = await vite.ssrLoadModule('/src/utils/totvsKpis.ts');
+  const { getTotvsCategories, getTotvsMonthlySeries } = await vite.ssrLoadModule('/src/utils/totvsKpis.ts');
+  const { TotvsMonthlyEvolution } = await vite.ssrLoadModule('/src/components/TotvsMonthlyEvolution.tsx');
+  const months = [
+    { report_period: '2026-06', imported_at: '2026-06-15', categories: [{ label: 'TOTVS', count: 20 }] },
+    { report_period: '2026-06', imported_at: '2026-06-22', categories: [{ label: 'TOTVS', count: 30 }, { label: 'MGI', count: 999 }] },
+    { report_period: '2026-08', imported_at: '2026-09-08', categories: payload.lists.categories },
+    { report_period: '2026-09', imported_at: '2026-09-09', categories: [{ label: 'TOTVS', count: 0 }] },
+  ];
+  const evolution = getTotvsMonthlySeries(months, '2026-09');
+  assert.deepEqual(evolution.map(row => row.opened), [30, undefined, 97, 0]);
+  assert.equal(evolution[1].hasImport, false);
+  assert.equal(getTotvsMonthlySeries(months, '2026-06').length, 1);
+  assert.deepEqual(getTotvsMonthlySeries([], '2026-09'), []);
+  const chart = renderToStaticMarkup(React.createElement(TotvsMonthlyEvolution, { snapshots: months, endPeriod: '2026-09' }));
+  assert.ok(chart.includes('Evolução mensal dos chamados TOTVS'));
+  assert.ok(chart.includes('Sem importação'));
+  assert.ok(chart.includes('>30<') && chart.includes('>97<') && chart.includes('>0<'));
+  assert.ok(!chart.includes('999'));
   const { TotvsIndicators } = await vite.ssrLoadModule('/src/pages/TotvsPage.tsx');
   const selected = getTotvsCategories(payload.lists.categories);
   assert.equal(selected.identifiedOpened, 97);

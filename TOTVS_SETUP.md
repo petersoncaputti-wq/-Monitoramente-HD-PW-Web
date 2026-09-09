@@ -3,6 +3,11 @@
 Card na pagina inicial e rota /totvs/chamados. Usa os componentes visuais do PW,
 com indicadores, grafico de colunas, rosca e tabela de categorias.
 
+A evolucao mensal mostra ate 12 meses terminando no mes selecionado, usando
+somente o acumulado de categorias TOTVS salvo por mes. Lacunas aparecem como
+sem importacao, nunca zero. Reimportacoes substituem a coluna mensal e nao
+geram novos pontos. O historico misto do ZIP nao alimenta este grafico.
+
 ## Banco e atualizacao
 
 A tabela public.totvs_imports foi criada no Azure pelo administrador durante

@@ -21,7 +21,7 @@ catch (error) {
 }
 process.env.VITE_TOTVS_LOCAL_PREVIEW = 'true';
 const app = express();
-app.get('/api/totvs', (_request, response) => response.json([...imports].sort((a,b) => b.payload.sourceUpdatedAt.localeCompare(a.payload.sourceUpdatedAt) || b.imported_at.localeCompare(a.imported_at)).map(row => ({ id: row.id, report_period: row.payload.reportPeriod, source_updated_at: row.payload.sourceUpdatedAt, imported_at: row.imported_at }))));
+app.get('/api/totvs', (_request, response) => response.json([...imports].sort((a,b) => b.payload.reportPeriod.localeCompare(a.payload.reportPeriod) || b.imported_at.localeCompare(a.imported_at)).map(row => ({ id: row.id, report_period: row.payload.reportPeriod, source_updated_at: row.payload.sourceUpdatedAt, imported_at: row.imported_at, categories: row.payload.lists.categories }))));
 app.get('/api/totvs/:id', (request, response) => {
   const row = imports.find(row => row.id === request.params.id);
   if (!row) return response.status(404).json({ error: 'Importação não encontrada.' });

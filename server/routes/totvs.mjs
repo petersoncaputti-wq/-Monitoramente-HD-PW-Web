@@ -6,7 +6,7 @@ import { parseTotvsZip, selectTotvsPayload } from '../services/totvs-import.serv
 const router = Router();
 router.use(requireUser);
 router.get('/', async (_request, response) => {
-  const result = await query('select id, report_period, source_updated_at, imported_at from totvs_imports order by report_period desc, imported_at desc limit 200');
+  const result = await query("select id, report_period, source_updated_at, imported_at, payload->'lists'->'categories' as categories from totvs_imports order by report_period desc, imported_at desc limit 200");
   response.json(result.rows);
 });
 router.get('/:id', async (request, response) => {
