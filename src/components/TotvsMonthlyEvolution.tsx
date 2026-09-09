@@ -9,7 +9,7 @@ export function TotvsMonthlyEvolution({ snapshots, endPeriod, selectedPeriod, on
   const available = items.filter(row => row.opened !== undefined).length;
   return <PanelShell title="Evolução mensal dos chamados TOTVS" description="Clique em um mês para consultar os indicadores abaixo. Cada coluna mostra o acumulado TOTVS identificado na última atualização daquele mês.">
     <p className="mb-5 flex items-center gap-2 text-sm font-medium text-brand-700"><span aria-hidden="true" className="h-3 w-3 rounded-sm bg-brand-600" />Aberturas identificadas como TOTVS</p>
-    {items.length ? <div className="overflow-x-auto pb-3"><div className="flex items-end gap-4" style={{ minWidth: Math.max(300, items.length * 85) }}>
+    {items.length ? <div className="min-w-0 overflow-x-auto p-2 pb-3"><div className="flex items-end gap-4" style={{ minWidth: Math.max(300, items.length * 85) }}>
       {items.map(row => <button type="button" key={row.period} disabled={disabled || !row.hasImport || !onSelectPeriod} onClick={() => onSelectPeriod?.(row.period)} aria-pressed={row.period === selectedPeriod} aria-label={`Consultar ${label(row.period)}: ${row.opened !== undefined ? row.opened + ' aberturas TOTVS identificadas' : row.hasImport ? 'quantidade não disponível' : 'sem importação'}`} className={`min-w-0 flex-1 rounded-xl px-2 pb-3 text-left transition focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-default ${row.period === selectedPeriod ? 'bg-brand-50 ring-2 ring-brand-600' : 'enabled:hover:bg-brand-50/60'}`}>
         <div className="flex h-60 items-end justify-center pt-8">
           {row.opened !== undefined ? <div className="relative w-2/3 max-w-20" style={{ height: `${row.opened / max * 100}%` }}>
