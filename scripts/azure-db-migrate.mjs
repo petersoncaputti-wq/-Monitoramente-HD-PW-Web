@@ -7,6 +7,7 @@ const pool = createPool({ migration: true });
 try {
   const schema = await readFile(resolve('azure/schema.sql'), 'utf8');
   await pool.query(schema);
+  await pool.query(await readFile(resolve('azure/totvs-schema.sql'), 'utf8'));
   console.log('Esquema Azure aplicado com sucesso.');
 } finally {
   await pool.end();
