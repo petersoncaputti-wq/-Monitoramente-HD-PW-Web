@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "preview:totvs": "node scripts/preview-totvs.mjs",
+    "test:totvs": "node scripts/test-totvs.mjs",
+    "db:migrate-totvs": "node --env-file=.env.local scripts/migrate-totvs.mjs",
     "start": "node server/index.mjs",
     "dev:azure": "node --watch server/index.mjs",
     "db:migrate": "node scripts/azure-db-migrate.mjs",
@@ -29,6 +32,7 @@
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
+    "fflate": "^0.8.3",
     "helmet": "^8.3.0",
     "pg": "^8.22.0",
     "react": "^18.3.1",

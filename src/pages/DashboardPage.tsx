@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserSettingsPage } from '@/pages/UserSettingsPage';
 import { EngineeringSystemsHomePage } from '@/pages/EngineeringSystemsHomePage';
 import { KartadoPage } from '@/pages/KartadoPage';
+import { TotvsPage } from '@/pages/TotvsPage';
 import {
   getDatePeriodPreset,
   getDefaultDatePeriod,
@@ -142,9 +143,10 @@ function filterRowsByPeriod(
   });
 }
 
-type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartadoAudit' | 'kartadoHealth' | 'settings';
+type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartadoAudit' | 'kartadoHealth' | 'totvs' | 'settings';
 
 const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
+  totvs: '/totvs/chamados',
   storage: '/projectwise/armazenamento',
   projectWiseUsers: '/projectwise/usuarios-pw',
   tickets: '/projectwise/chamados',
@@ -154,6 +156,7 @@ const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
 };
 
 const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
+  totvs: 'Chamados',
   storage: 'Armazenamento',
   projectWiseUsers: 'Usuários PW',
   tickets: 'Chamados',
@@ -634,6 +637,11 @@ export function DashboardPage() {
 
     if (requestedPath === '/projectwise') {
       navigate(DASHBOARD_ROUTES.storage, { replace: true });
+      return;
+    }
+
+    if (requestedPath === '/totvs') {
+      navigate(DASHBOARD_ROUTES.totvs, { replace: true });
       return;
     }
 
@@ -1411,6 +1419,8 @@ export function DashboardPage() {
                 Configurações
               </span>
             </>
+          ) : activeTab === 'totvs' ? (
+            <><span aria-hidden="true" className="text-brand-300">/</span><span>TOTVs</span><span aria-hidden="true" className="text-brand-300">/</span><span className="font-semibold text-surface-900" aria-current="page">Chamados</span></>
           ) : isKartadoPage ? (
             <>
               <span aria-hidden="true" className="text-brand-300">/</span>
@@ -1477,6 +1487,7 @@ export function DashboardPage() {
         ) : null}
 
         {isHomePage ? <EngineeringSystemsHomePage /> : null}
+        {activeTab === 'totvs' ? <TotvsPage canManage={profile?.role === 'admin' || (import.meta.env.DEV && import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')} /> : null}
 
         {activeTab === 'kartadoAudit' ? <KartadoPage area="audit" /> : null}
         {activeTab === 'kartadoHealth' ? <KartadoPage area="health" /> : null}

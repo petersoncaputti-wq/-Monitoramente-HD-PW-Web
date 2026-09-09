@@ -6,7 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 function AuthenticatedApp() {
   const { status } = useAuth();
 
-  if (import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true') {
+  if (import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true' || (import.meta.env.DEV && import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')) {
     return <DashboardPage />;
   }
 

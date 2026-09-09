@@ -15,6 +15,12 @@ export function EngineeringSystemsHomePage() {
         </p>
 
         <div className="mt-7 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <Link to="/totvs/chamados" className="group flex min-h-56 flex-col rounded-[26px] border border-brand-100 bg-brand-50/50 p-6 transition hover:-translate-y-1 hover:border-brand-300 hover:bg-white hover:shadow-panel focus:outline-none focus:ring-2 focus:ring-brand-300">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-700 text-lg font-bold text-white shadow-soft">TV</div>
+            <h3 className="mt-6 text-xl font-semibold text-surface-900">TOTVs</h3>
+            <p className="mt-2 text-sm leading-6 text-surface-700">Chamados identificados como TOTVS e motivos de atendimento. Importação dos relatórios em ZIP.</p>
+            <span className="mt-auto pt-5 text-sm font-semibold text-brand-700">Acessar indicadores · Versão de teste →</span>
+          </Link>
           <Link
             to="/projectwise/armazenamento"
             className="group flex min-h-56 flex-col rounded-[26px] border border-brand-100 bg-brand-50/50 p-6 transition hover:-translate-y-1 hover:border-brand-300 hover:bg-white hover:shadow-panel focus:outline-none focus:ring-2 focus:ring-brand-300"
