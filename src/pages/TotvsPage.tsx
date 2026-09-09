@@ -131,13 +131,18 @@ export function TotvsPage({ canManage }: { canManage: boolean }) {
       {snapshots.length > 0 && <label className="mt-5 flex max-w-xl flex-col gap-2 text-sm font-medium text-surface-700">Mês de análise<select className={inputClass} value={snapshotId} disabled={busy} onChange={event => void selectSnapshot(event.target.value)}>{snapshots.map(row => <option key={row.id} value={row.id}>{periodLabel(row.report_period)} · atualizado em {sourceLabel(row.source_updated_at)}</option>)}</select></label>}
       {!data && !busy && <p className="mt-5 rounded-2xl border border-dashed border-brand-100 p-8 text-center text-surface-700">Nenhuma importação disponível. Importe o ZIP para visualizar os indicadores.</p>}
     </PanelShell>
-    {data && <TotvsIndicators data={data} snapshots={snapshots} />}
+    {data && <TotvsIndicators data={data} snapshots={snapshots} disabled={busy} onSelectPeriod={period => {
+      const selected = snapshots.find(row => row.report_period === period);
+      if (selected && selected.id !== snapshotId) void selectSnapshot(selected.id);
+    }} />}
   </div>;
 }
 
-export function TotvsIndicators({ data, snapshots = [] }: { data: TotvsData; snapshots?: Snapshot[] }) {
+export function TotvsIndicators({ data, snapshots = [], onSelectPeriod, disabled = false }: { data: TotvsData; snapshots?: Snapshot[]; onSelectPeriod?: (period: string) => void; disabled?: boolean }) {
   const { items, identifiedOpened } = getTotvsCategories(data.lists.categories);
+  const latestPeriod = snapshots.map(row => row.report_period).sort().slice(-1)[0] ?? data.reportPeriod;
   return <>
+    <TotvsMonthlyEvolution snapshots={snapshots} endPeriod={latestPeriod} selectedPeriod={data.reportPeriod} onSelectPeriod={onSelectPeriod} disabled={disabled} />
     <PanelShell title="Chamados TOTVS" description={`Período exportado: ${periodLabel(data.reportPeriod)} · Carga: ${sourceLabel(data.sourceUpdatedAt)}.`}>
       {items.length ? <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <TicketKpiCard title="Aberturas identificadas como TOTVS" value={format(identifiedOpened)} helperText="Soma das categorias TOTVS presentes no relatório exportado. A lista pode ser um ranking parcial." />
@@ -147,7 +152,6 @@ export function TotvsIndicators({ data, snapshots = [] }: { data: TotvsData; sna
       </div> : <p role="status" className="rounded-2xl border border-dashed border-brand-100 p-6 text-sm text-surface-700">Nenhuma categoria identificada como TOTVS nesta importação. Isso não confirma ausência de chamados; confira o relatório de categorias exportado.</p>}
       <p className="mt-5 text-sm leading-6 text-surface-700">SLA, encerramentos, tempo médio, backlog e satisfação não estão disponíveis exclusivamente para TOTVS neste pacote.</p>
     </PanelShell>
-    <TotvsMonthlyEvolution snapshots={snapshots} endPeriod={data.reportPeriod} />
     {items.length > 0 && <>
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2"><PanelShell title="Volume por motivo" description={`Aberturas identificadas nas categorias TOTVS · ${periodLabel(data.reportPeriod)}.`}><CategoryVolumeChart items={items} /></PanelShell></div>

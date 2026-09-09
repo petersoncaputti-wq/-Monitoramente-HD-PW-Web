@@ -28,6 +28,21 @@ try {
   assert.ok(chart.includes('Sem importação'));
   assert.ok(chart.includes('>30<') && chart.includes('>97<') && chart.includes('>0<'));
   assert.ok(!chart.includes('999'));
+  let clickedPeriod;
+  const interactive = TotvsMonthlyEvolution({ snapshots: months, endPeriod: '2026-09', selectedPeriod: '2026-08', onSelectPeriod: period => { clickedPeriod = period; } });
+  function descendants(element) {
+    if (!element || typeof element !== 'object') return [];
+    return [element, ...React.Children.toArray(element.props?.children).flatMap(descendants)];
+  }
+  const buttons = descendants(interactive).filter(element => element.type === 'button');
+  const june = buttons.find(button => button.props['aria-label'].includes('jun.'));
+  assert.ok(june && !june.props.disabled);
+  june.props.onClick();
+  assert.equal(clickedPeriod, '2026-06');
+  assert.equal(buttons.find(button => button.props['aria-label'].includes('jul.')).props.disabled, true);
+  assert.equal(buttons.find(button => button.props['aria-label'].includes('ago.')).props['aria-pressed'], true);
+  const disabledChart = TotvsMonthlyEvolution({ snapshots: months, endPeriod: '2026-09', disabled: true, onSelectPeriod: () => {} });
+  assert.ok(descendants(disabledChart).filter(element => element.type === 'button').every(button => button.props.disabled));
   const { TotvsIndicators } = await vite.ssrLoadModule('/src/pages/TotvsPage.tsx');
   const selected = getTotvsCategories(payload.lists.categories);
   assert.equal(selected.identifiedOpened, 97);
