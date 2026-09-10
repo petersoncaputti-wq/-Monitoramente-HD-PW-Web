@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseTotvsZip, selectTotvsPayload } from '../server/services/totvs-import.service.mjs';
+import { parseTotvsXlsx } from '../server/services/totvs-xlsx.service.mjs';
 
 const [zipPath, period, dataDirectory = 'tmp/totvs-preview'] = process.argv.slice(2);
 if (!zipPath || !period) throw new Error('Uso: node scripts/preview-totvs.mjs <ZIP> <YYYY-MM> [pasta de dados]');
@@ -15,7 +16,8 @@ let imports;
 try { imports = JSON.parse(await readFile(filePath, 'utf8')); }
 catch (error) {
   if (error.code !== 'ENOENT') throw error;
-  const payload = selectTotvsPayload(parseTotvsZip(await readFile(resolve(zipPath)), period, { totvsOnly: true }));
+  const buffer = await readFile(resolve(zipPath));
+  const payload = zipPath.toLowerCase().endsWith('.xlsx') ? parseTotvsXlsx(buffer) : selectTotvsPayload(parseTotvsZip(buffer, period, { totvsOnly: true }));
   imports = [{ id: '1', payload, imported_at: new Date().toISOString() }];
   await writeFile(filePath, JSON.stringify(imports));
 }
@@ -28,11 +30,29 @@ app.get('/api/totvs/:id', (request, response) => {
   response.json(row);
 });
 let queue = Promise.resolve();
-app.post('/api/totvs', express.raw({ type: 'application/zip', limit: '10mb' }), async (request, response, next) => {
+app.delete('/api/totvs', express.json({ limit: '1kb' }), async (request, response, next) => {
+  if (request.headers.origin && request.headers.origin !== 'http://127.0.0.1:5175') return response.status(403).json({ error: 'Origem não permitida.' });
+  if (request.body?.confirmation !== 'LIMPAR TOTVS') return response.status(400).json({ error: 'Digite LIMPAR TOTVS para confirmar.' });
+  const operation = queue.then(async () => {
+    const deleted = imports.length;
+    await writeFile(`${filePath}.tmp`, '[]');
+    await rename(`${filePath}.tmp`, filePath);
+    imports = [];
+    response.json({ deleted });
+  });
+  queue = operation.catch(() => {});
+  try { await operation; } catch (error) { next(error); }
+});
+app.post('/api/totvs', express.raw({ type: ['application/zip', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], limit: '10mb' }), async (request, response, next) => {
   // Reject cross-origin browser writes to the local test data.
   if (request.headers.origin && request.headers.origin !== 'http://127.0.0.1:5175') return response.status(403).json({ error: 'Origem não permitida.' });
   let payload;
-  try { if (!Buffer.isBuffer(request.body)) throw new Error('Envie um ZIP.'); payload = selectTotvsPayload(parseTotvsZip(request.body, String(request.query.period || ''), { totvsOnly: true })); }
+  try {
+    if (!Buffer.isBuffer(request.body)) throw new Error('Envie um XLSX ou ZIP.');
+    payload = request.is('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      ? parseTotvsXlsx(request.body, String(request.query.scope || 'mentions'))
+      : selectTotvsPayload(parseTotvsZip(request.body, String(request.query.period || ''), { totvsOnly: true }));
+  }
   catch (error) { return response.status(400).json({ error: error.message }); }
   const operation = queue.then(async () => {
     const existing = imports.find(row => row.payload.reportPeriod === payload.reportPeriod);

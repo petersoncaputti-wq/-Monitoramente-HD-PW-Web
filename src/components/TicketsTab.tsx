@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PanelShell } from '@/components/PanelShell';
 import { TicketKpiCard } from '@/components/TicketKpiCard';
 import type { TicketRow } from '@/types/monitoring';
-import { getTicketDateRange, getTicketsSummary } from '@/utils/ticketsKpis';
+import { formatTicketDate, getTicketDateRange, getTicketsSummary } from '@/utils/ticketsKpis';
 import {
   getDatePeriodPreset,
   getDefaultDatePeriod,
@@ -11,6 +11,7 @@ import {
 
 interface TicketsTabProps {
   rows: TicketRow[];
+  detailedTotvs?: boolean;
 }
 
 function RankingList({
@@ -185,7 +186,7 @@ function GaugeCard({
   );
 }
 
-function AverageResolutionCard({ value }: { value: string }) {
+function AverageResolutionCard({ value, elapsed = false }: { value: string; elapsed?: boolean }) {
   return (
     <article className="flex h-full min-h-[220px] flex-col rounded-[28px] border border-brand-100 bg-white p-6 shadow-soft">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
@@ -195,16 +196,26 @@ function AverageResolutionCard({ value }: { value: string }) {
         {value}
       </p>
       <p className="mt-auto pt-4 text-sm leading-6 text-surface-700">
-        Média em tempo útil entre abertura e encerramento. Acima de 24h, usa dias úteis de 8h.
+        {elapsed ? 'Média em horas corridas entre criação e resolução, apenas com datas válidas.' : 'Média em tempo útil entre abertura e encerramento. Acima de 24h, usa dias úteis de 8h.'}
       </p>
     </article>
   );
 }
 
-export function TicketsTab({ rows }: TicketsTabProps) {
+export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
   const dateRange = useMemo(() => getTicketDateRange(rows), [rows]);
   const [periodStartDate, setPeriodStartDate] = useState('');
   const [periodEndDate, setPeriodEndDate] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const detailedRows = useMemo(() => detailedTotvs ? rows.filter(row => {
+    const opened = row.Abertoem.slice(0, 10);
+    return (!periodStartDate || opened >= periodStartDate) && (!periodEndDate || opened <= periodEndDate)
+      && [row['Caso n.º'], row.Resumo, row.Status, row.Organizaçãodosolicitante, row.Solicitante].some(value => String(value ?? '').toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')));
+  }).sort((a, b) => b.Abertoem.localeCompare(a.Abertoem)) : [], [rows, detailedTotvs, periodStartDate, periodEndDate, search]);
+  useEffect(() => setPage(1), [periodStartDate, periodEndDate, search, rows]);
+  const pages = Math.max(1, Math.ceil(detailedRows.length / 50));
+  const visiblePage = Math.min(page, pages);
 
   useEffect(() => {
     const defaultPeriod = getDefaultDatePeriod(dateRange?.maxDate);
@@ -217,8 +228,9 @@ export function TicketsTab({ rows }: TicketsTabProps) {
       getTicketsSummary(rows, {
         endDate: periodEndDate,
         startDate: periodStartDate,
+        elapsed: detailedTotvs,
       }),
-    [periodEndDate, periodStartDate, rows],
+    [periodEndDate, periodStartDate, rows, detailedTotvs],
   );
   const defaultTicketPeriod = useMemo(
     () => getDefaultDatePeriod(dateRange?.maxDate),
@@ -258,7 +270,7 @@ export function TicketsTab({ rows }: TicketsTabProps) {
     <div className="flex flex-col gap-6">
       <PanelShell
         title="Chamados"
-        description="Indicadores de atendimento, SLA, categorias e distribuição por organização."
+        description={detailedTotvs ? 'Indicadores do recorte importado. Pendentes representam o status na exportação, entre os chamados criados no período.' : 'Indicadores de atendimento, SLA, categorias e distribuição por organização.'}
       >
         <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)] sm:items-end">
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
@@ -326,10 +338,10 @@ export function TicketsTab({ rows }: TicketsTabProps) {
           <TicketKpiCard
             title="Chamados pendentes"
             value={String(summary.pendingTickets)}
-            helperText="Status ainda não finalizados"
+            helperText={detailedTotvs ? 'Criados no período e ainda pendentes na exportação' : 'Status ainda não finalizados'}
             tone="attention"
           />
-          <GaugeCard
+          {detailedTotvs ? <TicketKpiCard title="SLA" value="Não disponível" helperText="O relatório não informa prazo nem resultado de SLA." /> : <GaugeCard
             title="SLA"
             value={summary.slaComplianceValue}
             valueLabel={summary.slaCompliancePercentage}
@@ -337,8 +349,8 @@ export function TicketsTab({ rows }: TicketsTabProps) {
             helperText={`${slaLevel} · ${summary.inSla} dentro do SLA em ${summary.slaApplicableTickets} chamados aplicáveis`}
             variant="segmented"
             tone={slaTone}
-          />
-          <AverageResolutionCard value={summary.averageResolutionTime} />
+          />}
+          <AverageResolutionCard value={summary.averageResolutionTime} elapsed={detailedTotvs} />
         </div>
       </PanelShell>
 
@@ -346,7 +358,7 @@ export function TicketsTab({ rows }: TicketsTabProps) {
         <div className="xl:col-span-2">
           <PanelShell
             title="Evolução dos chamados"
-            description="Aberturas e encerramentos por mês no período selecionado."
+            description="Aberturas e encerramentos por mês no período selecionado (até os últimos 12 meses)."
           >
             <MonthlyVolumeChart items={summary.monthlyVolume} />
           </PanelShell>
@@ -385,17 +397,29 @@ export function TicketsTab({ rows }: TicketsTabProps) {
         </PanelShell>
 
         <PanelShell
-          title="Motivos"
-          description="Maiores motivos entre os chamados abertos no período."
+          title={detailedTotvs ? 'Organizações solicitantes' : 'Motivos'}
+          description={detailedTotvs ? 'Organizações dos chamados abertos no período.' : 'Maiores motivos entre os chamados abertos no período.'}
           tone="soft"
         >
           <RankingList
             emptyText="Nenhum motivo informado no período."
-            items={summary.topCategories}
+            items={detailedTotvs ? summary.topRequesterOrganizations : summary.topCategories}
             limit={6}
           />
         </PanelShell>
       </div>
+
+      {detailedTotvs && <PanelShell title="Lista de chamados" description="Chamados criados no período selecionado. A busca abaixo filtra somente esta lista.">
+        <label className="flex max-w-lg flex-col gap-2 text-sm font-medium text-surface-700">Buscar por número, descrição, status, organização ou solicitante<input className="h-11 rounded-2xl border border-brand-100 px-3 text-sm" value={search} onChange={event => setSearch(event.target.value)} type="search" /></label>
+        <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm">
+          <thead><tr className="border-b border-brand-100">{['Chamado', 'Descrição', 'Status', 'Criação', 'Resolução', 'Organização'].map(label => <th key={label} scope="col" className="p-3">{label}</th>)}</tr></thead>
+          <tbody>{detailedRows.slice((visiblePage - 1) * 50, visiblePage * 50).map(row => <tr key={row['Caso n.º']} className="border-b border-brand-100">
+            <th scope="row" className="p-3 font-medium">{row['Caso n.º']}</th><td className="max-w-sm whitespace-pre-wrap break-words p-3">{row.Resumo || 'Não informado'}</td><td className="p-3">{row.Status}</td><td className="whitespace-nowrap p-3">{formatTicketDate(row.Abertoem)}</td><td className="whitespace-nowrap p-3">{formatTicketDate(row.Fechadoem)}</td><td className="p-3">{row.Organizaçãodosolicitante || 'Não informada'}</td>
+          </tr>)}</tbody>
+        </table></div>
+        {!detailedRows.length && <p className="py-5 text-sm text-surface-700">Nenhum chamado encontrado.</p>}
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm"><span>{detailedRows.length} chamados · Página {visiblePage} de {pages}</span><button type="button" disabled={visiblePage <= 1} onClick={() => setPage(visiblePage - 1)} className="rounded-xl border border-brand-100 px-3 py-2 disabled:opacity-50">Anterior</button><button type="button" disabled={visiblePage >= pages} onClick={() => setPage(visiblePage + 1)} className="rounded-xl border border-brand-100 px-3 py-2 disabled:opacity-50">Próxima</button></div>
+      </PanelShell>}
 
     </div>
   );

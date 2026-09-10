@@ -277,7 +277,8 @@ function countAging(rows: TicketRow[]) {
   return [...buckets.entries()].map(([label, count]) => ({ label, count }));
 }
 
-function formatDuration(milliseconds: number | null): string {
+function formatDuration(milliseconds: number | null, elapsed = false): string {
+  if (elapsed) return milliseconds === null ? 'Não disponível' : `${formatNumber(milliseconds / 3600000, { maximumFractionDigits: 1 })} h`;
   if (milliseconds === null || milliseconds <= 0) {
     return '-';
   }
@@ -386,7 +387,7 @@ export function getTicketServices(rows: TicketRow[]): string[] {
 
 export function getTicketsSummary(
   rows: TicketRow[],
-  options: { startDate?: string; endDate?: string; selectedService?: string } = {},
+  options: { startDate?: string; endDate?: string; selectedService?: string; elapsed?: boolean } = {},
 ): TicketsSummary {
   const { endDate = '', selectedService = '', startDate = '' } = options;
   const totalTickets = rows.length;
@@ -431,7 +432,7 @@ export function getTicketsSummary(
         return null;
       }
 
-      return getBusinessHoursBetween(openedAt, updatedAt) * 3600000;
+      return options.elapsed ? updatedAt.getTime() - openedAt.getTime() : getBusinessHoursBetween(openedAt, updatedAt) * 3600000;
     })
     .filter((value): value is number => typeof value === 'number');
   const averageResolution =
@@ -466,14 +467,14 @@ export function getTicketsSummary(
     violatedSlaPercentage: formatPercentage(violatedSla, openedRows.length),
     averageResolutionHours,
     averageResolutionTime:
-      averageResolution === null ? '-' : formatDuration(averageResolution),
-    medianResolutionTime: formatDuration(medianResolution),
+      averageResolution === null ? '-' : formatDuration(averageResolution, options.elapsed),
+    medianResolutionTime: formatDuration(medianResolution, options.elapsed),
     resolutionTimeBuckets: countResolutionTimeBuckets(resolutionDurations),
     selectedService: selectedService || 'Todos os servicos',
     selectedServiceOpenTickets: selectedServiceOpenRows.length,
     topCategories: countBy(openedRows, TICKET_FIELDS.reason),
     topOrganizations: countBy(rows, TICKET_FIELDS.beneficiaryOrganization),
-    topRequesterOrganizations: countBy(rows, TICKET_FIELDS.requesterOrganization),
+    topRequesterOrganizations: countBy(options.elapsed ? openedRows : rows, TICKET_FIELDS.requesterOrganization),
     topRequesters: countBy(openedRows, 'Solicitante'),
     selectedServiceOpenByCompany: countBy(selectedServiceOpenRows, TICKET_FIELDS.beneficiaryOrganization),
     selectedServiceTopRequesters: countBy(selectedServiceOpenRows, 'Solicitante'),
