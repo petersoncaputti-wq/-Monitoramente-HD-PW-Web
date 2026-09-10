@@ -341,7 +341,7 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
             helperText={detailedTotvs ? 'Criados no período e ainda pendentes na exportação' : 'Status ainda não finalizados'}
             tone="attention"
           />
-          {detailedTotvs ? <TicketKpiCard title="SLA" value="Não disponível" helperText="O relatório não informa prazo nem resultado de SLA." /> : <GaugeCard
+          {detailedTotvs ? <TicketKpiCard title="Mediana de solução" value={summary.medianResolutionTime} helperText="Metade dos chamados foi resolvida em até esse tempo. Horas corridas dos encerrados no período, com datas válidas." /> : <GaugeCard
             title="SLA"
             value={summary.slaComplianceValue}
             valueLabel={summary.slaCompliancePercentage}

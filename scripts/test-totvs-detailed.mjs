@@ -77,7 +77,7 @@ try {
   assert.equal(getTicketsSummary(fixture).averageResolutionHours, 0, 'PW keeps business hours');
   const { TicketsTab } = await vite.ssrLoadModule('/src/components/TicketsTab.tsx');
   const html = renderToStaticMarkup(React.createElement(TicketsTab, { rows: all.tickets, detailedTotvs: true }));
-  for (const text of ['Não disponível', 'horas corridas', 'Evolução dos chamados', 'Organizações solicitantes', '>1716<', '>1632<', '>72<']) assert.ok(html.includes(text), text);
+  for (const text of ['Mediana de solução', 'horas corridas', 'Evolução dos chamados', 'Organizações solicitantes', '>1716<', '>1632<', '>72<']) assert.ok(html.includes(text), text);
   const { TotvsPage } = await vite.ssrLoadModule('/src/pages/TotvsPage.tsx');
   assert.ok(renderToStaticMarkup(React.createElement(TotvsPage, { canManage: true })).includes('Limpar dados TOTVS'));
   assert.ok(!renderToStaticMarkup(React.createElement(TotvsPage, { canManage: false })).includes('Limpar dados TOTVS'));
