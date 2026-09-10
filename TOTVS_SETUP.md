@@ -1,5 +1,37 @@
 ﻿# TOTVs: importacao mensal
 
+## XLSX detalhado e limpeza administrativa
+
+O painel aceita o XLSX detalhado com ID, criacao, resolucao, status, descricao
+e grupo. O administrador escolhe mencoes a TOTVS/TCOP nos textos ou o relatorio
+completo, rotulado como multiplos sistemas. O filtro textual nao e classificacao
+definitiva. O total numerico final do Excel nao e um ticket. IDs duplicados,
+datas invalidas, arquivos acima de 10 MB e conteudo acima de 30 MB sao rejeitados.
+Os textos integrais de detalhes nao sao armazenados.
+
+Cada XLSX substitui a importacao do mes da ultima abertura no recorte, inclusive
+seu recorte anterior. Outros meses sao versoes independentes. Nao ha soma de
+tickets entre versoes. Envie a exportacao completa atualizada; arquivos
+incrementais nao sao mesclados. Aberturas usam criacao; encerramentos usam
+resolucao e status Closed/Resolved. Encerrados sem data nao entram em series nem
+tempos. Pendentes sao os criados no periodo e nao finalizados na exportacao.
+Tempo medio e mediana usam horas corridas. SLA permanece indisponivel.
+
+DELETE /api/totvs exige administrador e JSON {"confirmation":"LIMPAR TOTVS"}.
+Executa apenas DELETE FROM public.totvs_imports, preservando tabela, sequencia
+e demais dados. O botao pede confirmacao textual; falhas preservam a tela.
+
+Antes de publicar, execute npm run db:migrate-totvs com credenciais de migracao
+e DB_APP_USER (ou DB_USER) do usuario da aplicacao. A migracao concede DELETE
+apenas na tabela TOTVS, alem das permissoes de importacao existentes. Sem essa
+permissao, o botao informa o bloqueio do banco. A migracao nao apaga dados.
+
+Validacao: node scripts/test-totvs-detailed.mjs "C:/caminho/Report1789066001565.xlsx"
+Testa o Excel de referencia, indicadores, autorizacao e limpeza com banco simulado.
+Previa: npm run preview:totvs -- "C:/caminho/Report1789066001565.xlsx" 2026-09
+O modo local usa arquivos, nao o Azure. Para uma previa independente, passe outra
+pasta como terceiro argumento. Os detalhes abaixo descrevem o formato ZIP anterior.
+
 Card na pagina inicial e rota /totvs/chamados. Usa os componentes visuais do PW,
 com indicadores, grafico de colunas, rosca e tabela de categorias.
 
