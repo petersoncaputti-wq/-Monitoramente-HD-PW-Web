@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import { requireUser } from '../auth.mjs';
 import { query } from '../db.mjs';
+import { mapTotvsImports } from '../services/totvs-data.service.mjs';
 
+export function createDataRouter({ execute = query, authenticate = requireUser } = {}) {
 const router = Router();
-router.use(requireUser);
+const query = execute;
+router.use(authenticate);
 
 router.get('/storage', async (_request, response) => {
   const result = await query(
@@ -26,6 +29,22 @@ router.get('/tickets', async (_request, response) => {
   response.json(result.rows);
 });
 
+router.get('/totvs-imports', async (_request, response) => {
+  const result = await query(
+    `select ticket->>'Caso n.º' as ticket_id,
+            ticket->>'Resumo' as description,
+            ticket->>'Organizaçãodosolicitante' as requester_organization,
+            ticket->>'Abertoem' as opened_at
+       from public.totvs_imports as importacao
+      cross join lateral jsonb_array_elements(
+        case when jsonb_typeof(importacao.payload->'tickets') = 'array'
+             then importacao.payload->'tickets' else '[]'::jsonb end
+      ) with ordinality as items(ticket, position)
+      order by importacao.imported_at desc, importacao.id desc, items.position desc`,
+  );
+  response.json(mapTotvsImports(result.rows));
+});
+
 router.get('/pw-users/:sourceKind', async (request, response) => {
   const table = request.params.sourceKind === 'portal' ? 'pw_portal_users' : 'pw_explorer_users';
   const order = table === 'pw_portal_users' ? 'email asc nulls last' : 'nome asc nulls last';
@@ -45,4 +64,7 @@ router.get('/e365', async (_request, response) => {
   response.json(result.rows);
 });
 
-export default router;
+return router;
+}
+
+export default createDataRouter();
