@@ -2,6 +2,27 @@
 
 ## XLSX detalhado e limpeza administrativa
 
+### Consulta de chamados para integracoes
+
+GET /api/data/totvs-imports usa o mesmo requireUser de /api/data/tickets:
+sessao pelo cookie monitoramento_session, sem API key adicional. Retorna um
+array JSON diretamente, com ticket_id, description, requester_organization
+e opened_at. A chave de origem da data e Abertoem, gravada pelo importador
+como YYYY-MM-DDTHH:mm:ss (sem fuso); a resposta preserva o dia como YYYY-MM-DD.
+Datas ausentes ou fora desse formato ISO retornam null, sem inferir datas.
+
+A consulta expande payload.tickets de todos os imports, sem filtro adicional
+de sistema ou periodo. Imports ZIP sem tickets nao geram linhas. Cada ID
+aparece uma vez, usando a importacao mais recente por imported_at, com desempate
+por id da importacao e posicao do ticket. Chamados sem ID sao ignorados.
+Descricao e organizacao ausentes retornam string vazia. A resposta e ordenada
+por abertura decrescente (datas ausentes no final) e ticket_id; sem dados, [].
+Esse endpoint consolidado e independente da selecao de versao no painel.
+
+Validacao local: node scripts/test-totvs-data.mjs. Testa autenticacao real sem
+cookie, contrato HTTP com sessao simulada, datas e duplicatas com banco simulado.
+Nao requer migracao nem alteracao da tabela; usa a permissao SELECT existente.
+
 O painel aceita o XLSX detalhado com ID, criacao, resolucao, status, descricao
 e grupo. O administrador escolhe mencoes a TOTVS/TCOP nos textos ou o relatorio
 completo, rotulado como multiplos sistemas. O filtro textual nao e classificacao
