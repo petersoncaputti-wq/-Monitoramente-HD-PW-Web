@@ -1,0 +1,1032 @@
+<title>Acompanhamento Grupo Eco</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap">
+<style>
+:root{
+  /* Paleta oficial do brandbook Kartado (mai/2023) */
+  --navy:#012D6D;      /* azul escuro — primária */
+  --blue:#005DFF;      /* azul médio — secundária */
+  --teal:#00BDD6;      /* início do gradiente — acento */
+  --lime:#008037;      /* verde — sucesso */
+  --amber:#355792;     /* variação tonal oficial — atenção */
+  --red:#FF1616;       /* vermelho — alerta */
+  --ground:#F1F1F1;    /* cinza claríssimo */
+  --surface:#FFFFFF;
+  --surface-2:#E8FAFF; /* azul claríssimo — fundo de tabela e blocos suaves */
+  --row-alt:#F1F1F1;   /* linhas alternadas em tabela */
+  --ink:#000000;       /* texto corrido */
+  --ink-2:#545454;     /* texto secundário */
+  --muted:#737373;     /* texto auxiliar */
+  --line:#A6A6A6;      /* bordas e separadores */
+  --line-2:#A6A6A6;
+  --shadow:0 1px 2px rgba(1,45,109,.07), 0 6px 18px rgba(1,45,109,.05);
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:Montserrat,"Segoe UI",system-ui,sans-serif;
+  font-size:14px;line-height:1.55;padding-inline:20px;padding-block:0;margin:0}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3,.lbl,.num,.pill,th,.tab{font-family:Montserrat,"Segoe UI",system-ui,sans-serif}
+tbody tr:nth-child(even) td{background:var(--row-alt)}
+.lbl{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+header{padding-block:18px 12px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.hrow{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 22px;justify-content:space-between}
+h1{font-size:clamp(21px,3.4vw,29px);font-weight:800;letter-spacing:-.015em;margin:2px 0 3px;color:var(--navy);text-wrap:balance}
+.sub{color:var(--ink-2);font-size:14px;max-width:66ch}
+.stamp{display:flex;flex-direction:column;gap:2px}
+.stamp b{font-family:Montserrat;font-size:15px;font-weight:700;color:var(--ink)}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 22px;border-bottom:2px solid var(--line)}
+.tab{appearance:none;background:transparent;border:1px solid transparent;border-bottom:none;font-size:13.5px;
+  font-weight:700;color:var(--muted);padding:10px 16px;border-radius:8px 8px 0 0;cursor:pointer;margin-bottom:-2px;line-height:1.2}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--surface);border-color:var(--line);color:var(--navy);box-shadow:0 -2px 0 var(--navy) inset}
+.tab:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px 13px;box-shadow:var(--shadow)}
+.kpi .num{display:block;font-size:29px;font-weight:800;line-height:1.05;letter-spacing:-.02em;color:var(--navy);font-variant-numeric:tabular-nums}
+.kpi .num small{font-size:14px;font-weight:700;color:var(--muted);letter-spacing:0}
+.kpi .cap{font-size:12.4px;color:var(--ink-2);margin-top:5px;line-height:1.35}
+.kpi.hi{border-color:var(--blue);border-left-width:4px}
+
+.paceb{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:30px}
+.paceb h3{font-size:14px;font-weight:700;margin:0 0 3px;color:var(--ink)}
+.paceb p{margin:0 0 16px;font-size:13.5px;color:var(--ink-2);max-width:84ch}
+.track{position:relative;height:32px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.track .fill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--navy),var(--blue));border-radius:6px}
+.track .mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);opacity:.8}
+.tk-legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px;font-size:12.5px;color:var(--ink-2)}
+.tk-legend span{display:inline-flex;align-items:center;gap:7px}
+.sw{width:11px;height:11px;border-radius:3px;flex:0 0 11px}
+
+section{margin-bottom:34px}
+.shead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--navy)}
+h2{font-size:17px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-.01em}
+.shead .note{font-size:12.5px;color:var(--muted)}
+
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(246px,1fr));gap:12px}
+.ph{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:9px}
+.ph-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.ph-n{font-family:Montserrat;font-weight:800;font-size:10px;color:#fff;background:var(--navy);border-radius:5px;padding:3px 7px;letter-spacing:.04em}
+.ph h3{font-size:13.2px;font-weight:700;margin:0;color:var(--ink);line-height:1.25}
+.ph .when{font-size:11.8px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ph ul{margin:0;padding-left:16px;font-size:12.6px;color:var(--ink-2);display:flex;flex-direction:column;gap:5px}
+.bar{height:7px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px}
+.ph-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto}
+.pct{font-family:Montserrat;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:10.2px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px;border:1px solid}
+.ok{color:var(--lime);border-color:var(--lime);background:color-mix(in srgb,var(--lime) 10%,transparent)}
+.run{color:var(--blue);border-color:var(--blue);background:color-mix(in srgb,var(--blue) 10%,transparent)}
+.warn{color:var(--amber);border-color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,transparent)}
+.risk{color:var(--red);border-color:var(--red);background:color-mix(in srgb,var(--red) 10%,transparent)}
+.plan{color:var(--muted);border-color:var(--line-2);background:var(--surface-2)}
+.f-ok{background:var(--lime)} .f-run{background:var(--blue)} .f-warn{background:var(--amber)} .f-risk{background:var(--red)} .f-plan{background:var(--line-2)}
+
+.scroller{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:13.2px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:11px 14px;background:var(--surface-2);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+tr:last-child td{border-bottom:0}
+td.k{color:var(--ink);font-weight:600}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.mini{display:flex;align-items:center;gap:8px;min-width:112px}
+.mini .bar{flex:1;min-width:46px;height:6px}
+.mini b{font-family:Montserrat;font-size:12.4px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.sub2{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:2px;line-height:1.3}
+.mstack{display:flex;flex-direction:column;gap:7px;min-width:164px}
+.mrow{display:flex;align-items:center;gap:8px}
+.mrow .ml{font-size:11px;color:var(--muted);flex:0 0 66px;line-height:1.25}
+.mrow .bar{flex:1;min-width:38px;height:6px}
+.mrow b{font-family:Montserrat;font-size:12.2px;font-variant-numeric:tabular-nums;color:var(--ink);flex:0 0 32px;text-align:right}
+.nextm{min-width:206px}
+.nextm .cad{display:block;font-family:Montserrat;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);margin-bottom:3px}
+.nextm .dt{display:block;font-family:Montserrat;font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:5px}
+.rk{min-width:232px}
+.rk .pill{display:block;width:max-content;max-width:100%;margin-bottom:7px}
+td.unitcell{min-width:156px}
+.freq{display:inline-block;font-family:Montserrat;font-size:11px;font-weight:700;letter-spacing:.04em;
+  padding:2px 7px;border-radius:99px;border:1px solid;white-space:nowrap}
+.freq.const{color:var(--lime);border-color:var(--lime);background:color-mix(in srgb,var(--lime) 10%,transparent)}
+.freq.alt{color:var(--amber);border-color:var(--amber);background:color-mix(in srgb,var(--amber) 10%,transparent)}
+.freq.novo{color:var(--teal);border-color:var(--teal);background:color-mix(in srgb,var(--teal) 12%,transparent)}
+td.nomecell{min-width:180px}
+td.keycell{min-width:184px}
+.org{display:inline-block;font-family:Montserrat;font-size:9.5px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;padding:2px 6px;border-radius:4px;border:1px solid;margin-right:6px;
+  vertical-align:1px;white-space:nowrap}
+.org.eco{color:var(--navy);border-color:var(--navy);background:color-mix(in srgb,var(--navy) 8%,transparent)}
+.org.ter{color:var(--teal);border-color:var(--teal);background:color-mix(in srgb,var(--teal) 14%,transparent)}
+.org.nd{color:var(--muted);border-color:var(--line);background:var(--surface-2)}
+.keycell b{font-family:Montserrat;font-size:13px;font-weight:700;color:var(--ink);display:block}
+.keycell .fr{font-family:Montserrat;font-size:11.5px;font-weight:700;color:var(--lime);display:block;margin:2px 0 5px}
+.scroller table.wide{min-width:1080px}
+td.stagecell{min-width:126px}
+
+.people{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
+.pcard h3{font-size:12.8px;font-weight:700;margin:0 0 9px;color:var(--ink)}
+.pcard ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:12.6px}
+.pcard li{display:flex;gap:9px;align-items:flex-start;color:var(--ink-2)}
+.dot{width:7px;height:7px;border-radius:99px;margin-top:6px;flex:0 0 7px;background:var(--lime)}
+.dot.no{background:var(--red)} .dot.ext{background:var(--teal)}
+.pcard .role{color:var(--muted);font-size:11.6px}
+
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:12px}
+.flag{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
+.flag.r{border-left-color:var(--red)}
+.flag.o{border-left-color:var(--lime)}
+.flag.ask{border-left-color:var(--navy)}
+.flag.grey{border-left-color:var(--line-2)}
+.flag h3{font-size:13.4px;font-weight:700;margin:0 0 5px;color:var(--ink)}
+.flag p{margin:0;font-size:12.8px;color:var(--ink-2)}
+.flag p + p{margin-top:7px}
+.flag .lbl{display:block;margin-bottom:6px}
+.flag .askfor{font-size:12.3px;color:var(--navy);font-weight:600;display:block;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line-2)}
+
+.thesis{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--navy);border-radius:10px;
+  padding:20px 22px;box-shadow:var(--shadow);margin-bottom:12px}
+.thesis .lbl{display:block;margin-bottom:7px}
+.thesis h3{font-family:Montserrat;font-size:19px;font-weight:800;margin:0 0 10px;color:var(--ink);letter-spacing:-.01em;text-wrap:balance}
+.thesis p{margin:0 0 11px;font-size:13.8px;color:var(--ink-2);max-width:none;columns:2;column-gap:34px;text-wrap:pretty}
+.thesis .ev{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:16px 0 4px}
+.thesis .ev div{background:var(--surface-2);border-radius:8px;padding:12px 14px}
+.thesis .ev b{display:block;font-family:Montserrat;font-size:12px;font-weight:700;color:var(--navy);margin-bottom:5px}
+.thesis .ev span{font-size:12.4px;color:var(--ink-2);line-height:1.45}
+
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:12px}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
+.step h3{font-size:13.4px;font-weight:700;margin:0 0 8px;color:var(--navy)}
+.step ul{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:6px;font-size:12.8px;color:var(--ink-2)}
+.owner{font-family:Montserrat;font-weight:700;font-size:11px;color:var(--ink);letter-spacing:.02em}
+
+footer{border-top:1px solid var(--line);padding-block:16px 34px;color:var(--muted);font-size:12.3px}
+footer p{margin:0 0 9px;max-width:none;text-wrap:pretty}
+footer .fnote{columns:2;column-gap:34px}
+footer .cred{color:var(--muted);margin-bottom:0}
+@media (max-width:860px){.thesis p,footer .fnote{columns:1}}
+@media (max-width:520px){
+  body{padding-inline:16px}
+  .kpi .num{font-size:25px}
+  .tab{padding:9px 11px;font-size:12px}
+  .thesis h3{font-size:16.5px}
+}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="hrow">
+    <div>
+      <span class="lbl">Grupo EcoRodovias &middot; Plataforma Kartado</span>
+      <h1>Acompanhamento das unidades Eco</h1>
+      <div class="sub">Ecovias Capixaba, Ecovias Raposo Castello e Ecovias Noroeste Paulista. Metas de cada etapa, uso da plataforma, reuniões realizadas e onde o apoio da liderança do grupo destrava a operação.</div>
+    </div>
+    <div class="stamp">
+      <span class="lbl">Última atualização</span>
+      <b>21/09/2026</b>
+      <span style="font-size:12.5px;color:var(--muted)">Talita Arantes · Customer Success Kartado</span>
+    </div>
+  </div>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Unidades">
+  <button class="tab" id="tab-grp" role="tab" aria-selected="true" aria-controls="panel-grp">Visão do grupo</button>
+  <button class="tab" id="tab-cap" role="tab" aria-selected="false" aria-controls="panel-cap">Capixaba</button>
+  <button class="tab" id="tab-rap" role="tab" aria-selected="false" aria-controls="panel-rap">Raposo Castello</button>
+  <button class="tab" id="tab-nor" role="tab" aria-selected="false" aria-controls="panel-nor">Noroeste Paulista</button>
+</div>
+
+<!-- ================= GRUPO ================= -->
+<div id="panel-grp" role="tabpanel" aria-labelledby="tab-grp">
+
+<section>
+  <div class="shead"><h2>Resumo de bolso</h2><span class="note">As três unidades em uma olhada</span></div>
+  <div class="scroller"><table class="wide">
+    <thead><tr><th>Unidade</th><th>Etapa e virada</th><th>Indicadores</th><th>Vínculo e usuário-chave</th><th>Cadência e próxima reunião</th><th>Risco regulatório</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="k unitcell">Ecovias Capixaba<span class="sub2">ANTT · Gestão de Ativos</span></td>
+        <td class="stagecell">Adaptação desde 28/07<span class="sub2">virada em 31/10</span></td>
+        <td><div class="mstack">
+          <div class="mrow"><span class="ml">Objetivos</span><div class="bar"><i class="f-warn" style="width:54%"></i></div><b>54%</b></div>
+          <div class="mrow"><span class="ml">Prazo</span><div class="bar"><i class="f-plan" style="width:58%"></i></div><b>58%</b></div>
+          <div class="mrow"><span class="ml">Presença</span><div class="bar"><i class="f-run" style="width:63%"></i></div><b>63%</b></div>
+        </div></td>
+        <td class="keycell"><b><span class="org eco">Eco</span>Matheus Moro Zamprogno</b><span class="fr">presente em 4 de 4</span><span class="sub2">Gabriel Lucas do Vale, Ghanech Cazzolato e Renan Cabral também com presença constante, 3 de 4</span></td>
+        <td class="nextm"><span class="cad">Quinzenal</span><span class="dt">22/09 · 14h</span>Carga da monitoração oficial a partir de 26/09, vínculo das intervenções ao inventário e retomada do RDO.</td>
+        <td class="rk"><span class="pill ok">Sem exposição</span>Dentro do prazo do PER: o primeiro marco é a entrega do inventário, em 25/09, e a unidade ainda se adianta começando a monitoração. A entrega não depende do vínculo ao ativo.</td>
+      </tr>
+      <tr>
+        <td class="k unitcell">Ecovias Raposo Castello<span class="sub2">ARTESP · Gestão de Ativos</span></td>
+        <td class="stagecell">Adaptação desde 17/06<span class="sub2">virada em 30/09</span></td>
+        <td><div class="mstack">
+          <div class="mrow"><span class="ml">Objetivos</span><div class="bar"><i class="f-run" style="width:60%"></i></div><b>60%</b></div>
+          <div class="mrow"><span class="ml">Prazo</span><div class="bar"><i class="f-plan" style="width:91%"></i></div><b>91%</b></div>
+          <div class="mrow"><span class="ml">Presença</span><div class="bar"><i class="f-risk" style="width:35%"></i></div><b>35%</b></div>
+        </div></td>
+        <td class="keycell"><b><span class="org eco">Eco</span>Matheus Fonseca de Oliveira</b><b><span class="org eco">Eco</span>Taynara</b><span class="fr">ambos em 2 de 2</span><span class="sub2">as duas únicas presenças constantes, entre 10 e 21 convocados por reunião</span></td>
+        <td class="nextm"><span class="cad">Quinzenal</span><span class="dt">24/09 · 9h30</span>Conclusão do fluxo de não conformidade, leitura dos critérios no fechamento de setembro e painéis por permissão para as empreiteiras.</td>
+        <td class="rk"><span class="pill risk">Atenção</span>É a unidade com a maior lacuna de registro: Terra Fértil em 31% de execução, RDO ainda não preenchido pelas equipes e terceirizadas sem usuário criado. O que não é registrado não fica comprovado na base fiscalizada pela ARTESP.</td>
+      </tr>
+      <tr>
+        <td class="k unitcell">Ecovias Noroeste Paulista<span class="sub2">ARTESP · Kartado Ativos</span></td>
+        <td class="stagecell">Adaptação desde 17/06<span class="sub2">virada em 30/09</span></td>
+        <td><div class="mstack">
+          <div class="mrow"><span class="ml">Objetivos</span><div class="bar"><i class="f-warn" style="width:39%"></i></div><b>39%</b></div>
+          <div class="mrow"><span class="ml">Prazo</span><div class="bar"><i class="f-plan" style="width:91%"></i></div><b>91%</b></div>
+          <div class="mrow"><span class="ml">Presença</span><div class="bar"><i class="f-risk" style="width:33%"></i></div><b>33%</b></div>
+        </div></td>
+        <td class="keycell"><b><span class="org ter">Terceira</span>Samuel Magalhães Ribeiro</b><span class="fr">presente em 2 de 2</span><span class="sub2">conduz o acompanhamento na unidade; outros cinco participam de forma alternada</span></td>
+        <td class="nextm"><span class="cad">Semanal até a migração</span><span class="dt">22/09 · 11h</span>Confirmação da nova data da virada de chave, cadastro das equipes de campo com o reforço da equipe e preparação do go live do Kartado Obras em 01/10.</td>
+        <td class="rk"><span class="pill warn">Prazo definido</span>Auditoria da ARTESP prevista para o final do ano. A virada de chave foi remarcada de 18/09 para 28/09, já confirmada — é ela que transfere para a unidade nova a operação que gera o dado da auditoria.</td>
+      </tr>
+    </tbody>
+  </table></div>
+  <p style="margin:12px 0 0;font-size:12.4px;color:var(--muted)"><b style="color:var(--ink-2)">Cadência.</b> A Noroeste Paulista é acompanhada semanalmente até concluir a migração; depois passa a quinzenal, como a Capixaba e a Raposo Castello. Nas três, a cadência quinzenal se mantém até a Velocidade de Cruzeiro — ou antes disso, se a unidade se tornar autônoma no uso da plataforma.</p>
+  <p style="margin:8px 0 0;font-size:12.4px;color:var(--muted)">As três unidades avançam para a Aceleração na data proposta, independentemente do cumprimento integral dos objetivos. O percentual de objetivos indica com que nível de maturidade cada unidade entra na etapa seguinte — e o que entra como dívida. O risco apontado é sempre o risco perante o órgão fiscalizador, não o risco de avançar de etapa. A presença é a média das reuniões com presença apurada.</p>
+</section>
+
+<section>
+  <div class="shead"><h2>A maior dificuldade das três unidades</h2><span class="note">Análise transversal a partir das atas de acompanhamento</span></div>
+  <div class="thesis">
+    <span class="lbl">Diagnóstico</span>
+    <h3>A monitoração não nasce dentro da plataforma — e é isso que trava o vínculo com o ativo nas três unidades</h3>
+    <p>Em nenhuma das três concessões o dado de monitoração nasce no Kartado. Ele vem de fora — verificador independente, empresa contratada de leitura, sensor de pavimento ou o próprio órgão — cada um no seu formato. A unidade recebe o material e precisa convertê-lo para o template da plataforma, amarrando cada ponto ao ativo correto do inventário antes de importar. Não é um problema hoje: é trabalho que deixaria de existir se o dado já chegasse cadastrado, e é o elo de que depende o histórico por ativo e a rastreabilidade exigida no edital.</p>
+    <div class="ev">
+      <div><b>Capixaba</b><span>A monitoração oficial entra no sistema a partir de 26/09. Se o dado chegasse da contratada com o código do ativo, o vínculo não precisaria ser feito item a item.</span></div>
+      <div><b>Raposo Castello</b><span>A monitoração de drenagem é feita por empresa terceira, que envia os dados à área de gerenciamento do grupo. De lá a equipe monta o template e faz a importação — o trabalho está em preparar o arquivo, não em digitar.</span></div>
+      <div><b>Noroeste Paulista</b><span>Os cerca de 21 mil ativos de sinalização horizontal já estão no template e o chamado para o suporte subir já foi aberto. Vindo assim desde o início da monitoração, não haveria etapa de conversão.</span></div>
+    </div>
+  </div>
+  <div class="flags">
+    <div class="flag ask"><span class="lbl">Pedido 1 · Contratos</span><h3>Exigir o template da plataforma das contratadas de monitoração</h3>
+      <p>Se o dado chegar no template do Kartado com o código do ativo já preenchido, o trabalho de amarrar ponto e ativo deixa de existir. Hoje a equipe da concessão recebe a planilha da contratada e faz essa amarração item a item. O tratamento da carga no sistema segue com a concessão, que é quem conhece o inventário — o que muda é o dado chegar pronto para subir.</p>
+      <span class="askfor">Pedido: incluir o template do Kartado e o código do ativo como requisito de entrega nos contratos de monitoração.</span></div>
+    <div class="flag ask"><span class="lbl">Pedido 2 · Recurso contratado</span><h3>Planejar o uso das horas de serviços profissionais</h3>
+      <p>O grupo tem 30 horas mensais mais 2 horas por concessão, que não são cumulativas e expiram a cada ciclo. A própria unidade abre o chamado e o TI do grupo autoriza o consumo — mas as unidades não têm visibilidade de quanto podem usar no mês, e acabam não usando.</p>
+      <span class="askfor">Pedido: dar visibilidade mensal do saldo e reservar horas para as cargas de monitoração de setembro e outubro.</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Temas que se repetem nas três</h2><span class="note">Padrões que só a liderança do grupo consegue endereçar</span></div>
+  <div class="flags">
+    <div class="flag ask"><span class="lbl">Decisão do grupo</span><h3>O formato antigo aceito em paralelo trava a adoção do diário de obra</h3>
+      <p>Na Capixaba as terceirizadas entregam o RDO no formato antigo e no Kartado ao mesmo tempo: a primeira empresa pausou o uso e a expectativa de adoção efetiva foi para janeiro de 2027. Na Raposo, o uso do RDO já entrou como exigência nos termos de referência dos novos contratos — mas a Terra Fértil, que é o gargalo, opera sob contrato vigente e não tem essa obrigação.</p>
+      <span class="askfor">Pedido: definir data de corte do formato antigo e estender a exigência de RDO aos contratos em vigor.</span></div>
+    <div class="flag ask"><span class="lbl">Engajamento</span><h3>Presença nas reuniões de acompanhamento abaixo do necessário</h3>
+      <p>A participação média nas reuniões com presença apurada é de 63% na Capixaba, 35% na Raposo Castello e 33% na Noroeste Paulista. Na Raposo, os convites reúnem de 10 a 21 pessoas e comparecem de 4 a 6; na Noroeste, a reunião de 16/09 teve 2 participantes para 13 convocados.</p>
+      <p>A própria equipe da Noroeste propôs criar lista de presença para acompanhar o engajamento de coordenadores e engenheiros, e o TI do grupo se comprometeu a orquestrar isso internamente.</p>
+      <span class="askfor">Pedido: respaldar a lista de presença e a cobrança de participação das coordenações.</span></div>
+    <div class="flag"><span class="lbl">Restrição conhecida</span><h3>A criação de usuários é centralizada no TI do grupo</h3>
+      <p>Criação de usuário, e de natureza, classe ou campo compartilhados, passa pelo TI do grupo, porque reflete nas outras unidades. A decisão de manter esse fluxo centralizado já foi tomada pelo grupo e está mantida.</p>
+      <p>O efeito operacional é real e vale registrar: na Raposo, parte das terceirizadas está sem usuário criado — e quem não tem acesso não registra, o que aparece depois como execução baixa.</p></div>
+    <div class="flag ask"><span class="lbl">Articulação</span><h3>Dashboard de BI pendente desde a passagem de bastão</h3>
+      <p>Na Raposo Castello, o dashboard de BI é o único dos cinco macro-objetivos da contratação que segue em aberto desde 17/06, em tratativa com o time de dados.</p>
+      <span class="askfor">Pedido: definir o responsável e a data dessa entrega no grupo.</span></div>
+    <div class="flag ask"><span class="lbl">Visibilidade</span><h3>Integração com o CCO em andamento pela Kria</h3>
+      <p>A integração com o CCO da Capixaba é executada pela Kria e está em andamento — não depende da unidade nem da Kartado. A documentação de API foi entregue em 27/07.</p>
+      <p>O que falta é visibilidade: nem a unidade nem a Kartado sabem o cronograma, e isso impede planejar as sessões de de-para entre as informações do CCO e as do Kartado.</p>
+      <span class="askfor">Pedido: compartilhar o cronograma da Kria com a unidade para que o de-para seja agendado.</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>O risco regulatório de cada unidade</h2><span class="note">Exposição perante o órgão fiscalizador — não risco de avançar de etapa, que acontece na data proposta</span></div>
+  <div class="flags">
+    <div class="flag o"><span class="lbl">Capixaba · ANTT</span><h3>Sem exposição regulatória no momento</h3>
+      <p>A unidade está dentro do prazo do PER. O primeiro marco é a entrega do inventário, em 25/09, e ela ainda se adianta ao começar a monitoração em seguida. A entrega não depende do vínculo da intervenção ao ativo.</p>
+      <p>A base sustenta isso: a Conserva já opera 100% na plataforma e o preenchimento dos inventários de agosto ficou entre 96% e 97,6% com registro fotográfico. O vínculo ao ativo segue como objetivo de maturidade da operação, não como pendência regulatória.</p></div>
+    <div class="flag r"><span class="lbl">Raposo Castello · ARTESP</span><h3>Execução acontecendo sem ficar registrada</h3>
+      <p>É a unidade com a maior lacuna entre o que é executado em campo e o que fica comprovado na base. A Terra Fértil, maior fornecedor em volume, está em 31% de execução contra 56% da unidade; em 11/08, 63 das 105 programações ativas nunca saíram de 0%.</p>
+      <p>As causas se somam: o RDO ainda não é preenchido pelas equipes, parte das terceirizadas está sem usuário criado — e quem não tem acesso não registra — e o time está absorvendo um volume alto de monitoração em paralelo. O treinamento das equipes, que é a ação desenhada para destravar, foi realizado em 21/09, com a Terra Fértil presente.</p></div>
+    <div class="flag"><span class="lbl">Noroeste Paulista · ARTESP</span><h3>Auditoria prevista para o final do ano</h3>
+      <p>A auditoria da ARTESP está prevista para o final do ano, e o tema foi levantado pela própria unidade em agosto junto com a necessidade de todos os setores estarem parametrizados a tempo.</p>
+      <p>O passo que falta é o cadastro das equipes de campo na unidade nova: das seis equipes criadas, todas são administrativas. A virada de chave, que estava em 18/09, foi renegociada em 16/09 e confirmada para 28/09, com a preparação concluída até 25/09 e viabilizada pelo reforço de equipe que a unidade recebeu a partir de 21/09. É essa migração que transfere para a unidade nova quem gera o dado que a auditoria vai olhar.</p></div>
+  </div>
+</section>
+</div>
+
+<!-- ================= CAPIXABA ================= -->
+<div id="panel-cap" role="tabpanel" aria-labelledby="tab-cap" hidden>
+
+<div class="kpis">
+  <div class="kpi hi"><span class="num">55<small>/95 dias</small></span><div class="cap">da Adaptação decorridos — entrada em 28/07, virada em 31/10</div></div>
+  <div class="kpi"><span class="num">4<small> + 1</small></span><div class="cap">reuniões de acompanhamento realizadas, mais 1 alinhamento técnico</div></div>
+  <div class="kpi"><span class="num">54<small>%</small></span><div class="cap">de cumprimento médio dos objetivos da etapa</div></div>
+  <div class="kpi"><span class="num">63<small>%</small></span><div class="cap">de participação média nas reuniões de acompanhamento</div></div>
+  <div class="kpi"><span class="num">56.189</span><div class="cap">itens de inventário criados na unidade</div></div>
+  <div class="kpi"><span class="num">7</span><div class="cap">treinamentos entregues pela Kartado no ciclo de implantação</div></div>
+</div>
+
+<div class="paceb">
+  <h3>Execução um pouco atrás do calendário, sem exposição regulatória</h3>
+  <p>O avanço médio dos objetivos (54%) está atrás do tempo consumido (58%). Ainda assim a unidade está dentro do prazo do PER: o primeiro marco é a entrega do inventário, em 25/09, e ela ainda se adianta ao começar a monitoração em seguida. Os objetivos ainda abertos são de maturidade da operação, não de cumprimento regulatório.</p>
+  <div class="track" role="img" aria-label="Execução 54 por cento, tempo decorrido 58 por cento"><div class="fill" style="width:54%"></div><div class="mark" style="left:58%"></div></div>
+  <div class="tk-legend">
+    <span><i class="sw" style="background:linear-gradient(90deg,var(--navy),var(--blue))"></i> Execução dos objetivos: 54%</span>
+    <span><i class="sw" style="background:var(--ink)"></i> Tempo decorrido: 58% (55 de 95 dias)</span>
+    <span><i class="sw" style="background:var(--surface-2);border:1px solid var(--line-2)"></i> 40 dias até a virada</span>
+  </div>
+</div>
+
+<section>
+  <div class="shead"><h2>Leitura da etapa — destaques e pontos de atenção</h2></div>
+  <div class="flags">
+    <div class="flag o"><span class="lbl">Destaque</span><h3>Qualidade de dados acima do histórico da conta</h3>
+      <p>Agosto foi o mês com mais ativos importados na unidade e o preenchimento dos inventários cadastrados no mês ficou entre 96% e 97,6% com registro fotográfico — patamar superior ao acervo histórico da conta.</p></div>
+    <div class="flag o"><span class="lbl">Destaque</span><h3>Conserva operando 100% na plataforma</h3>
+      <p>Os técnicos de campo abrem o apontamento direto pelo aplicativo já com a empresa definida, e a sala técnica da própria terceirizada cria a programação das equipes. O WhatsApp deixou de ser canal de registro na Conserva.</p>
+      <p>Execução por classe nos últimos 60 dias: roçada, cerca e aceiro em 100%, manutenção elétrica em 92% e manutenção de sinalização de solo em 89%.</p></div>
+    <div class="flag o"><span class="lbl">Destaque</span><h3>Faixa de Domínio além do escopo inicial</h3>
+      <p>Além de registrar as ocorrências da frente na operação atual, a unidade está testando o produto dedicado de Faixa de Domínio da Kartado, em fase beta, com as equipes de campo já abrindo ocorrências pelo aplicativo.</p></div>
+    <div class="flag"><span class="lbl">Próximo salto de maturidade</span><h3>O vínculo intervenção × ativo</h3>
+      <p>É o Objetivo 1 do plano de ação e a base da gestão de ativos. A carga da monitoração oficial começa em 26/09, depois do protocolo na ANTT, e é a partir dela que as intervenções passam a ser amarradas ao ativo do inventário.</p>
+      <p>Não é uma pendência regulatória: a entrega do inventário prevista no PER não depende desse vínculo. O que ele habilita é o histórico por ativo e a curva de desempenho, que é o passo seguinte da operação.</p></div>
+    <div class="flag"><span class="lbl">Atenção</span><h3>Adoção do RDO travada pela duplicidade de formato</h3>
+      <p>A terceirizada que havia iniciado o RDO perdeu a pessoa responsável e pausou o uso. Uma nova empresa foi treinada em setembro e reagiu bem, mas as equipes seguem obrigadas a entregar o formato antigo em paralelo — a expectativa é uso ativo a partir de janeiro de 2027.</p></div>
+    <div class="flag"><span class="lbl">Atenção</span><h3>Três frentes de Conserva com execução em atenção</h3>
+      <p>Recuperação de drenagem e reparo de dispositivo pedem acompanhamento mais próximo, e implantação de taxas está em 13% de execução. A causa é o remanejamento das equipes para atender inventário e monitoração, com renegociação de prazos junto às empresas em curso.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Onde o apoio da liderança destrava a unidade</h2></div>
+  <div class="flags">
+    <div class="flag ask"><span class="lbl">Decisão do grupo</span><h3>Descontinuar o formato antigo do diário de obra</h3>
+      <p>Enquanto o duplo preenchimento existir, nenhuma terceirizada migra de fato. Foi o que travou a primeira empresa e o que limita a nova empresa treinada em setembro.</p>
+      <span class="askfor">Pedido: definir uma data de corte do formato antigo para os contratos de Conserva.</span></div>
+    <div class="flag ask"><span class="lbl">Visibilidade</span><h3>Integração com o CCO em andamento pela Kria</h3>
+      <p>A documentação de API foi entregue na passagem de bastão, em 27/07, e a execução está com a Kria, em andamento — não depende da unidade nem da Kartado.</p>
+      <p>O que falta é o cronograma chegar à unidade, para que as sessões de de-para entre as informações do CCO e as do Kartado possam ser agendadas.</p>
+      <span class="askfor">Pedido: compartilhar o cronograma da Kria com a unidade.</span></div>
+    <div class="flag ask"><span class="lbl">Oportunidade para o grupo</span><h3>Capixaba como unidade piloto do fluxo padrão-ouro</h3>
+      <p>O grupo discute em qual concessão rodar a POC do fluxo padrão-ouro — apontamento criado na sala técnica, atividade distribuída ao terceiro por programação e execução registrada direto no aplicativo — sem unidade definida.</p>
+      <p>A Capixaba já opera exatamente nesse modelo na Conserva, com a terceirizada criando a própria programação.</p>
+      <span class="askfor">Pedido: considerar a Capixaba como unidade piloto da POC do padrão-ouro.</span></div>
+    <div class="flag ask"><span class="lbl">Recurso já contratado</span><h3>Visibilidade do saldo de horas de serviços profissionais</h3>
+      <p>O pacote é do grupo e a solicitação passa pelo TI, que verifica a disponibilidade no mês. Sem cumulatividade e com as concessões dividindo o mesmo saldo, a unidade não sabe quanto pode usar.</p>
+      <span class="askfor">Pedido: dar visibilidade mensal do saldo e liberar o consumo para a carga da monitoração.</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Agenda de acompanhamento</h2><span class="note">Reuniões quinzenais com a unidade</span></div>
+  <div class="scroller"><table>
+    <thead><tr><th>Data</th><th>Compromisso</th><th>Objetivo da reunião</th><th>Situação</th></tr></thead>
+    <tbody>
+      <tr><td class="k n">22/09 · 14h</td><td class="k">Acompanhamento Kartado<span class="sub2">próxima reunião</span></td><td>Acompanhamento das metas da etapa com o time da unidade e análise de uso da plataforma: preparação da carga da monitoração oficial a partir de 26/09, vínculo das intervenções ao inventário e retomada do RDO.</td><td><span class="pill ok">Acordado com a unidade</span></td></tr>
+      <tr><td class="k n">25/09</td><td class="k">Marco da unidade — entrega do inventário</td><td>Primeiro prazo do PER. A unidade está dentro do prazo e se adianta: a partir de 26/09 começa também a carga da monitoração no Kartado, iniciando pelas disciplinas mais simples.</td><td><span class="pill ok">No prazo</span></td></tr>
+      <tr><td class="k n">05/10 · 14h</td><td class="k">Acompanhamento Kartado</td><td>Leitura do resultado da entrega de 25/09 e do avanço da monitoração oficial no sistema.</td><td><span class="pill plan">Agendado</span></td></tr>
+      <tr><td class="k n">19/10</td><td class="k">Acompanhamento Kartado</td><td>Acompanhamento das metas e análise de uso, com leitura da maturidade da unidade para a virada de 31/10.</td><td><span class="pill plan">Agendado</span></td></tr>
+      <tr><td class="k n">31/10</td><td class="k">Virada para Aceleração</td><td>Passagem da unidade para a etapa de Aceleração, quando as reuniões passam de quinzenais a mensais e o foco vira qualidade dos dados e geração de novos insights.</td><td><span class="pill ok">Data definida</span></td></tr>
+      <tr><td class="k n">02/11 · 16/11 · 30/11 · 14/12</td><td class="k">Acompanhamento Kartado</td><td>Série já lançada até dezembro: acompanhamento das metas acordadas e análise de uso da unidade.</td><td><span class="pill plan">Agendado</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="shead"><h2>Próximos passos e conteúdo</h2><span class="note">Encaminhamentos acordados nas reuniões de 24/08 e 11/09</span></div>
+  <div class="steps">
+    <div class="step"><h3>Monitoração e vínculo ao ativo</h3><ul>
+      <li><span class="owner">Rebeca</span> — iniciar a carga da monitoração oficial de Pavimento a partir de 26/09, começando por edificações e terraplenos</li>
+      <li><span class="owner">Gabriel</span> — reclassificar os apontamentos de nota de serviço para a classe de monitoração, com vínculo ao ativo</li>
+      <li><span class="owner">Gabriel</span> — confirmar com o Diego se Faixa de Domínio também é isenta de registro fotográfico pelo edital</li>
+      <li><span class="owner">Deivid</span> — avaliar o tratamento dos pontos já corrigidos antes da monitoração oficial</li></ul></div>
+    <div class="step"><h3>Operação e adoção</h3><ul>
+      <li><span class="owner">Gabriel</span> — dar continuidade ao treinamento da nova terceirizada no RDO, alternando o preenchimento entre equipes</li>
+      <li><span class="owner">Gabriel</span> — passar ao Ghanech a relação de prazos por classe para configuração no formulário</li>
+      <li><span class="owner">Gabriel</span> — abrir o chamado do campo de status provisório e definitivo no formulário de reparo de pavimento, pedido em 10/08</li>
+      <li><span class="owner">Gabriel</span> — reequilibrar prazos e alocação nas frentes com execução em atenção</li>
+      <li><span class="owner">Ecovias</span> — cadastrar os contratos de ADM e PU em Recursos</li>
+      <li><span class="owner">Matheus</span> — solicitar a exportação completa do inventário usando as horas de serviços profissionais</li></ul></div>
+    <div class="step"><h3>Conteúdo previsto para a próxima reunião</h3><ul>
+      <li>Resultado do protocolo na ANTT de 25/09 e estratégia de carga por disciplina</li>
+      <li>Piloto de vínculo intervenção × ativo na Conserva</li>
+      <li>Situação dos relatórios da unidade e do relatório-resposta de TRO</li>
+      <li>Retomada da curva de RDO e cadastro do contrato ADM</li>
+      <li>Nível de maturidade com que a unidade entra na Aceleração em 31/10</li></ul></div>
+  </div>
+</section>
+<section>
+  <div class="shead"><h2>Objetivos mapeados e % de cumprimento</h2><span class="note">Plano de ação da unidade e objetivos fechados nas reuniões de 10/08, 24/08 e 11/09</span></div>
+  <div class="phases">
+    <div class="ph"><div class="ph-top"><span class="ph-n">FASE 1</span><span class="when">até 27/07</span></div><h3>Base e passagem de bastão</h3>
+      <ul><li>Ciclo de implantação encerrado e conta transferida para Sucesso do Cliente</li><li>18 mil apontamentos, sendo 14 mil com foto, e 33 mil ativos na virada</li><li>Três frentes ativas: Conserva, Pavimento e Faixa de Domínio</li></ul>
+      <div class="bar"><i class="f-ok" style="width:100%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--lime)">100%</span><span class="pill ok">Concluído</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">FASE 2</span><span class="when">prazo 26/08</span></div><h3>Inventário e evidência fotográfica — Fase 2 do SIGACO</h3>
+      <ul><li>56.189 itens de inventário criados, com 16 mil pontos com foto subidos em 24/08</li><li>Preenchimento dos inventários de agosto entre 96% e 97,6% com foto</li><li>Residual: subdisciplina de sinalização vertical</li></ul>
+      <div class="bar"><i class="f-ok" style="width:95%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--lime)">95%</span><span class="pill ok">Cumprido no prazo</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">FASE 3</span><span class="when">prazo 01/09</span></div><h3>Operação plena da Conserva</h3>
+      <ul><li>Encarregados das terceirizadas com aparelho cadastrado e aplicativo em uso</li><li>Programação criada pela sala técnica da própria terceirizada</li><li>Pendente: equipes sem apontamento nos últimos 30 dias e inativação de empresa com contrato encerrado</li></ul>
+      <div class="bar"><i class="f-run" style="width:85%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--blue)">85%</span><span class="pill run">Parcial</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">FASE 5</span><span class="when">set a out/2026</span></div><h3>Relatórios e Faixa de Domínio</h3>
+      <ul><li>Construtor de Relatórios liberado e em uso, com a Capixaba como piloto</li><li>Meta: encerrar a montagem manual em Excel do relatório-resposta de TRO</li><li>Faixa de Domínio testando o produto dedicado, com ocorrências pelo aplicativo</li></ul>
+      <div class="bar"><i class="f-warn" style="width:55%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">55%</span><span class="pill warn">Em andamento</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">FASE 6</span><span class="when">início 01/09</span></div><h3>Implantação do RDO</h3>
+      <ul><li>Fase iniciada em 01/09 conforme o plano</li><li>Terceirizada piloto pausou o uso por saída da pessoa responsável</li><li>Nova terceirizada treinada em setembro; adoção efetiva replanejada para janeiro de 2027</li></ul>
+      <div class="bar"><i class="f-warn" style="width:25%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">25%</span><span class="pill warn">Replanejado</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">6 MESES</span><span class="when">objetivo de 24/08</span></div><h3>Contrato ADM em Recursos</h3>
+      <ul><li>Cadastro do contrato administrativo para pré-preencher o RDO de campo</li><li>Habilita também as medições dentro da plataforma</li><li>Contrato inicialmente cogitado está perto do fim — avaliar outra empresa</li></ul>
+      <div class="bar"><i class="f-plan" style="width:10%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--muted)">10%</span><span class="pill plan">Não iniciado</span></div></div>
+    <div class="ph" style="border-color:var(--navy);border-left-width:4px"><div class="ph-top"><span class="ph-n" style="background:var(--lime)">VIRADA</span><span class="when">31/10/2026</span></div><h3>Entrada em Aceleração</h3>
+      <ul><li>A unidade avança na data proposta, independentemente do cumprimento integral</li><li>O que não fechar entra como dívida na etapa seguinte</li><li>Reuniões passam de quinzenais a mensais</li></ul>
+      <div class="bar"><i class="f-warn" style="width:54%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">54%</span><span class="pill warn">Em curso</span></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Reuniões realizadas — conteúdo, convocados e participantes</h2><span class="note">Apurado nos convites, nas gravações e nas atas</span></div>
+  <div class="scroller"><table>
+    <thead><tr><th>Data / hora</th><th>Reunião</th><th>Conteúdo tratado</th><th>Conv.</th><th>Pres.</th><th>Participação</th></tr></thead>
+    <tbody>
+      <tr><td class="k n">27/07<span class="sub2">09:00 · 50min</span></td><td class="k">Passagem de bastão</td>
+        <td>Recapitulação da implantação e dos 7 treinamentos entregues, alinhamento dos 5 macro-objetivos da contratação (4 atingidos, dashboard em BI pendente), análise de uso, fluxo padrão-ouro, pendências de BI padronizado com a Rio Minas e integração com o CCO via API. Apresentação da jornada de acompanhamento, canais de suporte e pacote de serviços profissionais.</td>
+        <td class="n">5</td><td class="n">8</td><td><div class="mini"><div class="bar"><i class="f-ok" style="width:100%"></i></div><b>8/5</b></div></td></tr>
+      <tr><td class="k n">10/08<span class="sub2">15:00 · 58min</span></td><td class="k">Acompanhamento #1</td>
+        <td>Validação dos fluxos desenhados na implantação frente à realidade das três frentes: Conserva já 100% no aplicativo e sem WhatsApp; Faixa de Domínio em piloto no mobile; Pavimento com TRO via template e relatório-resposta em Excel. Demanda de campo provisório e definitivo no formulário. Análise de uso: 9.600 apontamentos criados, 3.800 executados, 40% de execução e 67 classes distintas.</td>
+        <td class="n">9</td><td class="n">6</td><td><div class="mini"><div class="bar"><i class="f-run" style="width:67%"></i></div><b>67%</b></div></td></tr>
+      <tr><td class="k n">24/08<span class="sub2">15:00</span></td><td class="k">Acompanhamento #2</td>
+        <td>Fechamento do plano de ação da Adaptação. Inventário e Fase 2 do SIGACO, qualidade de dados de agosto, identificação de que a monitoração da Conserva era pré-monitoração lançada como nota de serviço, execução por classe nos últimos 60 dias, equipes sem apontamento, demonstração do Construtor de Relatórios, contrato ADM como objetivo de 6 meses e exportação completa do inventário.</td>
+        <td class="n">9</td><td class="n">4</td><td><div class="mini"><div class="bar"><i class="f-risk" style="width:44%"></i></div><b>44%</b></div></td></tr>
+      <tr><td class="k n">11/09<span class="sub2">14:00 · 1h17</span></td><td class="k">Acompanhamento #3</td>
+        <td>Exigência regulatória do inventário de Pavimento: unidade de 200 metros, monitoração por sensor sem vídeo nem foto georreferenciada, parâmetros de IGG e IRI pertencentes à inspeção e não ao cadastro. Cronograma da monitoração oficial, com protocolo em 25/09 e carga a partir de 26/09 começando por edificações e terraplenos. Queda na criação de RDOs e treinamento da nova terceirizada.</td>
+        <td class="n">9</td><td class="n">7</td><td><div class="mini"><div class="bar"><i class="f-ok" style="width:78%"></i></div><b>78%</b></div></td></tr>
+      <tr><td class="k n">15/09<span class="sub2">15:00</span></td><td class="k">Alinhamento técnico<span class="sub2">Construtor de Relatórios</span></td>
+        <td>Sessão dedicada ao Construtor de Relatórios na unidade, com foco na montagem dos modelos e na automação do prazo.</td>
+        <td class="n">2</td><td class="n">2</td><td><div class="mini"><div class="bar"><i class="f-ok" style="width:100%"></i></div><b>100%</b></div></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="shead"><h2>Usuários-chave</h2><span class="note">Quem sustenta o acompanhamento da unidade, pela presença apurada nas reuniões</span></div>
+  <div class="scroller"><table>
+    <thead><tr><th>Vínculo e nome</th><th>Frente</th><th>Presença</th><th>Frequência</th></tr></thead>
+    <tbody>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Matheus Moro Zamprogno</td><td>—</td><td class="n">4 de 4</td><td><span class="freq const">Constante</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Gabriel Lucas do Vale</td><td>—</td><td class="n">3 de 4</td><td><span class="freq const">Constante</span></td></tr>
+      <tr><td class="k nomecell"><span class="org ter">Terceira</span>Ghanech Luiz Stivalli Cazzolato</td><td>TI EcoRodovias</td><td class="n">3 de 4</td><td><span class="freq const">Constante</span></td></tr>
+      <tr><td class="k nomecell"><span class="org ter">Terceira</span>Renan Ferreira Cabral</td><td>Pavimento</td><td class="n">3 de 4</td><td><span class="freq const">Constante</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Deivid Jaime do Amaral</td><td>—</td><td class="n">2 de 4</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Amanda Aparecida Navarro Pereira</td><td>Corporativo</td><td class="n">2 de 4</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Rebeca Meira Ardisson Brozeghini</td><td>Pavimento</td><td class="n">1 de 4</td><td><span class="freq novo">Entrou em 11/09</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Diego Ebersol de Carvalho</td><td>Faixa de Domínio</td><td class="n">1 de 4</td><td><span class="freq alt">Alternada</span></td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin:10px 0 0;font-size:12.4px;color:var(--muted)">O vínculo vem do endereço no convite do Outlook: o prefixo <b>t_</b> identifica terceira, e sem o prefixo é quadro próprio da Eco. Quem participou sem constar no convite aparece como n/d, porque não há endereço para classificar. Denominador: as 4 reuniões com presença nominal apurada desde a passagem de bastão — 27/07, 10/08, 24/08 e 11/09. Cecília Fortes Merighi e Amanda Silva Barbosa participaram apenas da passagem de bastão, e por isso não entram na contagem recorrente.</p>
+</section>
+
+<section>
+  <div class="shead"><h2>Nomes — quem foi convocado e quem entrou</h2><span class="note">Verde = presente &middot; vermelho = convocado ausente &middot; azul = incluído pelo próprio time da unidade</span></div>
+  <div class="people">
+    <div class="pcard"><h3>27/07 · Passagem de bastão</h3><ul>
+      <li><i class="dot"></i><span>Matheus Moro Zamprogno</span></li>
+      <li><i class="dot"></i><span>Deivid Jaime do Amaral</span></li>
+      <li><i class="dot"></i><span>Ghanech Luiz Stivalli Cazzolato <span class="role">· TI EcoRodovias</span></span></li>
+      <li><i class="dot no"></i><span>Gabriel Lucas do Vale <span class="role">· ausente, em férias</span></span></li>
+      <li><i class="dot ext"></i><span>Renan Ferreira Cabral <span class="role">· Pavimento</span></span></li>
+      <li><i class="dot ext"></i><span>Cecília Fortes Merighi <span class="role">· ECS</span></span></li>
+      <li><i class="dot ext"></i><span>Amanda Aparecida Navarro Pereira</span></li>
+      <li><i class="dot ext"></i><span>Amanda Silva Barbosa</span></li>
+      <li><i class="dot"></i><span>Talita Arantes <span class="role">· condução, Kartado</span></span></li></ul></div>
+    <div class="pcard"><h3>10/08 · Acompanhamento #1</h3><ul>
+      <li><i class="dot"></i><span>Matheus Moro Zamprogno</span></li>
+      <li><i class="dot"></i><span>Gabriel Lucas do Vale</span></li>
+      <li><i class="dot"></i><span>Diego Ebersol de Carvalho <span class="role">· Faixa de Domínio</span></span></li>
+      <li><i class="dot"></i><span>Renan Ferreira Cabral</span></li>
+      <li><i class="dot"></i><span>Ghanech Luiz Stivalli Cazzolato</span></li>
+      <li><i class="dot no"></i><span>Deivid Jaime do Amaral <span class="role">· em férias</span></span></li>
+      <li><i class="dot no"></i><span>Rebeca Meira Ardisson Brozeghini</span></li>
+      <li><i class="dot no"></i><span>Amanda Aparecida Navarro Pereira</span></li>
+      <li><i class="dot"></i><span>Talita Arantes <span class="role">· condução, Kartado</span></span></li></ul></div>
+    <div class="pcard"><h3>24/08 · Acompanhamento #2</h3><ul>
+      <li><i class="dot"></i><span>Gabriel Lucas do Vale</span></li>
+      <li><i class="dot"></i><span>Matheus Moro Zamprogno</span></li>
+      <li><i class="dot"></i><span>Renan Ferreira Cabral</span></li>
+      <li><i class="dot no"></i><span>Deivid Jaime do Amaral</span></li>
+      <li><i class="dot no"></i><span>Rebeca Meira Ardisson Brozeghini</span></li>
+      <li><i class="dot no"></i><span>Diego Ebersol de Carvalho</span></li>
+      <li><i class="dot no"></i><span>Ghanech Luiz Stivalli Cazzolato</span></li>
+      <li><i class="dot no"></i><span>Amanda Aparecida Navarro Pereira</span></li>
+      <li><i class="dot"></i><span>Talita Arantes <span class="role">· condução, Kartado</span></span></li></ul></div>
+    <div class="pcard"><h3>11/09 · Acompanhamento #3</h3><ul>
+      <li><i class="dot"></i><span>Matheus Moro Zamprogno</span></li>
+      <li><i class="dot"></i><span>Gabriel Lucas do Vale</span></li>
+      <li><i class="dot"></i><span>Deivid Jaime do Amaral</span></li>
+      <li><i class="dot"></i><span>Rebeca Meira Ardisson Brozeghini <span class="role">· Pavimento, 1ª participação</span></span></li>
+      <li><i class="dot"></i><span>Ghanech Luiz Stivalli Cazzolato</span></li>
+      <li><i class="dot"></i><span>Amanda Aparecida Navarro Pereira</span></li>
+      <li><i class="dot no"></i><span>Diego Ebersol de Carvalho</span></li>
+      <li><i class="dot no"></i><span>Renan Ferreira Cabral</span></li>
+      <li><i class="dot"></i><span>Talita Arantes <span class="role">· condução, Kartado</span></span></li></ul></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Treinamentos</h2><span class="note">Capacitação entregue à unidade pela Kartado</span></div>
+  <div class="steps">
+    <div class="step"><h3>Ciclo de implantação · dez/2025 a jun/2026</h3><ul>
+      <li><span class="owner">7 treinamentos entregues</span> — 6 de sala técnica e 1 de apontadores, cobrindo configuração, apontamentos e programação, importação e exportação de dados, RDO no web e no aplicativo, e o fluxo completo de gestão de ativos</li>
+      <li>Somou-se a eles uma sessão extraordinária de gestão de ativos, sob demanda da equipe de Conserva</li>
+      <li>Na passagem de bastão, a equipe foi considerada capacitada para executar o fluxo completo de inventário, monitoração e recuperação</li></ul></div>
+    <div class="step"><h3>Desde a passagem de bastão · a partir de 27/07</h3><ul>
+      <li>Nenhum treinamento novo foi solicitado pela unidade no período</li>
+      <li>Reciclagens, treinamentos de novos usuários-chave e materiais de apoio são elegíveis ao pacote de serviços profissionais já contratado pelo grupo</li>
+      <li>A carga da monitoração a partir de 26/09 é um bom momento para uma reciclagem por disciplina, com foco no vínculo da intervenção ao ativo</li></ul></div>
+  </div>
+</section>
+
+</div>
+
+<!-- ================= RAPOSO CASTELLO ================= -->
+<div id="panel-rap" role="tabpanel" aria-labelledby="tab-rap" hidden>
+
+<div class="kpis">
+  <div class="kpi hi"><span class="num">96<small>/105 dias</small></span><div class="cap">da Adaptação decorridos — entrada em 17/06, virada em 30/09</div></div>
+  <div class="kpi"><span class="num">8</span><div class="cap">reuniões realizadas, incluindo a visita de 25/08 e o treinamento de 21/09</div></div>
+  <div class="kpi"><span class="num">60<small>%</small></span><div class="cap">de cumprimento médio dos objetivos da unidade</div></div>
+  <div class="kpi"><span class="num">35<small>%</small></span><div class="cap">de participação média nas duas reuniões com presença apurada</div></div>
+  <div class="kpi"><span class="num">17.286</span><div class="cap">itens de inventário criados na unidade</div></div>
+  <div class="kpi"><span class="num">56<small>%</small></span><div class="cap">de execução geral dos apontamentos — Terra Fértil em 31%</div></div>
+</div>
+
+<div class="paceb">
+  <h3>Adoção alta, execução concentrada em um fornecedor</h3>
+  <p>A unidade consumiu 91% do prazo da Adaptação com 60% dos objetivos cumpridos. A adoção cresceu de forma consistente — os apontamentos saltaram de cerca de mil em maio para quase três mil em julho, os RDOs de 11 registros em maio para 140 em agosto, e em agosto 100% dos apontamentos passaram a ter foto. O que não acompanhou foi a execução da Terra Fértil, o fornecedor de maior volume, parada em 31%.</p>
+  <div class="track" role="img" aria-label="Execução 60 por cento, tempo decorrido 91 por cento"><div class="fill" style="width:60%"></div><div class="mark" style="left:91%"></div></div>
+  <div class="tk-legend">
+    <span><i class="sw" style="background:linear-gradient(90deg,var(--navy),var(--blue))"></i> Execução dos objetivos: 60%</span>
+    <span><i class="sw" style="background:var(--ink)"></i> Tempo decorrido: 91% (96 de 105 dias)</span>
+    <span><i class="sw" style="background:var(--surface-2);border:1px solid var(--line-2)"></i> 9 dias até a virada</span>
+  </div>
+</div>
+
+<section>
+  <div class="shead"><h2>Leitura da etapa — destaques e pontos de atenção</h2></div>
+  <div class="flags">
+    <div class="flag o"><span class="lbl">Destaque</span><h3>Curva de uso crescendo em todas as frentes</h3>
+      <p>Os apontamentos criados passaram de cerca de mil em maio para quase três mil em julho. Os RDOs triplicaram no período, chegando a 98 em julho e 140 em agosto, com 17 das 66 equipes cadastradas já usando a ferramenta.</p>
+      <p>Em agosto, 100% dos apontamentos passaram a contar com foto, resultado do acompanhamento feito junto às terceirizadas.</p></div>
+    <div class="flag o"><span class="lbl">Destaque</span><h3>Higienização das programações entregue</h3>
+      <p>Em 11/08 a unidade tinha 105 programações ativas, das quais 63 nunca saíram de 0% de execução e apenas 2 haviam sido arquivadas corretamente. Em 11/09 já eram 95 ativas e 124 arquivadas.</p></div>
+    <div class="flag o"><span class="lbl">Destaque</span><h3>Inventário apresentado como concluído</h3>
+      <p>Restam validações documentais: se os itens de acessos e ocupações (2.600 itens, hoje com 50% de cobertura fotográfica) e os equipamentos de tecnologia como Cowbox e ITS são isentos de exigência de foto pelo edital.</p>
+      <p>Na passagem de bastão a unidade somava mais de 17 mil ativos cadastrados e mais de 25 mil apontamentos de monitoração importados.</p></div>
+    <div class="flag r"><span class="lbl">Risco regulatório</span><h3>Execução acontecendo sem ficar registrada</h3>
+      <p>É a unidade com a maior lacuna entre o que é executado em campo e o que fica comprovado na base — e é a base que responde perante a ARTESP. Três causas se somam:</p>
+      <p><b>Terra Fértil em 31% de execução.</b> É o fornecedor com maior volume de apontamentos e o maior índice de atraso. Opera em conservação e bate-estaca, e a frente de bate-estaca ainda não iniciou o uso do RDO. Como o contrato é administrativo e não por performance, o volume de programações não atendidas é hoje o principal respaldo da concessão para uma eventual notificação ao terceiro. O contrato se encerra em dezembro.</p>
+      <p><b>RDO ainda não preenchido pelas equipes.</b> Chegou a 17 das 66 equipes cadastradas.</p>
+      <p><b>Terceirizadas sem usuário criado.</b> Levantado pela própria equipe na visita de 25/08: quem não tem acesso não registra, e a ausência de registro aparece depois como execução baixa.</p></div>
+    <div class="flag"><span class="lbl">Atenção</span><h3>Relatórios de não conformidade digitados à mão</h3>
+      <p>Os relatórios de NC chegam da ARTESP em formatos que variam, o que hoje obriga a baixar o modelo e digitar as informações manualmente, foto a foto. O caminho é usar a importação de PDF já disponível no sistema, que a equipe ficou de testar.</p></div>
+    <div class="flag"><span class="lbl">Atenção</span><h3>Programações grandes não aparecem no aplicativo</h3>
+      <p>Uma programação com mais de 250 apontamentos não exibe os apontamentos no aplicativo em campo. Como a unidade mantinha cerca de 125 programações ativas, muitas volumosas e sem prazo definido, a recomendação foi fragmentar por prazo e prioridade e arquivar cada uma ao atingir 100%.</p></div>
+    <div class="flag grey"><span class="lbl">Pendência herdada da implantação</span><h3>Dashboard de BI</h3>
+      <p>Dos cinco macro-objetivos da contratação, quatro foram atingidos na implantação. O dashboard de BI é o único em aberto, em tratativa com o time de dados.</p>
+      <p>A integração com o CCO é frente separada desta: está com a Kria e em andamento, sem dependência da unidade.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Onde o apoio da liderança destrava a unidade</h2></div>
+  <div class="flags">
+    <div class="flag ask"><span class="lbl">Exigência contratual</span><h3>Estender o uso do RDO aos contratos vigentes</h3>
+      <p>O uso do RDO pelas equipes já foi incluído como exigência nos termos de referência dos novos contratos. A Terra Fértil, cuja execução em 31% é o principal gargalo da unidade, opera sob contrato vigente e não tem essa obrigação.</p>
+      <span class="askfor">Pedido: estender a exigência de uso do RDO aos contratos em vigor, começando pela Terra Fértil.</span></div>
+    <div class="flag ask"><span class="lbl">Acesso</span><h3>Criar os usuários das terceirizadas</h3>
+      <p>Parte das terceirizadas não tem usuário criado na plataforma — foi o que a própria equipe levantou na visita de 25/08. Sem acesso não há registro, e é o registro que comprova a execução. A criação é centralizada no TI do grupo.</p>
+      <span class="askfor">Pedido: concluir as criações pendentes, para que quem foi capacitado consiga registrar.</span></div>
+    <div class="flag ask"><span class="lbl">Fluxo interno</span><h3>Permitir que a unidade inative equipes</h3>
+      <p>Hoje somente o TI do grupo tem permissão para excluir equipes, o que impede a unidade de concluir a higienização do cadastro por conta própria — e equipes encerradas que permanecem ativas no sistema distorcem os indicadores de uso.</p>
+      <span class="askfor">Pedido: delegar à unidade a inativação de equipes, ou criar uma rotina periódica com o TI.</span></div>
+    <div class="flag ask"><span class="lbl">Recurso já contratado</span><h3>Horas de serviços profissionais para as cargas em massa</h3>
+      <p>As cargas de monitoração em volume são o tipo de tarefa que o pacote de horas do grupo cobre. O chamado é aberto pela própria unidade e o TI do grupo autoriza o consumo — o pacote não é cumulativo e expira a cada ciclo.</p>
+      <span class="askfor">Pedido: liberar o consumo das horas para as cargas de monitoração pendentes.</span></div>
+    <div class="flag ask"><span class="lbl">Articulação entre unidades</span><h3>Entrada direta dos dados de monitoração no sistema</h3>
+      <p>A monitoração de drenagem é feita por empresa terceira, que envia os dados à área de gerenciamento do grupo, e de lá são importados manualmente pela concessão. A conversa para viabilizar a entrada direta desses dados no sistema já começou no nível do grupo.</p>
+      <span class="askfor">Pedido: concluir a definição da entrada direta, eliminando a importação manual pela unidade.</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Agenda de acompanhamento</h2><span class="note">Reuniões quinzenais com a unidade</span></div>
+  <div class="scroller"><table>
+    <thead><tr><th>Data</th><th>Compromisso</th><th>Objetivo da reunião</th><th>Situação</th></tr></thead>
+    <tbody>
+      <tr><td class="k n">21/09 · 10h às 12h</td><td class="k">Treinamento Kartado<span class="sub2">equipes próprias e terceirizadas</span></td><td>Primeiro dos três treinamentos definidos na visita de 25/08. Duas horas cobrindo o aplicativo — sincronização, criação e execução de apontamento, foto e vínculo ao ativo, programações no mapa e preenchimento do RDO — e a web: importação em massa por template, importação de não conformidade em PDF, criação de programação a partir do inventário com vínculo ao ativo, e o fluxo de aprovação até o compartilhamento com a ARTESP. Participaram equipes próprias da Eco e as terceirizadas, incluindo a Terra Fértil: 11 presentes para 22 convocados.</td><td><span class="pill ok">Realizado</span></td></tr>
+      <tr><td class="k n">24/09 · 9h30</td><td class="k">Acompanhamento Kartado<span class="sub2">próxima reunião</span></td><td>Acompanhamento das metas com o time da unidade e análise de uso da plataforma, com apresentação do fluxo de não conformidade proposto pela Kartado, leitura da maturidade para a virada e painéis por permissão para as empreiteiras.</td><td><span class="pill ok">Acordado com a unidade</span></td></tr>
+      <tr><td class="k n">30/09</td><td class="k">Virada para Aceleração</td><td>Passagem da unidade para a etapa de Aceleração, quando as reuniões passam de quinzenais a mensais e o foco vira qualidade dos dados e geração de novos insights.</td><td><span class="pill ok">Data definida</span></td></tr>
+      <tr><td class="k n">01/10</td><td class="k">Go live do Kartado Obras</td><td>Início de uso do Kartado Obras para atendimento ao SISOBRAS, em conjunto com a Noroeste Paulista, com testes e treinamentos organizados até a data.</td><td><span class="pill plan">Definido</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="shead"><h2>Próximos passos e conteúdo</h2><span class="note">Encaminhamentos acordados nas reuniões de 11/08, 25/08 e 11/09</span></div>
+  <div class="steps">
+    <div class="step"><h3>Inventário e validações de edital</h3><ul>
+      <li><span class="owner">Diego</span> — verificar se acessos e ocupações e os equipamentos de tecnologia (Cowbox, ITS) são isentos de exigência de foto pelo edital, para fechar 100% do inventário</li>
+      <li><span class="owner">Diego</span> — confirmar quem cadastrou os 223 itens de pavimento da Conservação como inventário e se há exigência de foto ou apenas de vídeo registro</li>
+      <li><span class="owner">Diego</span> — comparar o novo levantamento de inventário recebido com o inventário atual e identificar o que falta subir</li></ul></div>
+    <div class="step"><h3>Terra Fértil, RDO e treinamentos</h3><ul>
+      <li><span class="owner">Equipe Ecovias</span> — concluir o cadastro dos usuários das terceirizadas que seguem sem acesso</li>
+      <li><span class="owner">Matheus</span> — dar continuidade ao piloto do fluxo de aprovação com a equipe de sinalização vertical da Alta Noroeste</li>
+      <li><span class="owner">Equipe Ecovias</span> — compartilhar o link do protótipo do RDO novo com mais colaboradores para ampliar os testes</li>
+      <li><span class="owner">Franklin</span> — abrir chamado para a importação em massa dos apontamentos de monitoração de sinalização horizontal</li></ul></div>
+    <div class="step"><h3>Não conformidade e próxima reunião</h3><ul>
+      <li><span class="owner">Equipe Ecovias</span> — levantar a lista de formulários por classe e natureza com os prazos correspondentes e abrir chamado para configurar o prazo automático</li>
+      <li><span class="owner">Taynara e Stephany</span> — subir os relatórios de NC pela importação de PDF do sistema</li>
+      <li>Apresentação do fluxo de não conformidade proposto pela Kartado, que não couve no tempo da última reunião</li>
+      <li>Painéis por permissão para que as empreiteiras organizem seus próprios apontamentos e programações</li>
+      <li>Cadastro dos itens de medição do contrato de administração, para viabilizar a medição pela plataforma</li></ul></div>
+  </div>
+</section>
+<section>
+  <div class="shead"><h2>Objetivos mapeados e % de cumprimento</h2><span class="note">Objetivos registrados para a unidade, atualizados em 09/09</span></div>
+  <div class="phases">
+    <div class="ph"><div class="ph-top"><span class="ph-n">BASE</span><span class="when">até 17/06</span></div><h3>Encerramento da implantação</h3>
+      <ul><li>4 dos 5 macro-objetivos da contratação atingidos</li><li>Mais de 900 apontamentos de não conformidade, 25 mil apontamentos de monitoração importados e 17 mil ativos cadastrados</li><li>Último mês da implantação: 1.368 apontamentos criados e 481 executados</li></ul>
+      <div class="bar"><i class="f-ok" style="width:100%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--lime)">100%</span><span class="pill ok">Concluído</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">OPERACIONAL</span><span class="when">na virada</span></div><h3>Fluxo de aprovação e adesão das terceirizadas</h3>
+      <ul><li>Piloto definido e iniciado com a equipe de sinalização vertical da Alta Noroeste</li><li>Nessa equipe, quem cria o RDO é o supervisor de obras, para não perder o histórico das frentes</li><li>Adesão das demais terceirizadas ao processo correto de apontamentos e RDOs segue em curso</li></ul>
+      <div class="bar"><i class="f-warn" style="width:40%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">40%</span><span class="pill warn">Piloto iniciado</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">QUALIDADE</span><span class="when">na virada</span></div><h3>Higienização e rastreabilidade, com foco na Terra Fértil</h3>
+      <ul><li>Programações arquivadas passaram de 2 para 124 entre 11/08 e 11/09</li><li>Cobertura fotográfica dos apontamentos em 80%, cerca de 1.800 de 2.000</li><li>Execução da Terra Fértil em 31%, contra 56% da unidade</li></ul>
+      <div class="bar"><i class="f-warn" style="width:55%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">55%</span><span class="pill warn">Parcial</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">CAPACITAÇÃO</span><span class="when">realizado em 21/09</span></div><h3>Treinamentos com líderes, sala técnica e fiscais</h3>
+      <ul><li>Os três treinamentos definidos na visita de 25/08 — líderes das terceirizadas, sala técnica das terceirizadas e fiscais da Eco — foram cobertos numa sessão única</li><li>Realizada em 21/09, com 11 participantes de 22 convocados: a maior adesão registrada na unidade</li><li>Participaram equipes próprias da Eco e as terceirizadas, incluindo a Terra Fértil</li></ul>
+      <div class="bar"><i class="f-ok" style="width:100%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--lime)">100%</span><span class="pill ok">Concluído</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">GOVERNANÇA</span><span class="when">set a out/2026</span></div><h3>Fluxo de monitoração e não conformidade com vínculo ao inventário</h3>
+      <ul><li>Fluxo ideal revisado na visita de 25/08; a proposta da Kartado será apresentada na próxima reunião</li><li>Prazo automático por classe e natureza depende de levantamento da unidade e chamado ao TI</li><li>Ficou registrado que a foto da monitoração precisa ser tirada na vistoria, e não reaproveitada do cadastro</li></ul>
+      <div class="bar"><i class="f-warn" style="width:45%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">45%</span><span class="pill warn">Em curso</span></div></div>
+    <div class="ph" style="border-color:var(--navy);border-left-width:4px"><div class="ph-top"><span class="ph-n" style="background:var(--lime)">VIRADA</span><span class="when">30/09/2026</span></div><h3>Entrada em Aceleração</h3>
+      <ul><li>A unidade avança na data proposta, independentemente do cumprimento integral</li><li>O que não fechar entra como dívida na etapa seguinte</li><li>Reuniões passam de quinzenais a mensais</li></ul>
+      <div class="bar"><i class="f-run" style="width:60%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--blue)">60%</span><span class="pill run">Em curso</span></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Reuniões realizadas — conteúdo, convocados e participantes</h2><span class="note">Apurado nos convites e nas atas</span></div>
+  <div class="scroller"><table>
+    <thead><tr><th>Data / hora</th><th>Reunião</th><th>Conteúdo tratado</th><th>Conv.</th><th>Pres.</th><th>Participação</th></tr></thead>
+    <tbody>
+      <tr><td class="k n">17/06<span class="sub2">10:00</span></td><td class="k">Passagem de bastão</td>
+        <td>Encerramento da implantação: macro etapas do processo, 4 dos 5 macro-objetivos atingidos, os dois objetivos adicionais definidos na implantação — inventário inicial antes da homologação junto à ARTESP e mapeamento do fluxo do SISATIVOS — indicadores de uso e fluxo de trabalho esperado. Apresentação do papel do CSM, da jornada de ongoing e do pacote de serviços profissionais.</td>
+        <td class="n">10</td><td class="n">n/d</td><td><div class="mini"><div class="bar"><i class="f-plan" style="width:100%"></i></div><b>n/d</b></div></td></tr>
+      <tr><td class="k n">24/06 · 01/07<br>27/07<span style="font-weight:400;color:var(--muted)"> · três reuniões</span></td><td class="k">Acompanhamentos de junho e julho</td>
+        <td>Sequência de acompanhamento quinzenal conduzida no período, com as atas enviadas ao grupo na época.</td>
+        <td class="n">14 a 21</td><td class="n">n/d</td><td><div class="mini"><div class="bar"><i class="f-plan" style="width:100%"></i></div><b>n/d</b></div></td></tr>
+      <tr><td class="k n">11/08<span class="sub2">11:00</span></td><td class="k">Acompanhamento</td>
+        <td>Progresso das metas da Adaptação com foco em qualidade de dado, fluxo de aprovação e aderência das terceirizadas. Apresentação do redesenho do RDO pelo time de produto e proposta de teste de usabilidade em campo. Indicadores de julho e agosto, situação da Terra Fértil, higienização de programações e cadastros obsoletos, e novas classes de meio ambiente e segurança do trabalho.</td>
+        <td class="n">14</td><td class="n">6</td><td><div class="mini"><div class="bar"><i class="f-risk" style="width:43%"></i></div><b>43%</b></div></td></tr>
+      <tr><td class="k n">25/08<span class="sub2">11:30 e 15:30</span></td><td class="k">Visita técnica presencial</td>
+        <td>Aprofundamento do uso nos fluxos de não conformidade, monitoração de drenagem e conservação rotineira. Revisão do fluxo ideal de aprovação, recomendação de migrar a conservação rotineira de cronograma mensal para planejamento semanal, fragmentação das programações por prazo e prioridade, e definição dos três treinamentos operacionais com líderes, sala técnica e fiscais.</td>
+        <td class="n">12</td><td class="n">n/d</td><td><div class="mini"><div class="bar"><i class="f-plan" style="width:100%"></i></div><b>n/d</b></div></td></tr>
+      <tr><td class="k n">11/09<span class="sub2">11:00</span></td><td class="k">Acompanhamento</td>
+        <td>Revisão dos critérios da etapa, com a retirada do fluxo de aprovação de RDO da lista por ser avançado para o momento. Evolução da execução da Terra Fértil e da curva de RDO, ajustes operacionais do RDO, feedback do novo formato em teste, pendências de inventário, fluxo de não conformidade e orientações sobre chamados e limites de importação.</td>
+        <td class="n">15</td><td class="n">4</td><td><div class="mini"><div class="bar"><i class="f-risk" style="width:27%"></i></div><b>27%</b></div></td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin:10px 0 0;font-size:12.4px;color:var(--muted)">A Raposo Castello convoca um grupo amplo — entre 10 e 21 pessoas por reunião, abrangendo Conservação, Pavimento, Obras, TI do grupo e coordenação corporativa. A presença individual está apurada nas reuniões de 11/08 e 11/09 e no treinamento de 21/09; nas demais consta a lista de convocados.</p>
+</section>
+
+<section>
+  <div class="shead"><h2>Usuários-chave</h2><span class="note">Quem sustenta o acompanhamento da unidade, pela presença apurada nas reuniões</span></div>
+  <div class="scroller"><table>
+    <thead><tr><th>Vínculo e nome</th><th>Frente</th><th>Presença</th><th>Frequência</th></tr></thead>
+    <tbody>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Matheus Fonseca de Oliveira</td><td>—</td><td class="n">2 de 2</td><td><span class="freq const">Constante</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Taynara</td><td>—</td><td class="n">2 de 2</td><td><span class="freq const">Constante</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Diego Ferreira de Brito</td><td>Acompanha desde a implantação</td><td class="n">1 de 2</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Maycon Ferreira</td><td>—</td><td class="n">1 de 2</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org ter">Terceira</span>Camila Carvalho dos Santos</td><td>Corporativo</td><td class="n">1 de 2</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Stephany Lisboa Duarte</td><td>Não conformidade</td><td class="n">1 de 2</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org nd">n/d</span>Franklin</td><td>Frente de bate-estaca</td><td class="n">1 de 2</td><td><span class="freq novo">Entrou em 11/09</span></td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin:10px 0 0;font-size:12.4px;color:var(--muted)">O vínculo vem do endereço no convite do Outlook: o prefixo <b>t_</b> identifica terceira, e sem o prefixo é quadro próprio da Eco. Quem participou sem constar no convite aparece como n/d, porque não há endereço para classificar. Denominador: as 2 reuniões com presença nominal apurada — 11/08 e 11/09. A unidade convoca de 10 a 21 pessoas por reunião, e o acompanhamento se sustenta hoje em duas presenças constantes. É o que explica a participação média de 35% e o que o pedido de engajamento à liderança endereça.</p>
+</section>
+
+<section>
+  <div class="shead"><h2>Nomes — quem foi convocado e quem entrou</h2><span class="note">Verde = presente &middot; vermelho = convocado sem presença registrada &middot; azul = participou sem estar no convite</span></div>
+  <div class="people">
+    <div class="pcard"><h3>11/08 · Acompanhamento</h3><ul>
+      <li><i class="dot"></i><span>Diego Ferreira de Brito</span></li>
+      <li><i class="dot"></i><span>Matheus Fonseca de Oliveira</span></li>
+      <li><i class="dot"></i><span>Maycon Ferreira</span></li>
+      <li><i class="dot"></i><span>Taynara</span></li>
+      <li><i class="dot"></i><span>Camila Carvalho dos Santos</span></li>
+      <li><i class="dot no"></i><span>Ghanech Luiz Stivalli Cazzolato</span></li>
+      <li><i class="dot no"></i><span>Natália Schultz <span class="role">· em agenda externa</span></span></li>
+      <li><i class="dot no"></i><span>Milena Silva · Vinicius Lima · Cezar Souza</span></li>
+      <li><i class="dot no"></i><span>Eduarda Jesus · Peterson Caputti · Amanda Navarro Pereira</span></li>
+      <li><i class="dot"></i><span>Talita Arantes <span class="role">· condução, Kartado</span></span></li></ul></div>
+    <div class="pcard"><h3>11/09 · Acompanhamento</h3><ul>
+      <li><i class="dot"></i><span>Matheus Fonseca de Oliveira</span></li>
+      <li><i class="dot"></i><span>Taynara</span></li>
+      <li><i class="dot"></i><span>Stephany Lisboa Duarte</span></li>
+      <li><i class="dot ext"></i><span>Franklin <span class="role">· frente de bate-estaca</span></span></li>
+      <li><i class="dot no"></i><span>Diego Ferreira de Brito <span class="role">· validações ficaram pendentes com ele</span></span></li>
+      <li><i class="dot no"></i><span>Natália Schultz · Milena Silva · Maycon Ferreira</span></li>
+      <li><i class="dot no"></i><span>Camila Carvalho dos Santos · Ester Foganholi</span></li>
+      <li><i class="dot no"></i><span>Ghanech Cazzolato · Peterson Caputti</span></li>
+      <li><i class="dot no"></i><span>Amanda Navarro Pereira · Amanda Silva Barbosa</span></li>
+      <li><i class="dot"></i><span>Talita Arantes <span class="role">· condução, Kartado</span></span></li></ul></div>
+    <div class="pcard"><h3>Observações da lista de convocados</h3><ul>
+      <li><i class="dot ext"></i><span>Taynara Silva e Tainara Queiroz são duas pessoas e ambas participam do acompanhamento</span></li>
+      <li><i class="dot no"></i><span>Um endereço da lista de convocados tem o domínio grafado incorretamente e o convite não é entregue desde 25/08 — vale corrigir no convite</span></li>
+      <li><i class="dot"></i><span>Participaram da passagem de bastão de 17/06: Cecília Fortes Merighi, Cláudio Dias (Gerente de Pavimento Corporativo), Andrea Ribeiro, Aline Peçanha, Filipe Feitoza e Bruno Oliveira</span></li></ul></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Treinamentos</h2><span class="note">Capacitação entregue à unidade pela Kartado</span></div>
+  <div class="steps">
+    <div class="step"><h3>Ciclo de implantação · até jun/2026</h3><ul>
+      <li>Ciclo completo concluído: boas-vindas, parametrização, treinamentos e acompanhamento das equipes</li>
+      <li>Sessão específica de mapeamento do fluxo do SISATIVOS, conduzida em conjunto com a equipe da Noroeste Paulista</li>
+      <li>Visita de encerramento da implantação em 10 e 11/06, com o time de implantação e a CSM</li></ul></div>
+    <div class="step"><h3>Desde a passagem de bastão · a partir de 17/06</h3><ul>
+      <li><span class="owner">Visita técnica presencial em 25/08</span> — aprofundamento dos fluxos de não conformidade, monitoração de drenagem e conservação rotineira com o time operacional, incluindo a apresentação do RDO em novo formato</li>
+      <li>Nenhum outro treinamento formal foi solicitado pela unidade no período</li>
+      <li><span class="owner">Treinamento em 21/09</span> — duas horas cobrindo aplicativo e web, com 11 participantes de 22 convocados, entre equipes próprias da Eco e terceirizadas, incluindo a Terra Fértil</li></ul></div>
+  </div>
+</section>
+
+</div>
+
+<!-- ================= NOROESTE PAULISTA ================= -->
+<div id="panel-nor" role="tabpanel" aria-labelledby="tab-nor" hidden>
+
+<div class="kpis">
+  <div class="kpi hi"><span class="num">96<small>/105 dias</small></span><div class="cap">da Adaptação decorridos — entrada em 17/06, virada em 30/09</div></div>
+  <div class="kpi"><span class="num">13</span><div class="cap">reuniões de acompanhamento realizadas no período</div></div>
+  <div class="kpi"><span class="num">39<small>%</small></span><div class="cap">de cumprimento médio dos 11 objetivos da etapa</div></div>
+  <div class="kpi"><span class="num">33<small>%</small></span><div class="cap">de participação média nas duas reuniões com presença apurada</div></div>
+  <div class="kpi"><span class="num">44.151</span><div class="cap">itens de inventário criados na unidade</div></div>
+  <div class="kpi"><span class="num">28<small>/09</small></span><div class="cap">virada de chave confirmada para 28/09 — data original era 18/09</div></div>
+</div>
+
+<div class="paceb">
+  <h3>Virada de chave em renegociação, com a auditoria da ARTESP no horizonte</h3>
+  <p>A unidade consumiu 91% do prazo da Adaptação com 39% dos objetivos cumpridos. O cadastro de ativos voltou a avançar e a migração das empresas foi confirmada em modelo big bang. Na reunião de 16/09 a unidade pediu prorrogação da virada de chave, que estava marcada para 18/09: com o reforço de equipe que chegou a partir de 21/09 é que consegue criar as equipes e ativar os acessos. A nova data foi confirmada — preparação concluída até 25/09 e migração em 28/09. O go live do Kartado Obras segue em 01/10. O prazo que organiza tudo isso é a auditoria da ARTESP, prevista para o final do ano.</p>
+  <div class="track" role="img" aria-label="Execução 39 por cento, tempo decorrido 91 por cento"><div class="fill" style="width:39%"></div><div class="mark" style="left:91%"></div></div>
+  <div class="tk-legend">
+    <span><i class="sw" style="background:linear-gradient(90deg,var(--navy),var(--blue))"></i> Execução dos objetivos: 39%</span>
+    <span><i class="sw" style="background:var(--ink)"></i> Tempo decorrido: 91% (96 de 105 dias)</span>
+    <span><i class="sw" style="background:var(--surface-2);border:1px solid var(--line-2)"></i> Virada de chave confirmada para 28/09</span>
+  </div>
+</div>
+
+<section>
+  <div class="shead"><h2>Leitura da etapa — destaques e pontos de atenção</h2></div>
+  <div class="flags">
+    <div class="flag o"><span class="lbl">Destaque</span><h3>Cadastro de ativos retomou o ritmo</h3>
+      <p>A unidade tem 44.151 itens de inventário criados. Na reunião de 10/09 a equipe informou que restam cerca de 21 mil a migrar, concentrados em sinalização horizontal — dispositivos, marcas viárias e setas.</p>
+      <p>A empresa responsável já enviou os dados no template da Kartado e a validação está em conclusão para garantir que nenhum trecho fora da concessão foi incluído.</p></div>
+    <div class="flag o"><span class="lbl">Destaque</span><h3>Kartado Obras validado para o SISOBRAS</h3>
+      <p>O time de produto confirmou que o Kartado Obras já atende aos requisitos do SISOBRAS, e o go live ficou definido para 1º de outubro, em conjunto com a Raposo Castello. Carol e Guilherme foram indicados como novos pontos focais de obras.</p></div>
+    <div class="flag o"><span class="lbl">Destaque</span><h3>Migração da Vexel em modelo big bang</h3>
+      <p>Ficou confirmado que todas as empresas migram de uma vez, em vez do modelo de piloto inicialmente previsto — o que encurta o período de operação em duas bases paralelas.</p></div>
+    <div class="flag r"><span class="lbl">Risco regulatório</span><h3>Auditoria da ARTESP no final do ano</h3>
+      <p>A auditoria da ARTESP está prevista para o final do ano. O tema foi levantado pela própria unidade em agosto, junto com a necessidade de todos os setores estarem parametrizados a tempo, e ficou combinado que a Kartado estruturaria um plano de ação para isso.</p>
+      <p>É esse prazo que dá urgência ao resto: o que a auditoria vai olhar é o dado da operação na unidade nova.</p></div>
+    <div class="flag"><span class="lbl">Ação em curso</span><h3>Cadastro das equipes de campo na unidade nova</h3>
+      <p>Das seis equipes criadas na unidade nova até a reunião de 10/09, todas eram administrativas. É o cadastro das equipes de campo que transfere de fato quem gera o dado.</p>
+      <p>Em 16/09 ficou definido o caminho: todos os usuários são criados como usuário de campo e a permissão correta é ajustada depois, e as equipes são criadas já com dois responsáveis fixos para não travar, recebendo os demais integrantes em seguida. A nomenclatura segue o padrão que a unidade já usa, com a sigla da empresa antes do nome.</p>
+      <p>O reforço de equipe que a unidade recebe a partir de 21/09 é o que viabiliza concluir esse cadastro.</p></div>
+    <div class="flag"><span class="lbl">Atenção</span><h3>Engajamento nas reuniões como pauta da própria unidade</h3>
+      <p>A equipe propôs formalizar uma lista de presença para acompanhar o engajamento dos participantes, incluindo coordenadores e engenheiros, e o TI do grupo confirmou que fará uma orquestração interna para reforçar a cobrança de participação.</p>
+      <p>Foi também sugerido mudar a dinâmica das demonstrações, com os próprios usuários operando o sistema ao vivo em vez de assistir à apresentação.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Onde o apoio da liderança destrava a unidade</h2></div>
+  <div class="flags">
+    <div class="flag ask"><span class="lbl">Engajamento</span><h3>Formalizar a cobrança de participação nas reuniões</h3>
+      <p>A própria equipe propôs criar uma lista de presença para acompanhar o engajamento de coordenadores e engenheiros nas reuniões recorrentes, e o TI do grupo se comprometeu a orquestrar isso internamente.</p>
+      <span class="askfor">Pedido: respaldar a lista de presença e a cobrança de participação das coordenações.</span></div>
+    <div class="flag ask"><span class="lbl">Estrutura de equipe</span><h3>Designar um engenheiro para o acompanhamento</h3>
+      <p>Com a virada de chave, o go live do Kartado Obras e a monitoração de OAE em curso simultaneamente, a unidade precisa de respaldo técnico formal nas decisões das reuniões.</p>
+      <span class="askfor">Pedido: designar um engenheiro responsável por acompanhar as reuniões recorrentes.</span></div>
+    <div class="flag ask"><span class="lbl">Sugestão da própria unidade</span><h3>Alguém do grupo acompanhando o uso nas unidades</h3>
+      <p>A equipe levantou em 16/09 que falta uma pessoa da própria EcoRodovias circulando pelas unidades para ver como cada uma usa a plataforma, o que funciona e o que não funciona. O exemplo que deram: só souberam na semana anterior que a Capixaba opera praticamente toda no aplicativo.</p>
+      <p>Hoje essa comparação entre unidades existe só do lado da Kartado. Com alguém do grupo nesse papel, o que uma unidade resolve viraria referência para as outras sem depender de nós.</p>
+      <span class="askfor">Pedido: designar alguém do grupo para acompanhar e comparar o uso entre as concessões.</span></div>
+    <div class="flag ask"><span class="lbl">Prazo</span><h3>Confirmar a prorrogação da virada de chave</h3>
+      <p>A data original era 18/09. Com o reforço de equipe que chegou a partir de 21/09, a unidade concluirá a preparação até 25/09 e migra em 28/09 — data já confirmada.</p>
+      <p>O ponto de atenção prático: se os acessos da unidade antiga forem desativados na data original, a operação fica sem onde registrar antes de a nova estar pronta.</p>
+      <span class="askfor">Pedido: confirmar a nova data e manter os acessos da unidade antiga ativos até a migração.</span></div>
+    <div class="flag ask"><span class="lbl">Padronização regulatória</span><h3>Fechar o padrão de codificação de ativos com a ARTESP</h3>
+      <p>Um dos objetivos da unidade é definir e documentar junto à ARTESP o padrão correto de codificação de ativos, para eliminar divergências entre concessões do grupo. É uma definição que não se resolve dentro de uma unidade só.</p>
+      <span class="askfor">Pedido: conduzir a definição do padrão no nível do grupo, junto à ARTESP.</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Agenda de acompanhamento</h2><span class="note">Reuniões semanais com a unidade</span></div>
+  <div class="scroller"><table>
+    <thead><tr><th>Data</th><th>Compromisso</th><th>Objetivo da reunião</th><th>Situação</th></tr></thead>
+    <tbody>
+      <tr><td class="k n">22/09 · 11h</td><td class="k">Acompanhamento Kartado<span class="sub2">próxima reunião</span></td><td>Confirmação da nova data da virada de chave, andamento do cadastro das equipes de campo com o reforço da equipe, preparação do go live do Kartado Obras e entrada do time de CSU na pauta do depósito de fresa.</td><td><span class="pill ok">Acordado com a unidade</span></td></tr>
+      <tr><td class="k n">25/09</td><td class="k">Preparação concluída<span class="sub2">proposta da unidade</span></td><td>Criação das equipes de campo e ativação dos acessos concluídas, com o reforço de equipe que a unidade recebeu a partir de 21/09.</td><td><span class="pill ok">Confirmado</span></td></tr>
+      <tr><td class="k n">28/09</td><td class="k">Virada de chave para a unidade nova</td><td>Transferência da operação para a unidade nova, com ativação dos acessos criados como inativos e migração de todas as empresas em modelo big bang. Data confirmada em substituição a 18/09.</td><td><span class="pill ok">Confirmado</span></td></tr>
+      <tr><td class="k n">semanal</td><td class="k">Acompanhamento Kartado</td><td>Série semanal ativa: acompanhamento das metas com o time da unidade e análise de uso da plataforma.</td><td><span class="pill ok">Série ativa</span></td></tr>
+      <tr><td class="k n">30/09</td><td class="k">Virada para Aceleração</td><td>Passagem da unidade para a etapa de Aceleração, tendo a virada de chave como principal marco, conforme o objetivo estratégico registrado para a unidade.</td><td><span class="pill ok">Data definida</span></td></tr>
+      <tr><td class="k n">01/10</td><td class="k">Go live do Kartado Obras</td><td>Início de uso do Kartado Obras para atendimento ao SISOBRAS, em conjunto com a Raposo Castello, com reunião de apresentação, testes e treinamentos organizados até a data.</td><td><span class="pill plan">Definido</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="shead"><h2>Próximos passos e conteúdo</h2><span class="note">Encaminhamentos acordados nas reuniões de 10/09 e 16/09</span></div>
+  <div class="steps">
+    <div class="step"><h3>Virada de chave e acessos</h3><ul>
+      <li><span class="owner">Samuel</span> — criar os usuários da unidade nova como usuário de campo e solicitar depois o ajuste para as permissões corretas</li>
+      <li><span class="owner">Samuel</span> — criar as equipes com dois responsáveis fixos para não travar o cadastro, incluindo os demais integrantes em seguida, mantendo o padrão de nomenclatura da unidade</li>
+      <li><span class="owner">Samuel</span> — abrir chamado com a lista completa para habilitação dos acessos dos novos usuários de obras e pavimento na unidade nova</li>
+      <li><span class="owner">Gabriel</span> — liberar o acesso da nova responsável pelo pavimento aos sistemas</li>
+      <li><span class="owner">Gabriel</span> — ao cadastrar equipes e empresas na unidade nova, cadastrar também o contrato correspondente</li>
+      <li><span class="owner">Samuel</span> — incluir o time de CSU no convite da próxima reunião</li>
+      <li><span class="owner">Kartado</span> — levar ao grupo o pedido de prorrogação da virada de chave para confirmação da nova data</li></ul></div>
+    <div class="step"><h3>Cadastro de ativos e monitoração</h3><ul>
+      <li><span class="owner">Ana Beatriz</span> — concluir a validação dos dados de sinalização horizontal e abrir o chamado para o suporte subir os dados</li>
+      <li><span class="owner">Samuel</span> — abrir chamado para migrar os 150 apontamentos da ARTESP, consolidar as classes do Anexo 6 e configurar o prazo na classe correspondente</li>
+      <li><span class="owner">Leire</span> — concluir o envio dos dados de monitoração de OAE de 2024</li></ul></div>
+    <div class="step"><h3>Conteúdo previsto para a próxima reunião</h3><ul>
+      <li>Confirmação da nova data da virada de chave e andamento do cadastro das equipes de campo</li>
+      <li>Preparação do go live do Kartado Obras em 01/10</li>
+      <li><span class="owner">Gabriel e Joandra</span> — início do teste de RDO e medição pela Vexel como piloto</li>
+      <li>Análise de qualidade de preenchimento dos apontamentos por equipe</li>
+      <li>Entrada do time de CSU na pauta de depósito de fresa</li></ul></div>
+  </div>
+</section>
+<section>
+  <div class="shead"><h2>Objetivos mapeados e % de cumprimento</h2><span class="note">11 objetivos da etapa, registrados para a unidade e atualizados em 19/08</span></div>
+  <div class="phases">
+    <div class="ph"><div class="ph-top"><span class="ph-n">OPERACIONAL</span><span class="when">prazo 30/08</span></div><h3>Piloto de migração com a Vexel e ampliação às demais empresas</h3>
+      <ul><li>Modelo mudou: migração confirmada em big bang, com todas as empresas de uma vez</li><li>Validação dos usuários da Vexel junto ao gestor concluída</li><li>Execução acontece na virada de chave, confirmada para 28/09</li></ul>
+      <div class="bar"><i class="f-warn" style="width:50%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">50%</span><span class="pill warn">Prazo vencido</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">OPERACIONAL</span><span class="when">na virada</span></div><h3>Concluir a subida de pavimento e definir responsável formal</h3>
+      <ul><li>Nova responsável pelo pavimento já contratada</li><li>Acesso aos sistemas em processo de liberação</li></ul>
+      <div class="bar"><i class="f-run" style="width:60%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--blue)">60%</span><span class="pill run">Em curso</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">OPERACIONAL</span><span class="when">na virada</span></div><h3>Importação dos itens de prioridade 1</h3>
+      <ul><li>Restam cerca de 21 mil itens, concentrados em sinalização horizontal</li><li>Dados já recebidos no template da Kartado, em validação final</li><li>Depende de chamado ao suporte para a carga</li></ul>
+      <div class="bar"><i class="f-run" style="width:70%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--blue)">70%</span><span class="pill run">Reta final</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">OPERACIONAL</span><span class="when">antes da desativação</span></div><h3>Verificar dados duplicados entre a unidade antiga e a nova</h3>
+      <ul><li>Validação em curso para garantir que nenhum trecho fora da concessão foi incluído</li><li>Sem registro de conclusão nas atas até 10/09</li></ul>
+      <div class="bar"><i class="f-risk" style="width:25%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--red)">25%</span><span class="pill risk">A confirmar</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">QUALIDADE</span><span class="when">em curso</span></div><h3>Monitorações de OAE, faixa de domínio e depósito de fresa</h3>
+      <ul><li>Dados de OAE de 2023 já enviados; os de 2024 seguem pendentes</li><li>Depósito de fresa criado nas duas unidades, com a responsabilidade passando para o time de CSU</li><li>Frente de passivos ambientais avançou no período</li></ul>
+      <div class="bar"><i class="f-warn" style="width:55%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">55%</span><span class="pill warn">Parcial</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">QUALIDADE</span><span class="when">em curso</span></div><h3>Divergência de fotos com a empresa de monitoração</h3>
+      <ul><li>Objetivo é alinhar a diferença entre o volume de fotos recebido e o vinculado no template</li><li>Sem registro de avanço nas atas do período</li></ul>
+      <div class="bar"><i class="f-risk" style="width:20%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--red)">20%</span><span class="pill risk">Parado</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">GOVERNANÇA</span><span class="when">em curso</span></div><h3>Mapeamento de usuários por empresa e inativação em massa</h3>
+      <ul><li>Validação dos novos usuários da Vexel junto ao gestor concluída</li><li>Novos acessos sendo criados na unidade nova como inativos, para ativação na virada</li><li>Inativação em massa via TI sem registro de conclusão</li></ul>
+      <div class="bar"><i class="f-warn" style="width:45%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">45%</span><span class="pill warn">Parcial</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">GOVERNANÇA</span><span class="when">em curso</span></div><h3>Padrão de codificação de ativos junto à ARTESP</h3>
+      <ul><li>Objetivo é eliminar divergências de codificação entre concessões do grupo</li><li>Sem registro de avanço nas atas do período</li></ul>
+      <div class="bar"><i class="f-risk" style="width:15%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--red)">15%</span><span class="pill risk">Parado</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">ADOÇÃO</span><span class="when">em curso</span></div><h3>Ampliar o uso para a frente de meio ambiente</h3>
+      <ul><li>Interesse já demonstrado pelo time da unidade</li><li>Sem registro de avanço nas atas do período</li></ul>
+      <div class="bar"><i class="f-risk" style="width:15%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--red)">15%</span><span class="pill risk">Parado</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">ADOÇÃO</span><span class="when">quando disponível</span></div><h3>Vínculo automático de apontamentos aos ativos</h3>
+      <ul><li>Retomar o teste e a adoção assim que a funcionalidade estiver disponível na unidade</li><li>Não iniciado</li></ul>
+      <div class="bar"><i class="f-plan" style="width:10%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--muted)">10%</span><span class="pill plan">Aguardando</span></div></div>
+    <div class="ph"><div class="ph-top"><span class="ph-n">COMERCIAL</span><span class="when">em curso</span></div><h3>Uso planejado das horas de cortesia e de serviços profissionais</h3>
+      <ul><li>As cargas pendentes estão sendo encaminhadas ao suporte por chamado</li><li>Objetivo é usar as horas do grupo para acelerar as disciplinas ainda não importadas</li></ul>
+      <div class="bar"><i class="f-run" style="width:60%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--blue)">60%</span><span class="pill run">Em curso</span></div></div>
+    <div class="ph" style="border-color:var(--navy);border-left-width:4px"><div class="ph-top"><span class="ph-n" style="background:var(--lime)">VIRADA</span><span class="when">30/09/2026</span></div><h3>Entrada em Aceleração, com a virada de chave como marco</h3>
+      <ul><li>Virada de chave confirmada para 28/09, em substituição a 18/09</li><li>A unidade avança na data proposta, independentemente do cumprimento integral</li><li>O que não fechar entra como dívida na etapa seguinte</li></ul>
+      <div class="bar"><i class="f-warn" style="width:39%"></i></div><div class="ph-foot"><span class="pct" style="color:var(--amber)">39%</span><span class="pill warn">Em curso</span></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Reuniões realizadas — conteúdo, convocados e participantes</h2><span class="note">Apurado nos convites e nas atas</span></div>
+  <div class="scroller"><table>
+    <thead><tr><th>Data / hora</th><th>Reunião</th><th>Conteúdo tratado</th><th>Conv.</th><th>Pres.</th><th>Participação</th></tr></thead>
+    <tbody>
+      <tr><td class="k n">jun a jul<span class="sub2">03/06 · 16/06 · 24/06</span></td><td class="k">Acompanhamentos de junho</td>
+        <td>Sequência de acompanhamento conduzida no período, com as atas enviadas ao grupo na época.</td>
+        <td class="n">7 a 12</td><td class="n">n/d</td><td><div class="mini"><div class="bar"><i class="f-plan" style="width:100%"></i></div><b>n/d</b></div></td></tr>
+      <tr><td class="k n">15/07<span class="sub2">11:00</span></td><td class="k">Migração de dados</td>
+        <td>Avanço na migração e validação dos dados da unidade antiga para a nova, com foco em destravar o principal gargalo do processo de importação.</td>
+        <td class="n">14</td><td class="n">n/d</td><td><div class="mini"><div class="bar"><i class="f-plan" style="width:100%"></i></div><b>n/d</b></div></td></tr>
+      <tr><td class="k n">22/07<span class="sub2">09:30</span></td><td class="k">Acompanhamento</td>
+        <td>Continuidade do acompanhamento das importações da unidade nova, com foco na estruturação dos ativos de pavimento e faixa de domínio e na análise do uso recente.</td>
+        <td class="n">14</td><td class="n">n/d</td><td><div class="mini"><div class="bar"><i class="f-plan" style="width:100%"></i></div><b>n/d</b></div></td></tr>
+      <tr><td class="k n">jul a ago<span class="sub2">29/07 · 05/08 · 12/08 · 20/08 · 26/08</span></td><td class="k">Acompanhamentos semanais</td>
+        <td>Sequência semanal conduzida no período, com as atas enviadas ao grupo na época.</td>
+        <td class="n">14</td><td class="n">n/d</td><td><div class="mini"><div class="bar"><i class="f-plan" style="width:100%"></i></div><b>n/d</b></div></td></tr>
+      <tr><td class="k n">02/09<span class="sub2">11:00</span></td><td class="k">Acompanhamento</td>
+        <td>Balanço detalhado do avanço do cadastro de ativos e do andamento da virada de chave para a unidade nova.</td>
+        <td class="n">14</td><td class="n">n/d</td><td><div class="mini"><div class="bar"><i class="f-plan" style="width:100%"></i></div><b>n/d</b></div></td></tr>
+      <tr><td class="k n">10/09<span class="sub2">11:13</span></td><td class="k">Acompanhamento</td>
+        <td>Cadastro de ativos e virada de chave definida para 18/09, criação de acessos na unidade nova, Kartado Obras validado para o SISOBRAS com go live em 01/10, estrutura de equipe e pavimento, monitoração de OAE, depósito de fresa e a mudança do modelo de acompanhamento para condução por metas e prazos.</td>
+        <td class="n">14</td><td class="n">7</td><td><div class="mini"><div class="bar"><i class="f-run" style="width:50%"></i></div><b>50%</b></div></td></tr>
+      <tr><td class="k n">16/09<span class="sub2">11:00 · 22min</span></td><td class="k">Acompanhamento</td>
+        <td>Pedido de prorrogação da virada de chave, viabilizado pelo reforço de equipe a partir de 21/09: preparação até 25/09 e migração em 28/09, depois confirmada. Definição do método de criação de usuários e equipes — todos criados como usuário de campo, com ajuste de permissão depois, e equipes abertas com dois responsáveis fixos seguindo o padrão de nomenclatura da unidade. Liberação da pasta compartilhada com os arquivos de sinalização horizontal, para a unidade concluir a carga. Apresentação do fluxo padronizado do grupo prevista para 29/09.</td>
+        <td class="n">13</td><td class="n">2</td><td><div class="mini"><div class="bar"><i class="f-risk" style="width:15%"></i></div><b>15%</b></div></td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin:10px 0 0;font-size:12.4px;color:var(--muted)">A presença individual está apurada nas reuniões de 10/09 e 16/09, e a média da unidade considera apenas essas duas. Nas anteriores consta a lista de convocados, sem apuração nominal. A reunião de 16/09 foi apurada pela gravação, porque a ata ainda não havia sido emitida.</p>
+</section>
+
+<section>
+  <div class="shead"><h2>Usuários-chave</h2><span class="note">Quem sustenta o acompanhamento da unidade, pela presença apurada nas reuniões</span></div>
+  <div class="scroller"><table>
+    <thead><tr><th>Vínculo e nome</th><th>Frente</th><th>Presença</th><th>Frequência</th></tr></thead>
+    <tbody>
+      <tr><td class="k nomecell"><span class="org ter">Terceira</span>Samuel Magalhães Ribeiro</td><td>Conduz o acompanhamento na unidade</td><td class="n">2 de 2</td><td><span class="freq const">Constante</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Gabriel Acorci de Lima</td><td>Cadastros e acessos</td><td class="n">1 de 2</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org ter">Terceira</span>Ana Beatriz de Souza Durante</td><td>Validação do cadastro de ativos</td><td class="n">1 de 2</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org ter">Terceira</span>Leire Maria Garcia de Souza</td><td>Monitoração de OAE</td><td class="n">1 de 2</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org ter">Terceira</span>Ghanech Luiz Stivalli Cazzolato</td><td>TI EcoRodovias</td><td class="n">1 de 2</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org eco">Eco</span>Amanda Aparecida Navarro Pereira</td><td>Corporativo</td><td class="n">1 de 2</td><td><span class="freq alt">Alternada</span></td></tr>
+      <tr><td class="k nomecell"><span class="org nd">n/d</span>Isabela Cristina Rodrigues</td><td>Conserva</td><td class="n">1 de 2</td><td><span class="freq novo">Entrou em 16/09</span></td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin:10px 0 0;font-size:12.4px;color:var(--muted)">O vínculo vem do endereço no convite do Outlook: o prefixo <b>t_</b> identifica terceira, e sem o prefixo é quadro próprio da Eco. Quem participou sem constar no convite aparece como n/d, porque não há endereço para classificar. Denominador: as 2 reuniões com presença nominal apurada — 10/09 e 16/09. Antes de 10/09 existe a lista de convocados, sem apuração individual, então a contagem começa daí. Carol e Guilherme, indicados como pontos focais de obras, e a nova responsável pelo pavimento entram no acompanhamento agora e ainda não têm presença registrada.</p>
+</section>
+
+<section>
+  <div class="shead"><h2>Nomes — quem foi convocado e quem entrou</h2><span class="note">Verde = presente em 10/09 &middot; vermelho = convocado sem presença registrada &middot; azul = entra no acompanhamento agora</span></div>
+  <div class="people">
+    <div class="pcard"><h3>10/09 · Presentes</h3><ul>
+      <li><i class="dot"></i><span>Samuel Magalhães Ribeiro</span></li>
+      <li><i class="dot"></i><span>Gabriel Acorci de Lima</span></li>
+      <li><i class="dot"></i><span>Ghanech Luiz Stivalli Cazzolato <span class="role">· TI EcoRodovias</span></span></li>
+      <li><i class="dot"></i><span>Amanda Aparecida Navarro Pereira</span></li>
+      <li><i class="dot"></i><span>Ana Beatriz de Souza Durante</span></li>
+      <li><i class="dot"></i><span>Leire Maria Garcia de Souza <span class="role">· entrou no decorrer</span></span></li>
+      <li><i class="dot"></i><span>Talita Arantes <span class="role">· condução, Kartado</span></span></li></ul></div>
+    <div class="pcard"><h3>10/09 · Sem presença registrada</h3><ul>
+      <li><i class="dot no"></i><span>Renan Augusto Lopes Franco</span></li>
+      <li><i class="dot no"></i><span>Lucas Santos</span></li>
+      <li><i class="dot no"></i><span>Leon Lima</span></li>
+      <li><i class="dot no"></i><span>Maria Francischini</span></li>
+      <li><i class="dot no"></i><span>Marcela Paula</span></li>
+      <li><i class="dot no"></i><span>Gustavo Baffi</span></li>
+      <li><i class="dot no"></i><span>Peterson Caputti</span></li></ul></div>
+    <div class="pcard"><h3>Entram no acompanhamento agora</h3><ul>
+      <li><i class="dot ext"></i><span>Carol <span class="role">· ponto focal de obras</span></span></li>
+      <li><i class="dot ext"></i><span>Guilherme <span class="role">· ponto focal de obras</span></span></li>
+      <li><i class="dot ext"></i><span>Nova responsável pelo pavimento <span class="role">· acesso em liberação</span></span></li>
+      <li><i class="dot ext"></i><span>Time de CSU — Evelyn, Ana e Natália <span class="role">· depósito de fresa</span></span></li>
+      <li><i class="dot ext"></i><span>Joandra Mignoni <span class="role">· piloto de RDO com a Vexel</span></span></li>
+      <li><i class="dot ext"></i><span>Marco <span class="role">· novo gestor das monitorações de OAE</span></span></li></ul></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><h2>Treinamentos</h2><span class="note">Capacitação entregue à unidade pela Kartado</span></div>
+  <div class="steps">
+    <div class="step"><h3>Sessões conduzidas pela Kartado · desde mai/2026</h3><ul>
+      <li>Alinhamento de formulários em 04/05</li>
+      <li>Acompanhamento de pavimento em 12/05 e 19/05, em conjunto com a Raposo Castello</li>
+      <li>Alinhamento do cadastro de ativos em 25/05 e 29/05</li>
+      <li>Sessão de mapeamento do fluxo do SISATIVOS, conduzida em conjunto com a Raposo Castello</li>
+      <li>Nenhum treinamento formal foi solicitado pela unidade no período: a reimplantação foi conduzida por essas sessões de alinhamento técnico</li></ul></div>
+    <div class="step"><h3>Antes do go live · até 01/10</h3><ul>
+      <li>Reunião de apresentação do Kartado Obras, em conjunto com a Raposo Castello, com testes e treinamentos a organizar até o go live</li>
+      <li>Treinamentos e materiais de apoio são elegíveis ao pacote de serviços profissionais já contratado pelo grupo</li>
+      <li>A equipe sugeriu mudar a dinâmica: usuários operando o sistema ao vivo, em vez de assistir à demonstração</li></ul></div>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <p class="fnote"><b>Como os números foram apurados.</b> Etapa da jornada, data de entrada em Adaptação, itens de inventário e frequência de reuniões vêm do registro de acompanhamento de cada unidade. Convocados vêm da lista de participantes dos convites; presentes vêm das pessoas nominalmente registradas nas atas. Onde a apuração individual não foi feita, a coluna traz "n/d" em vez de um número estimado, e a participação média é calculada apenas sobre as reuniões com presença apurada. O percentual de cumprimento é a avaliação de cada objetivo registrado frente às evidências das atas, e o percentual da unidade é a média simples dos objetivos da etapa em curso. O que foi entregue antes da passagem de bastão e o card de entrada em Aceleração não entram nessa média: o primeiro é anterior à etapa, e o segundo é o próprio resumo dela. Prazos: Capixaba, Adaptação de 28/07 a 31/10; Raposo Castello e Noroeste Paulista, Adaptação de 17/06 a 30/09. As três unidades avançam para a Aceleração na data proposta, independentemente do cumprimento integral dos objetivos. As datas das reuniões seguem a agenda do Outlook.</p>
+  <p class="fnote"><b>Como o risco é classificado.</b> O risco apontado é sempre a exposição da unidade perante o órgão fiscalizador — ANTT na Capixaba, ARTESP na Raposo Castello e na Noroeste Paulista. Não avançar de etapa na plataforma não é tratado como risco, porque a virada acontece na data proposta em qualquer cenário; o percentual de objetivos indica maturidade, não conformidade regulatória.</p>
+  <p class="cred">Grupo EcoRodovias &middot; Ecovias Capixaba, Raposo Castello e Noroeste Paulista &middot; Talita Arantes, Customer Success Kartado</p>
+</footer>
+</div>
+
+<script>
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  function select(id){
+    tabs.forEach(function(t){
+      var on = t.id === id;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      var panel = document.getElementById(t.getAttribute('aria-controls'));
+      if(panel){ panel.hidden = !on; }
+    });
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ select(t.id); });
+    t.addEventListener('keydown', function(e){
+      var n = null;
+      if(e.key === 'ArrowRight'){ n = tabs[(i+1) % tabs.length]; }
+      if(e.key === 'ArrowLeft'){ n = tabs[(i-1+tabs.length) % tabs.length]; }
+      if(n){ e.preventDefault(); n.focus(); select(n.id); }
+    });
+  });
+})();
+</script>
+
