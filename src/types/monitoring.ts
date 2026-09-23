@@ -53,6 +53,25 @@ export interface ProjectWiseWebUserRow {
   [key: string]: string | number | null | undefined;
 }
 
+export interface E365UsageRow {
+  UltimateID: string;
+  AccountName: string;
+  CountryIso: string;
+  ProductID: string;
+  Product: string;
+  IsConnected: string;
+  ImsID: string;
+  UniquePersona: string;
+  UsageDate: string;
+  UsageQuarter: string;
+  UsageInterval: string;
+  Currency: string;
+  Gross: string | number;
+  Net: string | number;
+  ExportedOn: string;
+  [key: string]: string | number | null | undefined;
+}
+
 export interface TicketRow {
   'Caso n.º': string;
   Status: string;

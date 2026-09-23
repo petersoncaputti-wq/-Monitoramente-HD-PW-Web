@@ -206,11 +206,11 @@ function toObservedAt(date, time) {
   return observedAt.toISOString();
 }
 
-function getContentHash(content) {
+export function getContentHash(content) {
   return createHash('sha256').update(String(content ?? '')).digest('hex');
 }
 
-function parseStorageCsv(content) {
+export function parseStorageCsv(content) {
   const rows = readCsvRows(content);
   const headers = new Set(Object.keys(rows[0] ?? {}).map(normalizeHeader));
   const missingHeaders = REQUIRED_HEADERS.filter((header) => !headers.has(header));

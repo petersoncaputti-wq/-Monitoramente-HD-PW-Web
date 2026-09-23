@@ -2,61 +2,51 @@ import type { AppRole, AuthSession, AuthUser, UserProfile } from '@/types/auth';
 
 const SESSION_STORAGE_KEY = 'monitoramento-hd-pw.session';
 
-interface SupabaseUserResponse {
-  id: string;
-  email?: string;
-}
-
-interface SignInResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  user: SupabaseUserResponse;
-}
-
-function getSupabaseConfig() {
-  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
-
-  if (!url || !anonKey) {
-    throw new Error('Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
-  }
-
-  return { anonKey, url };
-}
-
-function mapUser(user: SupabaseUserResponse): AuthUser {
-  return {
-    email: user.email ?? '',
-    id: user.id,
-  };
-}
-
-function mapSession(response: SignInResponse): AuthSession {
-  return {
-    accessToken: response.access_token,
-    expiresAt: Date.now() + response.expires_in * 1000,
-    refreshToken: response.refresh_token,
-    user: mapUser(response.user),
-  };
+interface AuthResponse {
+  profile: UserProfile;
+  user: AuthUser;
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const details = await response.text().catch(() => '');
-    let parsedMessage = '';
+    let message = '';
 
     try {
-      const parsedDetails = JSON.parse(details) as { error?: string; message?: string; msg?: string };
-      parsedMessage = parsedDetails.message || parsedDetails.error || parsedDetails.msg || '';
+      const parsed = JSON.parse(details) as { error?: string; message?: string };
+      message = parsed.error || parsed.message || '';
     } catch {
-      parsedMessage = '';
+      message = '';
     }
 
-    throw new Error(parsedMessage || details || `Erro HTTP ${response.status}.`);
+    throw new Error(message || details || `Erro HTTP ${response.status}.`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json() as Promise<T>;
+}
+
+function request(path: string, init: RequestInit = {}) {
+  return fetch(path, {
+    ...init,
+    credentials: 'same-origin',
+    headers: {
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.headers ?? {}),
+    },
+  });
+}
+
+function toSession(result: AuthResponse): AuthSession {
+  return {
+    accessToken: 'cookie-session',
+    expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+    refreshToken: 'cookie-session',
+    user: result.user,
+  };
 }
 
 export function saveStoredSession(session: AuthSession) {
@@ -65,20 +55,17 @@ export function saveStoredSession(session: AuthSession) {
 
 export function clearStoredSession() {
   sessionStorage.removeItem(SESSION_STORAGE_KEY);
-  // Remove sessões da implementação anterior, que usava armazenamento persistente.
   localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
 export function getStoredSession(): AuthSession | null {
   localStorage.removeItem(SESSION_STORAGE_KEY);
-  const rawSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
+  const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
 
-  if (!rawSession) {
-    return null;
-  }
+  if (!raw) return null;
 
   try {
-    return JSON.parse(rawSession) as AuthSession;
+    return JSON.parse(raw) as AuthSession;
   } catch {
     clearStoredSession();
     return null;
@@ -86,183 +73,102 @@ export function getStoredSession(): AuthSession | null {
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<AuthSession> {
-  const { anonKey, url } = getSupabaseConfig();
-  const response = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-    body: JSON.stringify({ email, password }),
-    headers: {
-      apikey: anonKey,
-      'Content-Type': 'application/json',
-    },
-    method: 'POST',
-  });
-  const session = mapSession(await parseResponse<SignInResponse>(response));
+  const result = await parseResponse<AuthResponse>(
+    await request('/api/auth/login', {
+      body: JSON.stringify({ email, password }),
+      method: 'POST',
+    }),
+  );
+  const session = toSession(result);
   saveStoredSession(session);
   return session;
 }
 
-export async function refreshSession(refreshToken: string): Promise<AuthSession> {
-  const { anonKey, url } = getSupabaseConfig();
-  const response = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    headers: {
-      apikey: anonKey,
-      'Content-Type': 'application/json',
-    },
-    method: 'POST',
-  });
-  const session = mapSession(await parseResponse<SignInResponse>(response));
+export async function refreshSession(_refreshToken: string): Promise<AuthSession> {
+  const result = await parseResponse<AuthResponse>(await request('/api/auth/me'));
+  const session = toSession(result);
   saveStoredSession(session);
   return session;
 }
 
-export async function getCurrentUser(accessToken: string): Promise<AuthUser> {
-  const { anonKey, url } = getSupabaseConfig();
-  const response = await fetch(`${url}/auth/v1/user`, {
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  return mapUser(await parseResponse<SupabaseUserResponse>(response));
+export async function getCurrentUser(_accessToken: string): Promise<AuthUser> {
+  return (await parseResponse<AuthResponse>(await request('/api/auth/me'))).user;
 }
 
-export async function signOut(accessToken: string) {
-  const { anonKey, url } = getSupabaseConfig();
-
-  await fetch(`${url}/auth/v1/logout`, {
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${accessToken}`,
-    },
-    method: 'POST',
-  });
-
+export async function signOut(_accessToken: string) {
+  await parseResponse<void>(await request('/api/auth/logout', { method: 'POST' }));
   clearStoredSession();
 }
 
-export async function getMyProfile(accessToken: string, userId: string): Promise<UserProfile> {
-  const { anonKey, url } = getSupabaseConfig();
-  const response = await fetch(`${url}/rest/v1/app_profiles?select=*&id=eq.${encodeURIComponent(userId)}&limit=1`, {
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-  const profiles = await parseResponse<UserProfile[]>(response);
-
-  if (!profiles[0]) {
-    throw new Error('Perfil de acesso não encontrado.');
-  }
-
-  return profiles[0];
+export async function getMyProfile(_accessToken: string, _userId: string): Promise<UserProfile> {
+  return (await parseResponse<AuthResponse>(await request('/api/auth/me'))).profile;
 }
 
-export async function listUserProfiles(accessToken: string): Promise<UserProfile[]> {
-  const { anonKey, url } = getSupabaseConfig();
-  const response = await fetch(`${url}/rest/v1/app_profiles?select=*&order=email.asc`, {
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  return parseResponse<UserProfile[]>(response);
+export async function listUserProfiles(_accessToken: string): Promise<UserProfile[]> {
+  return parseResponse<UserProfile[]>(await request('/api/admin-users'));
 }
 
 export async function updateUserRole(
-  accessToken: string,
+  _accessToken: string,
   userId: string,
   role: AppRole,
 ): Promise<UserProfile> {
-  const { anonKey, url } = getSupabaseConfig();
-  const response = await fetch(`${url}/rest/v1/app_profiles?id=eq.${encodeURIComponent(userId)}`, {
-    body: JSON.stringify({ role }),
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-    },
-    method: 'PATCH',
-  });
-  const profiles = await parseResponse<UserProfile[]>(response);
-
-  if (!profiles[0]) {
-    throw new Error('Usuário não encontrado.');
-  }
-
-  return profiles[0];
+  return parseResponse<UserProfile>(
+    await request('/api/admin-users', {
+      body: JSON.stringify({ id: userId, role }),
+      method: 'PATCH',
+    }),
+  );
 }
 
 export async function updateMyProfile(
-  accessToken: string,
+  _accessToken: string,
   fullName: string,
 ): Promise<UserProfile> {
-  const { anonKey, url } = getSupabaseConfig();
-  const response = await fetch(`${url}/rest/v1/rpc/update_my_profile`, {
-    body: JSON.stringify({ p_full_name: fullName }),
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    method: 'POST',
-  });
-
-  return parseResponse<UserProfile>(response);
+  return parseResponse<UserProfile>(
+    await request('/api/auth/me', {
+      body: JSON.stringify({ fullName }),
+      method: 'PATCH',
+    }),
+  );
 }
 
-export async function updateMyPassword(accessToken: string, password: string): Promise<void> {
-  const { anonKey, url } = getSupabaseConfig();
-  const response = await fetch(`${url}/auth/v1/user`, {
-    body: JSON.stringify({ password }),
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    method: 'PUT',
-  });
-
-  await parseResponse<unknown>(response);
+export async function updateMyPassword(_accessToken: string, password: string): Promise<void> {
+  return parseResponse<void>(
+    await request('/api/auth/password', {
+      body: JSON.stringify({ password }),
+      method: 'PATCH',
+    }),
+  );
 }
 
-async function adminUsersRequest<T>(
-  accessToken: string,
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-  body?: unknown,
-): Promise<T> {
-  const response = await fetch('/api/admin-users', {
-    body: body ? JSON.stringify(body) : undefined,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    method,
-  });
-
-  return parseResponse<T>(response);
+async function adminUsersRequest<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', body?: unknown) {
+  return parseResponse<T>(
+    await request('/api/admin-users', {
+      body: body ? JSON.stringify(body) : undefined,
+      method,
+    }),
+  );
 }
 
-export async function listAdminUserProfiles(accessToken: string): Promise<UserProfile[]> {
-  return adminUsersRequest<UserProfile[]>(accessToken, 'GET');
+export async function listAdminUserProfiles(_accessToken: string): Promise<UserProfile[]> {
+  return adminUsersRequest<UserProfile[]>('GET');
 }
 
 export async function createAdminUser(
-  accessToken: string,
+  _accessToken: string,
   input: { email: string; fullName: string; password: string; role: AppRole },
 ): Promise<UserProfile> {
-  return adminUsersRequest<UserProfile>(accessToken, 'POST', input);
+  return adminUsersRequest<UserProfile>('POST', input);
 }
 
 export async function updateAdminUser(
-  accessToken: string,
+  _accessToken: string,
   input: { fullName: string; id: string; role: AppRole },
 ): Promise<UserProfile> {
-  return adminUsersRequest<UserProfile>(accessToken, 'PATCH', input);
+  return adminUsersRequest<UserProfile>('PATCH', input);
 }
 
-export async function deleteAdminUser(accessToken: string, id: string): Promise<{ id: string }> {
-  return adminUsersRequest<{ id: string }>(accessToken, 'DELETE', { id });
+export async function deleteAdminUser(_accessToken: string, id: string): Promise<{ id: string }> {
+  return adminUsersRequest<{ id: string }>('DELETE', { id });
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AverageGrowthRateCard } from '@/components/AverageGrowthRateCard';
 import { FreeSpaceCard } from '@/components/FreeSpaceCard';
 import { LastUpdateCard } from '@/components/LastUpdateCard';
@@ -13,18 +14,31 @@ import { UsagePercentageCard } from '@/components/UsagePercentageCard';
 import { UsedSpaceCard } from '@/components/UsedSpaceCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserSettingsPage } from '@/pages/UserSettingsPage';
+import { EngineeringSystemsHomePage } from '@/pages/EngineeringSystemsHomePage';
+import { KartadoPage } from '@/pages/KartadoPage';
+import { TotvsPage } from '@/pages/TotvsPage';
+import {
+  getDatePeriodPreset,
+  getDefaultDatePeriod,
+  type DatePeriodPreset,
+} from '@/utils/datePeriod';
 import type {
   ImportedWorkbookData,
+  E365UsageRow,
   MonitoringRow,
-  ProjectWiseUserRow,
   ProjectWiseWebUserRow,
   TicketRow,
 } from '@/types/monitoring';
+import {
+  deleteE365Quarter,
+  importE365UsageFile,
+  readE365UsageFromDatabase,
+} from '@/services/e365UsagePersistenceService';
+import { formatE365Quarter } from '@/utils/e365UsageKpis';
 import { readMonitoringWorkbookFromUrl } from '@/services/excelService';
 import { importProjectWiseUsersFile } from '@/services/projectWiseUsersImportService';
 import {
   hasSupabaseProjectWiseUsersConfig,
-  readProjectWiseExplorerUsersFromSupabase,
   readProjectWisePortalUsersFromSupabase,
 } from '@/services/projectWiseUsersService';
 import {
@@ -58,6 +72,11 @@ function formatInputDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function getLatestE365Quarter(rows: E365UsageRow[]): string {
+  const quarters = [...new Set(rows.map((row) => row.UsageQuarter).filter(Boolean))].sort();
+  return quarters[quarters.length - 1] ?? '';
 }
 
 function parseInputDate(value: string): Date | null {
@@ -124,7 +143,42 @@ function filterRowsByPeriod(
   });
 }
 
-type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'settings';
+type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartadoAudit' | 'kartadoHealth' | 'totvs' | 'settings';
+
+const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
+  totvs: '/totvs/chamados',
+  storage: '/projectwise/armazenamento',
+  projectWiseUsers: '/projectwise/usuarios-pw',
+  tickets: '/projectwise/chamados',
+  kartadoAudit: '/kartado/auditoria',
+  kartadoHealth: '/kartado/saude',
+  settings: '/configuracoes',
+};
+
+const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
+  totvs: 'Chamados',
+  storage: 'Armazenamento',
+  projectWiseUsers: 'Usuários PW',
+  tickets: 'Chamados',
+  kartadoAudit: 'Auditoria',
+  kartadoHealth: 'Saúde',
+  settings: 'Configurações',
+};
+
+const LEGACY_DASHBOARD_ROUTES: Record<string, string> = {
+  '/armazenamento': DASHBOARD_ROUTES.storage,
+  '/usuarios-pw': DASHBOARD_ROUTES.projectWiseUsers,
+  '/chamados': DASHBOARD_ROUTES.tickets,
+  '/projectwise/configuracoes': DASHBOARD_ROUTES.settings,
+};
+
+function getDashboardTab(pathname: string): DashboardTab | null {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/';
+  const matchedRoute = Object.entries(DASHBOARD_ROUTES).find(
+    ([, route]) => route === normalizedPath,
+  );
+  return (matchedRoute?.[0] as DashboardTab | undefined) ?? null;
+}
 
 const AUTO_STORAGE_SOURCES = [
   'dados/armazenamento.xlsx',
@@ -140,12 +194,6 @@ const AUTO_TICKET_SOURCES = [
   'dados/chamados.xml',
 ];
 
-const AUTO_PROJECT_WISE_USER_SOURCES = [
-  'dados/usuarios-pw-explorer.xlsx',
-  'dados/usuarios-pw-explorer.xls',
-  'dados/usuarios-pw-explorer.csv',
-];
-
 const AUTO_PROJECT_WISE_PORTAL_USER_SOURCES = [
   'dados/usuarios-pw-portal.xlsx',
   'dados/usuarios-pw-portal.xls',
@@ -153,6 +201,7 @@ const AUTO_PROJECT_WISE_PORTAL_USER_SOURCES = [
 ];
 
 const EXTERNAL_STORAGE_SOURCE_URL = import.meta.env.VITE_STORAGE_SOURCE_URL?.trim();
+const IS_E365_LOCAL_PREVIEW = import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true';
 
 const STORAGE_UPDATE_STEPS = [
   'Conectando ao Supabase',
@@ -169,12 +218,10 @@ const TICKETS_UPDATE_STEPS = [
 ];
 
 const PROJECT_WISE_USERS_UPDATE_STEPS = [
-  'Conectando ao ProjectWise',
-  'Consultando usuários do PW Explorer',
-  'Consultando registros de acesso no Audit Trail',
-  'Aplicando regras de inatividade e excecoes',
-  'Gerando planilha Excel',
-  'Recarregando indicadores de usuários',
+  'Validando arquivo E365 Usage Data',
+  'Identificando quarters e aplicações',
+  'Atualizando usuários faturados',
+  'Recarregando indicadores E365',
 ];
 
 const PORTAL_USERS_UPDATE_STEPS = [
@@ -288,6 +335,16 @@ function formatTechnicalDate(value: string | Date) {
   });
 }
 
+function formatLoadedAt(date: Date) {
+  const formattedDate = date.toLocaleDateString('pt-BR');
+  const formattedTime = date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return `${formattedDate} às ${formattedTime}`;
+}
+
 function formatBytes(value: number) {
   return new Intl.NumberFormat('pt-BR').format(value);
 }
@@ -336,24 +393,6 @@ async function syncLocalTicketsSource(): Promise<StorageSyncInfo | undefined> {
   return result?.sync;
 }
 
-async function syncLocalProjectWiseUsersSource(): Promise<StorageSyncInfo | undefined> {
-  const response = await fetch('/api/sync-pw-users', {
-    method: 'POST',
-  });
-
-  if (response.status === 404) {
-    return undefined;
-  }
-
-  const result = (await response.json().catch(() => null)) as StorageSyncResponse | null;
-
-  if (!response.ok) {
-    throw new Error(result?.error ?? 'Não foi possível atualizar a fonte de usuários PW.');
-  }
-
-  return result?.sync;
-}
-
 async function syncLocalProjectWisePortalUsersSource(): Promise<StorageSyncInfo | undefined> {
   const response = await fetch('/api/sync-portal-users', {
     method: 'POST',
@@ -382,12 +421,6 @@ function isTicketRow(row: ImportedWorkbookData['rows'][number]): row is TicketRo
   return 'StatusdoSLA' in row && 'Tipodeticket' in row && 'Abertoem' in row;
 }
 
-function isProjectWiseUserRow(
-  row: ImportedWorkbookData['rows'][number],
-): row is ProjectWiseUserRow {
-  return 'Ultimoacesso' in row && 'StatusProjectWise' in row && 'Elegivelexclusao' in row;
-}
-
 function isProjectWiseWebUserRow(
   row: ImportedWorkbookData['rows'][number],
 ): row is ProjectWiseWebUserRow {
@@ -396,13 +429,19 @@ function isProjectWiseWebUserRow(
 
 export function DashboardPage() {
   const { accessToken, getValidAccessToken, logout, profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<DashboardTab>('storage');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = getDashboardTab(location.pathname);
+  const normalizedPath = location.pathname.replace(/\/+$/, '') || '/';
+  const isHomePage = normalizedPath === '/';
+  const isProjectWisePage =
+    activeTab === 'storage' || activeTab === 'projectWiseUsers' || activeTab === 'tickets';
+  const isKartadoPage = activeTab === 'kartadoAudit' || activeTab === 'kartadoHealth';
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
-  const [projectWiseUsersData, setProjectWiseUsersData] =
-    useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
     useState<ImportedWorkbookData | null>(null);
+  const [e365UsageRows, setE365UsageRows] = useState<E365UsageRow[]>([]);
   const [autoStorageStatus, setAutoStorageStatus] =
     useState<AutoStorageStatus>({ state: 'idle' });
   const [autoTicketsStatus, setAutoTicketsStatus] =
@@ -437,10 +476,6 @@ export function DashboardPage() {
   const rows = useMemo(
     () => (storageData?.rows.filter(isMonitoringRow) ?? []),
     [storageData],
-  );
-  const projectWiseUserRows = useMemo(
-    () => projectWiseUsersData?.rows.filter(isProjectWiseUserRow) ?? [],
-    [projectWiseUsersData],
   );
   const projectWiseWebUserRows = useMemo(
     () => projectWisePortalUsersData?.rows.filter(isProjectWiseWebUserRow) ?? [],
@@ -593,6 +628,50 @@ export function DashboardPage() {
   );
 
   useEffect(() => {
+    const requestedTab = getDashboardTab(location.pathname);
+    const requestedPath = location.pathname.replace(/\/+$/, '') || '/';
+
+    if (requestedPath === '/') {
+      return;
+    }
+
+    if (requestedPath === '/projectwise') {
+      navigate(DASHBOARD_ROUTES.storage, { replace: true });
+      return;
+    }
+
+    if (requestedPath === '/totvs') {
+      navigate(DASHBOARD_ROUTES.totvs, { replace: true });
+      return;
+    }
+
+    if (requestedPath === '/kartado') {
+      navigate(DASHBOARD_ROUTES.kartadoAudit, { replace: true });
+      return;
+    }
+
+    if (requestedPath === '/kartado/score') {
+      navigate(DASHBOARD_ROUTES.kartadoHealth, { replace: true });
+      return;
+    }
+
+    const migratedRoute = LEGACY_DASHBOARD_ROUTES[requestedPath];
+    if (migratedRoute) {
+      navigate(migratedRoute, { replace: true });
+      return;
+    }
+
+    if (!requestedTab) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    if (requestedTab === 'settings' && profile && profile.role !== 'admin') {
+      navigate(DASHBOARD_ROUTES.storage, { replace: true });
+    }
+  }, [location.pathname, navigate, profile]);
+
+  useEffect(() => {
     setTicketPage(1);
   }, [ticketSearchTerm, ticketColumnFilters]);
 
@@ -600,6 +679,14 @@ export function DashboardPage() {
     setTicketPage((currentPage) => Math.min(currentPage, totalTicketPages));
   }, [totalTicketPages]);
   const dateRange = useMemo(() => getRowsDateRange(rows), [rows]);
+  const defaultStoragePeriod = useMemo(
+    () => getDefaultDatePeriod(dateRange?.maxDate),
+    [dateRange?.maxDate],
+  );
+  const isUsingLatestStorageMonth =
+    defaultStoragePeriod.usedLatestAvailableMonth &&
+    periodStartDate === defaultStoragePeriod.startDate &&
+    periodEndDate === defaultStoragePeriod.endDate;
   const filteredRows = useMemo(
     () => filterRowsByPeriod(rows, periodStartDate, periodEndDate),
     [periodEndDate, periodStartDate, rows],
@@ -620,19 +707,16 @@ export function DashboardPage() {
     setStorageData(data);
 
     if (shouldOpenStorageTab) {
-      setActiveTab('storage');
+      navigate(DASHBOARD_ROUTES.storage);
     }
 
-    setPeriodStartDate(range?.minDate ?? '');
-    setPeriodEndDate(range?.maxDate ?? '');
+    const defaultPeriod = getDefaultDatePeriod(range?.maxDate);
+    setPeriodStartDate(defaultPeriod.startDate);
+    setPeriodEndDate(defaultPeriod.endDate);
   }
 
   function applyTicketsData(data: ImportedWorkbookData) {
     setTicketsData(data);
-  }
-
-  function applyProjectWiseUsersData(data: ImportedWorkbookData) {
-    setProjectWiseUsersData(data);
   }
 
   function applyProjectWisePortalUsersData(data: ImportedWorkbookData) {
@@ -783,31 +867,44 @@ export function DashboardPage() {
     setProjectWiseExplorerImportStatus({ state: 'importing' });
 
     try {
-      const validAccessToken = await getValidAccessToken();
-
-      if (!validAccessToken) {
-        throw new Error('Sessão expirada. Entre novamente para importar o arquivo.');
-      }
-
-      const result = await importProjectWiseUsersFile(
-        validAccessToken,
-        'explorer',
-        projectWiseExplorerFile,
-      );
-
+      const result = await importE365UsageFile(projectWiseExplorerFile);
+      const nextRows = await readE365UsageFromDatabase();
+      setE365UsageRows(nextRows);
       setProjectWiseExplorerImportStatus({
         state: 'success',
-        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} usuários PW importados.`,
+        message: `${result.rowsRead} linhas lidas e ${result.rowsImported} registros gravados. ${result.replacedQuarters.map(formatE365Quarter).join(', ')} foi substituído integralmente.`,
       });
       setProjectWiseExplorerFile(null);
       await loadAutoProjectWiseUsersSource();
     } catch (error) {
       setProjectWiseExplorerImportStatus({
         state: 'error',
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível importar os usuários PW.',
+        message: error instanceof Error ? error.message : 'Não foi possível importar o arquivo E365.',
+      });
+    }
+  }
+
+  async function clearLatestE365Quarter() {
+    const usageQuarter = getLatestE365Quarter(e365UsageRows);
+    if (!usageQuarter) return;
+
+    const label = formatE365Quarter(usageQuarter);
+    if (!window.confirm(`Remover todos os dados de ${label}? Essa ação prepara o quarter para uma nova importação.`)) {
+      return;
+    }
+
+    setProjectWiseExplorerImportStatus({ state: 'importing' });
+    try {
+      const result = await deleteE365Quarter(usageQuarter);
+      setE365UsageRows(await readE365UsageFromDatabase());
+      setProjectWiseExplorerImportStatus({
+        state: 'success',
+        message: `${formatE365Quarter(result.usageQuarter)} removido: ${result.rowsDeleted} registros apagados.`,
+      });
+    } catch (error) {
+      setProjectWiseExplorerImportStatus({
+        state: 'error',
+        message: error instanceof Error ? error.message : 'Não foi possível limpar o quarter E365.',
       });
     }
   }
@@ -1108,91 +1205,32 @@ export function DashboardPage() {
     );
   }
 
-  async function loadAutoProjectWiseUsersSource(options?: { syncBeforeRead?: boolean }) {
+  async function loadAutoProjectWiseUsersSource() {
     setAutoProjectWiseUsersStatus({ state: 'loading' });
 
-    if (hasSupabaseProjectWiseUsersConfig()) {
-      if (!accessToken) {
-        setAutoProjectWiseUsersStatus({
-          state: 'error',
-          message: 'Sessão autenticada indisponível para ler os usuários PW.',
-        });
-        return;
-      }
-
-      try {
-        const data = await readProjectWiseExplorerUsersFromSupabase(accessToken);
-
-        applyProjectWiseUsersData(data);
-        setAutoProjectWiseUsersStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-        });
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível carregar os usuários PW no Supabase.';
-
-        setAutoProjectWiseUsersStatus({ state: 'error', message });
-      }
-
+    if (!accessToken) {
+      setAutoProjectWiseUsersStatus({
+        state: 'error',
+        message: 'Sessão autenticada indisponível para ler os dados E365.',
+      });
       return;
     }
 
-    let lastError: unknown = null;
-    let syncInfo: StorageSyncInfo | undefined;
-    const localCacheKey = String(Date.now());
-
-    if (options?.syncBeforeRead) {
-      try {
-        syncInfo = await syncLocalProjectWiseUsersSource();
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível atualizar a fonte de usuários PW.';
-
-        setAutoProjectWiseUsersStatus({ state: 'error', message });
-        return;
-      }
+    try {
+      const data = await readE365UsageFromDatabase();
+      setE365UsageRows(data);
+      setAutoProjectWiseUsersStatus({
+        state: 'ready',
+        fileName: 'Azure PostgreSQL - e365_usage',
+        loadedAt: new Date(),
+        rowsCount: data.length,
+      });
+    } catch (error) {
+      setAutoProjectWiseUsersStatus({
+        state: 'error',
+        message: error instanceof Error ? error.message : 'Não foi possível carregar os dados E365.',
+      });
     }
-
-    for (const source of AUTO_PROJECT_WISE_USER_SOURCES.map((userSource) => ({
-      fileName: userSource,
-      url: getPublicUrl(userSource, localCacheKey),
-    }))) {
-      try {
-        const data = await readMonitoringWorkbookFromUrl(source.url, source.fileName);
-
-        if (data.kind !== 'projectWiseUsers') {
-          throw new Error('A fonte encontrada não possui os cabeçalhos de usuários PW.');
-        }
-
-        applyProjectWiseUsersData(data);
-        setAutoProjectWiseUsersStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-          syncInfo,
-        });
-        return;
-      } catch (error) {
-        lastError = error;
-      }
-    }
-
-    const message =
-      lastError instanceof Error
-        ? lastError.message
-        : 'Não foi possível carregar a fonte automática de usuários PW.';
-
-    setAutoProjectWiseUsersStatus(
-      hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' },
-    );
   }
 
   async function loadAutoProjectWisePortalUsersSource(options?: { syncBeforeRead?: boolean }) {
@@ -1285,13 +1323,13 @@ export function DashboardPage() {
   }
 
   useEffect(() => {
-    if (!hasSupabaseTicketsConfig()) {
+    if (isProjectWisePage && !hasSupabaseTicketsConfig()) {
       void loadAutoTicketsSource();
     }
-  }, []);
+  }, [isProjectWisePage]);
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!accessToken || !isProjectWisePage) {
       return;
     }
 
@@ -1299,11 +1337,27 @@ export function DashboardPage() {
     void loadAutoTicketsSource();
     void loadAutoProjectWiseUsersSource();
     void loadAutoProjectWisePortalUsersSource();
-  }, [accessToken]);
+    void readE365UsageFromDatabase()
+      .then(setE365UsageRows)
+      .catch((error) => console.error('Não foi possível carregar os dados E365.', error));
+  }, [accessToken, isProjectWisePage]);
 
-  function clearPeriodFilter() {
-    setPeriodStartDate(dateRange?.minDate ?? '');
-    setPeriodEndDate(dateRange?.maxDate ?? '');
+  async function importE365Files(files: File[]) {
+    for (const file of files) {
+      await importE365UsageFile(file);
+    }
+    const nextRows = await readE365UsageFromDatabase();
+    setE365UsageRows(nextRows);
+    return nextRows;
+  }
+
+  function applyPeriodPreset(preset: DatePeriodPreset) {
+    const period = getDatePeriodPreset(preset, {
+      minDate: dateRange?.minDate,
+      maxDate: dateRange?.maxDate,
+    });
+    setPeriodStartDate(period.startDate);
+    setPeriodEndDate(period.endDate);
   }
 
   return (
@@ -1315,7 +1369,7 @@ export function DashboardPage() {
               Painel institucional
             </p>
             <h1 className="mt-2 text-2xl font-semibold text-surface-900 md:text-3xl">
-              Painel Operacional ProjectWise
+              Painel de indicadores de Sistemas de Engenharia
             </h1>
           </div>
 
@@ -1332,6 +1386,14 @@ export function DashboardPage() {
             <span className="text-xs uppercase tracking-[0.16em] text-brand-700">
               {profile?.role === 'admin' ? 'Administrador' : 'Usuário padrão'}
             </span>
+            {profile?.role === 'admin' ? (
+              <NavLink
+                to={DASHBOARD_ROUTES.settings}
+                className="text-xs font-semibold text-brand-700 transition hover:text-brand-900"
+              >
+                Configurações
+              </NavLink>
+            ) : null}
             <button
               type="button"
               onClick={() => void logout()}
@@ -1344,54 +1406,91 @@ export function DashboardPage() {
       </header>
 
       <div className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <nav className="mt-2 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
-          <button
-            type="button"
-            onClick={() => setActiveTab('storage')}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'storage'
+        <nav aria-label="Trilha de navegação" className="mt-1 flex flex-wrap items-center gap-2 text-sm text-surface-600">
+          {isHomePage ? (
+            <span className="font-semibold text-surface-900" aria-current="page">Início</span>
+          ) : (
+            <NavLink to="/" className="font-medium transition hover:text-brand-700">Início</NavLink>
+          )}
+          {activeTab === 'settings' ? (
+            <>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <span className="font-semibold text-surface-900" aria-current="page">
+                Configurações
+              </span>
+            </>
+          ) : activeTab === 'totvs' ? (
+            <><span aria-hidden="true" className="text-brand-300">/</span><span>TOTVs</span><span aria-hidden="true" className="text-brand-300">/</span><span className="font-semibold text-surface-900" aria-current="page">Chamados</span></>
+          ) : isKartadoPage ? (
+            <>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <NavLink to={DASHBOARD_ROUTES.kartadoAudit} className="font-medium text-surface-700 transition hover:text-brand-700">
+                Kartado
+              </NavLink>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <span className="font-semibold text-surface-900" aria-current="page">{activeTab ? DASHBOARD_TAB_LABELS[activeTab] : ''}</span>
+            </>
+          ) : activeTab ? (
+            <>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <NavLink to={DASHBOARD_ROUTES.storage} className="font-medium text-surface-700 transition hover:text-brand-700">
+                ProjectWise
+              </NavLink>
+              <span aria-hidden="true" className="text-brand-300">/</span>
+              <span className="font-semibold text-surface-900" aria-current="page">
+                {DASHBOARD_TAB_LABELS[activeTab]}
+              </span>
+            </>
+          ) : null}
+        </nav>
+
+        {isProjectWisePage ? (
+        <nav aria-label="Navegação do ProjectWise" className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
+          <NavLink
+            to={DASHBOARD_ROUTES.storage}
+            className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+              isActive
                 ? 'bg-brand-700 text-white shadow-soft'
                 : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
             }`}
           >
             Armazenamento
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('projectWiseUsers')}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'projectWiseUsers'
+          </NavLink>
+          <NavLink
+            to={DASHBOARD_ROUTES.projectWiseUsers}
+            className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+              isActive
                 ? 'bg-brand-700 text-white shadow-soft'
                 : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
             }`}
           >
             Usuários PW
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('tickets')}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'tickets'
+          </NavLink>
+          <NavLink
+            to={DASHBOARD_ROUTES.tickets}
+            className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+              isActive
                 ? 'bg-brand-700 text-white shadow-soft'
                 : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
             }`}
           >
             Chamados
-          </button>
-          {profile?.role === 'admin' ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('settings')}
-              className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                activeTab === 'settings'
-                  ? 'bg-brand-700 text-white shadow-soft'
-                  : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
-              }`}
-            >
-              Configurações
-            </button>
-          ) : null}
+          </NavLink>
         </nav>
+        ) : null}
+
+        {isKartadoPage ? (
+          <nav aria-label="Navegação do Kartado" className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
+            <NavLink to={DASHBOARD_ROUTES.kartadoAudit} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Auditoria</NavLink>
+            <NavLink to={DASHBOARD_ROUTES.kartadoHealth} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Saúde</NavLink>
+          </nav>
+        ) : null}
+
+        {isHomePage ? <EngineeringSystemsHomePage /> : null}
+        {activeTab === 'totvs' ? <TotvsPage canManage={profile?.role === 'admin' || (import.meta.env.DEV && import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')} /> : null}
+
+        {activeTab === 'kartadoAudit' ? <KartadoPage area="audit" /> : null}
+        {activeTab === 'kartadoHealth' ? <KartadoPage area="health" /> : null}
 
         {activeTab === 'storage' ? (
           <>
@@ -1406,10 +1505,7 @@ export function DashboardPage() {
                     {autoStorageStatus.state === 'loading'
                       ? 'Atualizando a leitura no Supabase...'
                       : autoStorageStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoStorageStatus.fileName} ?s ${autoStorageStatus.loadedAt.toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. ${autoStorageStatus.rowsCount} registros lidos.`
+                        ? `Fonte carregada: ${autoStorageStatus.fileName} em ${formatLoadedAt(autoStorageStatus.loadedAt)}. ${autoStorageStatus.rowsCount} registros lidos.`
                         : autoStorageStatus.state === 'missing'
                           ? 'Configure o Supabase ou mantenha uma fonte Excel em public/dados/armazenamento.xlsx.'
                           : autoStorageStatus.state === 'error'
@@ -1557,10 +1653,11 @@ export function DashboardPage() {
               <PeriodFilter
                 endDate={periodEndDate}
                 filteredRowsCount={filteredRows.length}
+                isLatestAvailableMonth={isUsingLatestStorageMonth}
                 maxDate={dateRange?.maxDate}
                 minDate={dateRange?.minDate}
-                onClear={clearPeriodFilter}
                 onEndDateChange={setPeriodEndDate}
+                onPresetChange={applyPeriodPreset}
                 onStartDateChange={setPeriodStartDate}
                 startDate={periodStartDate}
                 totalRowsCount={rows.length}
@@ -1588,28 +1685,25 @@ export function DashboardPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                    Fonte de usuários PW
+                    Fonte E365 Usage Data
                   </p>
                   <p className="mt-2 text-sm text-surface-700">
                     {autoProjectWiseUsersStatus.state === 'loading'
-                      ? 'Atualizando a extração de usuários ProjectWise...'
+                      ? 'Atualizando os dados de uso e faturamento E365...'
                       : autoProjectWiseUsersStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} ?s ${autoProjectWiseUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. ${autoProjectWiseUsersStatus.rowsCount} registros lidos.`
+                        ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} em ${formatLoadedAt(autoProjectWiseUsersStatus.loadedAt)}. ${autoProjectWiseUsersStatus.rowsCount} registros lidos.`
                         : autoProjectWiseUsersStatus.state === 'missing'
-                          ? 'Atualize a fonte para gerar public/dados/usuarios-pw-explorer.xlsx.'
+                          ? 'Importe o relatório E365 Usage Data.'
                           : autoProjectWiseUsersStatus.state === 'error'
                             ? autoProjectWiseUsersStatus.message
-                            : 'O painel vai tentar carregar a planilha de usuários PW automaticamente.'}
+                            : 'O painel vai carregar os dados E365 armazenados no banco.'}
                   </p>
                 </div>
 
                 {profile?.role === 'admin' ? (
                   <div className="flex flex-col gap-3 sm:min-w-[360px]">
                     <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-                      Arquivo Explorer
+                      Arquivo E365 Usage Data
                       <input
                         type="file"
                         accept=".csv,.xlsx,.xls"
@@ -1631,8 +1725,18 @@ export function DashboardPage() {
                     >
                       {projectWiseExplorerImportStatus.state === 'importing'
                         ? 'Importando...'
-                        : 'Importar Explorer'}
+                        : 'Importar E365'}
                     </button>
+                    {e365UsageRows.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => void clearLatestE365Quarter()}
+                        disabled={projectWiseExplorerImportStatus.state === 'importing'}
+                        className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Limpar {formatE365Quarter(getLatestE365Quarter(e365UsageRows))}
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -1722,10 +1826,7 @@ export function DashboardPage() {
                     {autoProjectWisePortalUsersStatus.state === 'loading'
                       ? 'Atualizando a leitura do CSV exportado do Portal Bentley...'
                       : autoProjectWisePortalUsersStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoProjectWisePortalUsersStatus.fileName} ?s ${autoProjectWisePortalUsersStatus.loadedAt.toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. ${autoProjectWisePortalUsersStatus.rowsCount} registros lidos.`
+                        ? `Fonte carregada: ${autoProjectWisePortalUsersStatus.fileName} em ${formatLoadedAt(autoProjectWisePortalUsersStatus.loadedAt)}. ${autoProjectWisePortalUsersStatus.rowsCount} registros lidos.`
                         : autoProjectWisePortalUsersStatus.state === 'missing'
                           ? 'Configure PORTAL_USERS_SOURCE_PATH no .env.local ou coloque o Excel em public/dados/usuarios-pw-portal.xlsx.'
                           : autoProjectWisePortalUsersStatus.state === 'error'
@@ -1854,7 +1955,10 @@ export function DashboardPage() {
 
             <section className="mt-6">
               <ProjectWiseUsersTab
-                explorerRows={projectWiseUserRows}
+                canManage={IS_E365_LOCAL_PREVIEW || profile?.role === 'admin'}
+                e365Rows={e365UsageRows}
+                isLocalPreview={IS_E365_LOCAL_PREVIEW}
+                onImportE365Files={importE365Files}
                 webRows={projectWiseWebUserRows}
               />
             </section>
@@ -2040,6 +2144,24 @@ export function DashboardPage() {
                   </p>
                 ) : null}
 
+              </section>
+            ) : null}
+
+            <section className="mt-6">
+              <TicketsTab rows={ticketRows} />
+            </section>
+
+            {profile?.role === 'admin' ? (
+              <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
+                    Lista de chamados
+                  </p>
+                  <p className="text-sm text-surface-700">
+                    Consulte, filtre e gerencie os chamados já cadastrados.
+                  </p>
+                </div>
+
                 <div className="mt-6 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
                     <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
@@ -2209,10 +2331,7 @@ export function DashboardPage() {
                     {autoTicketsStatus.state === 'loading'
                       ? 'Atualizando a leitura da planilha de chamados...'
                       : autoTicketsStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoTicketsStatus.fileName} ?s ${autoTicketsStatus.loadedAt.toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}. ${autoTicketsStatus.rowsCount} registros lidos.`
+                        ? `Fonte carregada: ${autoTicketsStatus.fileName} em ${formatLoadedAt(autoTicketsStatus.loadedAt)}. ${autoTicketsStatus.rowsCount} registros lidos.`
                         : autoTicketsStatus.state === 'missing'
                           ? 'Coloque a planilha de chamados em public/dados/chamados.xlsx.'
                           : autoTicketsStatus.state === 'error'
@@ -2292,9 +2411,6 @@ export function DashboardPage() {
             </section>
             ) : null}
 
-            <section className="mt-6">
-              <TicketsTab rows={ticketRows} />
-            </section>
           </>
         ) : null}
 
