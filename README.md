@@ -23,7 +23,11 @@ Base inicial de um painel front-end para importar planilhas operacionais do Proj
 
 1. Instale o Node.js 18+.
 2. Rode `npm install`.
-3. Rode `npm run dev`.
+3. Crie `.env.local` com as credenciais `DB_HOST`, `DB_NAME`, `DB_USER`,
+   `DB_PASSWORD`, `DB_PORT` e `DB_SSL` do banco de desenvolvimento.
+4. Rode `npm run dev`. Esse comando inicia o backend de autenticação e o Vite juntos.
+
+Para sincronizar também as fontes locais antes de iniciar, use `npm run dev:with-sync`.
 
 ## Publicacao na Vercel
 

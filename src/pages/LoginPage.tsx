@@ -33,7 +33,9 @@ export function LoginPage() {
           />
         </div>
 
-        <h1 className="text-xl font-semibold text-surface-900">Painel Operacional ProjectWise</h1>
+        <h1 className="text-xl font-semibold text-surface-900">
+          Painel de indicadores de Sistemas de Engenharia
+        </h1>
         <p className="mt-2 text-sm text-surface-600">Acesse com seu usuário autorizado.</p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>

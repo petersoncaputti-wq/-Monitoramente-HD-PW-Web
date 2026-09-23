@@ -1,9 +1,14 @@
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LoginPage } from '@/pages/LoginPage';
+import { BrowserRouter } from 'react-router-dom';
 
 function AuthenticatedApp() {
   const { status } = useAuth();
+
+  if (import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true' || (import.meta.env.DEV && import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')) {
+    return <DashboardPage />;
+  }
 
   if (status === 'loading') {
     return (
@@ -24,9 +29,11 @@ function AuthenticatedApp() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AuthenticatedApp />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AuthenticatedApp />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
