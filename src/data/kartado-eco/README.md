@@ -15,3 +15,5 @@ Regras da exibição:
 - Impressão/PDF usa a visão atual, a unidade, os filtros e os detalhes expandidos. A navegação do portal é ocultada na impressão.
 
 As datas de referência permanecem visíveis para não apresentar registros históricos como atuais. Não há comparação de evolução, pois existe apenas uma versão da base. Não há sincronização automática com SharePoint nem importação pela interface; atualizações exigem substituir acompanhamento.json. O campo de treinamento é específico de 21/09, conforme a coluna de origem.
+
+Navegação: a aba inicial Visão do grupo contém comparativo, contagens de pendências com acesso direto aos filtros e agenda consolidada. Capixaba, Raposo Castello e Noroeste Paulista possuem abas próprias com os registros detalhados. Apenas a aba ativa é renderizada e impressa. As abas suportam setas, Home e End.
