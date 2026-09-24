@@ -23,10 +23,12 @@ function Table({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
 }
 
 export function KartadoEcoPage() {
-  const [unitName, setUnitName] = useState(data.Unidades[0].Unidade);
+  const [unitName, setUnitName] = useState('group');
   const [filter, setFilter] = useState<Filter>('pending');
   const [search, setSearch] = useState('');
-  const unit = data.Unidades.find(item => item.Unidade === unitName)!;
+  const unit = data.Unidades.find(item => item.Unidade === unitName) ?? data.Unidades[0];
+  const tabs = [{ id: 'group', label: 'Visão do grupo' }, ...data.Unidades.map(item => ({ id: item.Unidade, label: item.Unidade.replace(/^Ecovias /, '') }))];
+  const groupAgenda = data.Reunioes.filter(item => item.Status === 'Agendada' && data.Unidades.some(unit => unit.Unidade === item.Unidade && item.Data >= unit.DataReferencia)).sort((a, b) => a.Data.localeCompare(b.Data) || a.Unidade.localeCompare(b.Unidade));
   const objectives = data.Objetivos.filter(item => item.Unidade === unitName);
   const meetings = data.Reunioes.filter(item => item.Unidade === unitName).sort((a, b) => a.Data.localeCompare(b.Data));
   const people = data.Pessoas.filter(item => item.Unidade === unitName);
@@ -40,7 +42,7 @@ export function KartadoEcoPage() {
   const visible = filter === 'all' ? objectives : filter === 'stopped' ? blocked : filter === 'overdue' ? expired : pending;
   const filters = [['pending', `Pendentes (${pending.length})`], ['stopped', `Parados ou aguardando (${blocked.length})`], ['overdue', `Prazo vencido (${expired.length})`], ['all', `Todos (${objectives.length})`]] as const;
 
-  function selectUnit(name: string) { setUnitName(name); setFilter('pending'); setSearch(''); }
+  function selectUnit(name: string, nextFilter: Filter = 'pending') { setUnitName(name); setFilter(nextFilter); setSearch(''); }
 
   return <section id="eco-acompanhamento" className="mt-6 space-y-5">
     <header className={card}>
@@ -48,12 +50,33 @@ export function KartadoEcoPage() {
       <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900"><strong>Referência dos dados: {[...new Set(data.Unidades.map(item => date(item.DataReferencia)))].join(', ')}.</strong> As situações e a agenda representam essa referência, não a data de hoje.</p>
     </header>
 
+    <nav role="tablist" aria-label="Visões do acompanhamento Eco" className="eco-no-print flex flex-wrap gap-2 rounded-2xl border border-brand-100 bg-white p-2">
+      {tabs.map((tab, index) => <button key={tab.id} id={`eco-tab-${index}`} role="tab" type="button" aria-selected={unitName === tab.id} aria-controls="eco-active-panel" tabIndex={unitName === tab.id ? 0 : -1} onClick={() => selectUnit(tab.id)} onKeyDown={event => {
+        const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null;
+        if (next !== null) { event.preventDefault(); selectUnit(tabs[next].id); document.getElementById(`eco-tab-${next}`)?.focus(); }
+      }} className={`rounded-xl px-4 py-3 text-sm font-semibold ${unitName === tab.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>{tab.label}</button>)}
+    </nav>
+    <div id="eco-active-panel" role="tabpanel" aria-labelledby={`eco-tab-${tabs.findIndex(tab => tab.id === unitName)}`} className="space-y-5">
+    {unitName === 'group' ? <>
+    <h3 className="text-xl font-semibold text-surface-900">Visão do grupo</h3>
     <section className={card} aria-label="Comparativo das unidades">
       <h3 className="text-lg font-semibold text-surface-900">Comparativo das unidades</h3><p className="mt-1 mb-3 text-sm text-surface-600">Selecione uma unidade para consultar suas pendências e agenda.</p>
       <Table headers={['Unidade', 'Etapa', 'Virada prevista', 'Objetivos cumpridos', 'Presença média', 'Inventário']} rows={data.Unidades.map(item => [<button type="button" aria-pressed={unitName === item.Unidade} onClick={() => selectUnit(item.Unidade)} className={`rounded-xl px-3 py-2 text-left font-semibold ${unitName === item.Unidade ? 'bg-brand-700 text-white' : 'text-brand-700 hover:bg-brand-50'}`}>{item.Unidade}</button>, item.Etapa, date(item.DataVirada), percent(item.ObjetivosCumpridos), percent(item.PresencaMedia), item.ItensInventario.toLocaleString('pt-BR')])} />
     </section>
 
-    <section key={unitName} className="space-y-5" aria-label={`Acompanhamento de ${unitName}`}>
+    <section className={card} aria-label="Pendências do grupo">
+      <h3 className="text-lg font-semibold text-surface-900">Pendências por unidade</h3><p className="mt-1 mb-3 text-sm text-surface-600">Selecione uma contagem para abrir os objetivos correspondentes. Parados ou aguardando fazem parte dos pendentes.</p>
+      <Table headers={['Unidade', 'Pendentes', 'Parados ou aguardando']} rows={data.Unidades.map(item => {
+        const pending = data.Objetivos.filter(objective => objective.Unidade === item.Unidade && objective.Cumprimento < 1);
+        return [item.Unidade, <button type="button" className="rounded-lg px-3 py-2 font-semibold text-brand-700 hover:bg-brand-50" aria-label={`Ver pendentes de ${item.Unidade}`} onClick={() => selectUnit(item.Unidade)}>{pending.length}</button>, <button type="button" className="rounded-lg px-3 py-2 font-semibold text-brand-700 hover:bg-brand-50" aria-label={`Ver parados ou aguardando de ${item.Unidade}`} onClick={() => selectUnit(item.Unidade, 'stopped')}>{pending.filter(stopped).length}</button>];
+      })} />
+    </section>
+    <section className={card} aria-label="Agenda consolidada">
+      <h3 className="text-lg font-semibold text-surface-900">Agenda do grupo</h3><p className="mt-1 mb-3 text-sm text-surface-600">Próximas reuniões e marcos a partir da referência de cada unidade, em ordem cronológica.</p>
+      <Table headers={['Data', 'Unidade', 'Tipo', 'Fonte']} rows={groupAgenda.map(item => [date(item.Data), item.Unidade, item.Tipo, item.Fonte])} />
+    </section>
+    </> : <section key={unitName} className="space-y-5" aria-label={`Acompanhamento de ${unitName}`}>
+      <p className="text-sm font-semibold text-brand-700">{unit.Etapa} · Virada prevista: {date(unit.DataVirada)}</p>
       <div><h3 className="text-xl font-semibold text-surface-900">{unitName}</h3><p className="mt-1 text-sm text-surface-600">{unit.Orgao} · {unit.Produto} · Entrada na etapa: {date(unit.EntradaNaEtapa)} · Cadência: {unit.Cadencia}</p><p className="mt-1 text-xs text-surface-600">Referência da unidade: {date(unit.DataReferencia)}</p></div>
       <section className={card} aria-label="Pendências e próximos passos">
         <h4 className="text-lg font-semibold text-surface-900">Pendências e próximos passos</h4>
@@ -72,7 +95,8 @@ export function KartadoEcoPage() {
       </div>
 
       <details className={card}><summary className="cursor-pointer text-base font-semibold text-surface-900">Participantes e frequência ({people.length})</summary><div className="mt-4"><label className="eco-no-print mb-4 flex flex-col gap-2 text-sm text-surface-700">Buscar participante<input value={search} onChange={event => setSearch(event.target.value)} className={control} placeholder="Nome, vínculo ou frente" /></label>{search && <p className="mb-2 text-xs text-surface-600">Busca: {search}</p>}<Table headers={['Nome', 'Vínculo', 'Frente', 'Presenças / convocações', 'Frequência', 'Treinamento 21/09']} rows={people.filter(item => normalize([item.Nome, item.Vinculo, item.Frente].join(' ')).includes(normalize(search.trim()))).map(item => [item.Nome, item.Vinculo, item.Frente || 'Não informada', `${item.Presencas} / ${item.Convocacoes}`, item.Frequencia, item.NoTreinamento21_09 || 'Não informado'])} /></div></details>
-    </section>
-    <p className="text-xs leading-5 text-surface-600">Fonte: Acompanhamento_Grupo_Eco_1.xlsx, cópia importada. Sem sincronização automática. A impressão usa a unidade e os filtros selecionados; expanda os detalhes que deseja incluir.</p>
+    </section>}
+    </div>
+    <p className="text-xs leading-5 text-surface-600">Fonte: Acompanhamento_Grupo_Eco_1.xlsx, cópia importada. Sem sincronização automática. A impressão usa a aba e os filtros selecionados; expanda os detalhes que deseja incluir.</p>
   </section>;
 }
