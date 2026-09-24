@@ -11,6 +11,7 @@ import importsRouter from './routes/imports.mjs';
 import { kartadoRouter } from './routes/kartado.mjs';
 import { requireUser } from './auth.mjs';
 import totvsRouter from './routes/totvs.mjs';
+import ecoRouter from './routes/kartado-eco.mjs';
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -52,6 +53,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/admin-users', adminUsersRouter);
 app.use('/api/data', dataRouter);
 app.use('/api/totvs', totvsRouter);
+app.use('/api/kartado-eco', ecoRouter);
 app.use('/api/tickets', ticketsRouter);
 app.use('/api/storage-import', (request, response, next) => {
   request.url = '/storage';
