@@ -1,4 +1,4 @@
-﻿# Acompanhamento Eco
+# Acompanhamento Eco
 
 Fonte: cópia local de Acompanhamento_Grupo_Eco_1.xlsx fornecida em 23/09/2026, com referência em 21/09/2026. A aplicação usa acompanhamento.json; o HTML original permanece apenas como referência histórica e não é importado.
 
@@ -20,7 +20,7 @@ Navegação: a aba inicial Visão do grupo contém comparativo, contagens de pen
 
 ## Importação manual pelo painel
 
-Administradores podem selecionar um .xlsx de até 5 MB em Atualização da planilha. O servidor valida as abas Unidades, Objetivos, Reunioes e Pessoas, colunas obrigatórias, unidades referenciadas, números, percentuais e datas. A prévia mostra as contagens antigas/novas e as referências. Confirmar importação grava uma nova versão; Cancelar não altera dados. Todos os usuários autenticados consultam a versão mais recente ao abrir ou recarregar a página. Erros preservam a base exibida, com aviso explícito. A base inicial embutida é usada quando ainda não existe importação.
+Administradores podem selecionar um .xlsx de até 5 MB em Atualização da planilha. O servidor valida as abas Unidades, Objetivos, Reunioes e Pessoas, colunas obrigatórias, unidades referenciadas, números, percentuais e datas. A prévia mostra as contagens antigas/novas e as referências. Confirmar importação grava uma nova versão; Cancelar não altera dados. Todos os usuários autenticados consultam a versão mais recente ao abrir ou recarregar a página. Erros preservam a base exibida, com aviso explícito. Sem importação salva, o painel exibe Aguardando a primeira importação. A base de referência não é exibida como alternativa. Falhas de consulta aparecem como Dados indisponíveis e não são tratadas como banco vazio.
 
 Armazenamento: public.kartado_eco_imports. Cada importação é um registro com arquivo, autor, data e conteúdo; nenhuma versão anterior é excluída. O histórico ainda não tem interface de restauração. Não há sincronização automática com SharePoint.
 
