@@ -1,4 +1,4 @@
-﻿create table if not exists public.kartado_eco_imports (
+create table if not exists public.kartado_eco_imports (
   id bigserial primary key,
   file_name text not null,
   imported_at timestamptz not null default now(),
