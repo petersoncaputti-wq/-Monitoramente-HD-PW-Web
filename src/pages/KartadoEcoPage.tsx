@@ -1,6 +1,7 @@
 ﻿import { useState, type ReactNode } from 'react';
 import data from '@/data/kartado-eco/acompanhamento.json';
 import './KartadoEcoPage.css';
+import { KartadoEcoImport } from './KartadoEcoImport';
 
 const percent = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 0 }).format(value);
 const date = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split('-').reverse().join('/') : value;
@@ -23,6 +24,10 @@ function Table({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
 }
 
 export function KartadoEcoPage() {
+  return <KartadoEcoImport>{current => <EcoView key={JSON.stringify(current)} data={current} />}</KartadoEcoImport>;
+}
+
+function EcoView({ data }: { data: typeof import('@/data/kartado-eco/acompanhamento.json') }) {
   const [unitName, setUnitName] = useState('group');
   const [filter, setFilter] = useState<Filter>('pending');
   const [search, setSearch] = useState('');
@@ -97,6 +102,6 @@ export function KartadoEcoPage() {
       <details className={card}><summary className="cursor-pointer text-base font-semibold text-surface-900">Participantes e frequência ({people.length})</summary><div className="mt-4"><label className="eco-no-print mb-4 flex flex-col gap-2 text-sm text-surface-700">Buscar participante<input value={search} onChange={event => setSearch(event.target.value)} className={control} placeholder="Nome, vínculo ou frente" /></label>{search && <p className="mb-2 text-xs text-surface-600">Busca: {search}</p>}<Table headers={['Nome', 'Vínculo', 'Frente', 'Presenças / convocações', 'Frequência', 'Treinamento 21/09']} rows={people.filter(item => normalize([item.Nome, item.Vinculo, item.Frente].join(' ')).includes(normalize(search.trim()))).map(item => [item.Nome, item.Vinculo, item.Frente || 'Não informada', `${item.Presencas} / ${item.Convocacoes}`, item.Frequencia, item.NoTreinamento21_09 || 'Não informado'])} /></div></details>
     </section>}
     </div>
-    <p className="text-xs leading-5 text-surface-600">Fonte: Acompanhamento_Grupo_Eco_1.xlsx, cópia importada. Sem sincronização automática. A impressão usa a aba e os filtros selecionados; expanda os detalhes que deseja incluir.</p>
+    <p className="text-xs leading-5 text-surface-600">Fonte: planilha de acompanhamento Eco importada manualmente. Sem sincronização automática. A impressão usa a aba e os filtros selecionados; expanda os detalhes que deseja incluir.</p>
   </section>;
 }

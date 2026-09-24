@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "test:kartado-eco": "node scripts/test-kartado-eco.mjs",
+    "db:migrate-kartado-eco": "node --env-file=.env.local scripts/migrate-kartado-eco.mjs",
     "preview:totvs": "node scripts/preview-totvs.mjs",
     "test:totvs": "node scripts/test-totvs.mjs",
     "db:migrate-totvs": "node --env-file=.env.local scripts/migrate-totvs.mjs",
