@@ -8,6 +8,17 @@ const initial = JSON.parse(readFileSync(new URL('../src/data/kartado-eco/acompan
 function buffer(data) { const w = XLSX.utils.book_new(); for (const [name,rows] of Object.entries(data)) XLSX.utils.book_append_sheet(w,XLSX.utils.json_to_sheet(rows),name); return XLSX.write(w,{type:'buffer',bookType:'xlsx'}); }
 const good = buffer(initial);
 assert.deepEqual(parseEcoWorkbook(good), initial);
+const version2 = structuredClone(initial);
+version2.Reunioes = version2.Reunioes.map(({ Fonte, ...row }) => ({ ...row, Formato: 'Online', Evidencia: Fonte }));
+version2.Marcos = [{ Unidade: initial.Unidades[0].Unidade, Data: '2026-09-25', Marco: 'Entrega do inventário', Situacao: 'Confirmado', Fonte: 'Unidade' }];
+const parsed2 = parseEcoWorkbook(buffer(version2));
+assert.deepEqual(parsed2.Marcos, version2.Marcos);
+assert.equal(parsed2.Reunioes[0].Formato, 'Online');
+assert.equal(parsed2.Reunioes[0].Evidencia, initial.Reunioes[0].Fonte);
+assert.equal(parsed2.Reunioes[0].Fonte, initial.Reunioes[0].Fonte);
+for (const mutate of [d => d.Marcos[0].Data = '2026-02-30', d => d.Marcos[0].Unidade = 'Unknown', d => delete d.Marcos[0].Marco]) {
+  const d = structuredClone(version2); mutate(d); assert.throws(() => parseEcoWorkbook(buffer(d)));
+}
 for (const mutate of [d => delete d.Pessoas, d => d.Unidades[0].PresencaMedia = 63, d => d.Reunioes[0].Unidade='Unknown', d => d.Unidades.push(d.Unidades[0]), d => d.Unidades[0].DataReferencia='2026-02-30']) {
   const d = structuredClone(initial); mutate(d); assert.throws(()=>parseEcoWorkbook(buffer(d)));
 }
@@ -27,5 +38,8 @@ try {
  assert.equal((await post('admin','',Buffer.from('invalid'))).status,400);assert.equal(writes,0);
  assert.equal((await post('admin')).status,200);assert.equal(writes,1);
  const persisted=await(await fetch(url,{headers:{Authorization:'user'}})).json();assert.deepEqual(persisted.payload,initial);
+ assert.equal((await post('admin','&preview=true',buffer(version2))).status,200);assert.equal(writes,1);
+ assert.equal((await post('admin','',buffer(version2))).status,200);assert.equal(writes,2);
+ const next = await (await fetch(url,{headers:{Authorization:'user'}})).json();assert.deepEqual(next.payload,parsed2);
  console.log('Excel, validation, zero/null, authentication, admin restriction, preview without writes and shared retrieval: passed.');
 } finally {server.close();}

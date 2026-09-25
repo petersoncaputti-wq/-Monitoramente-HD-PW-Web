@@ -1,6 +1,7 @@
 ﻿import XLSX from 'xlsx';
 import { readFileSync } from 'node:fs';
 const template = JSON.parse(readFileSync(new URL('../../src/data/kartado-eco/acompanhamento.json', import.meta.url), 'utf8'));
+template.Marcos = [{ Unidade: '', Data: '', Marco: '', Situacao: '', Fonte: '' }];
 const numeric = new Set(['ObjetivosCumpridos','PresencaMedia','ItensInventario','Convocados','Presentes','Presencas','Convocacoes','Cumprimento']);
 const nullable = new Set(['Convocados','Presentes']);
 const percentages = new Set(['ObjetivosCumpridos','PresencaMedia','Cumprimento']);
@@ -17,18 +18,24 @@ export function parseEcoWorkbook(buffer) {
   const payload = {};
   for (const [name, example] of Object.entries(template)) {
     const sheet = workbook.Sheets[name];
+    if (!sheet && name === 'Marcos') continue;
     if (!sheet) throw new Error(`Aba obrigatória ausente: ${name}.`);
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
     if (rows.length > 10001) throw new Error(`${name}: limite de 10.000 registros.`);
     const headers = (rows.shift() || []).map(value => String(value ?? '').trim());
+    const duplicates = headers.filter((header, index) => header && headers.indexOf(header) !== index);
+    if (duplicates.length) throw new Error(`${name}: coluna duplicada ${duplicates[0]}.`);
     const keys = Object.keys(example[0]);
+    if (name === 'Reunioes') for (const key of ['Formato', 'Evidencia']) if (headers.includes(key)) keys.push(key);
     for (const key of keys.filter(key => !optional.has(key))) {
+      if (name === 'Reunioes' && key === 'Fonte' && headers.includes('Evidencia')) continue;
       if (headers.filter(header => header === key).length !== 1) throw new Error(`${name}: coluna ${key} ausente ou duplicada.`);
     }
     payload[name] = rows.map((row, index) => ({ row, index })).filter(({ row }) => row.some(value => value !== null && value !== '')).map(({ row, index }) => {
       const result = {};
       for (const key of keys) {
         let value = row[headers.indexOf(key)] ?? null;
+        if (name === 'Reunioes' && key === 'Fonte' && !headers.includes('Fonte')) value = row[headers.indexOf('Evidencia')] ?? null;
         const fail = message => { throw new Error(`${name}, linha ${index + 2}, ${key}: ${message}`); };
         if (dates.has(key)) {
           if (value instanceof Date) value = value.toISOString().slice(0,10);
@@ -55,7 +62,7 @@ export function parseEcoWorkbook(buffer) {
   const names = payload.Unidades.map(row => row.Unidade);
   if (!names.length || new Set(names).size !== names.length) throw new Error('Unidades deve conter nomes únicos e pelo menos uma unidade.');
   for (const unit of payload.Unidades) if (unit.EntradaNaEtapa > unit.DataVirada) throw new Error(`${unit.Unidade}: entrada posterior à virada.`);
-  for (const name of ['Reunioes','Objetivos','Pessoas']) for (const row of payload[name]) {
+  for (const name of ['Reunioes','Objetivos','Pessoas','Marcos']) for (const row of payload[name] ?? []) {
     if (!names.includes(row.Unidade)) throw new Error(`${name}: unidade desconhecida ${row.Unidade}.`);
   }
   for (const row of payload.Reunioes) {
