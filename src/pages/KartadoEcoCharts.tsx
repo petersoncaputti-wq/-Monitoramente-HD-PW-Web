@@ -26,7 +26,19 @@ export function EcoGroupCharts({ data, onSelect }: { data: EcoData; onSelect: (u
     <section className="rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft"><h3 className="text-lg font-semibold text-surface-900">Objetivos por situação</h3><p className="mt-1 text-xs text-surface-600">Quantidade de objetivos. Escala comum: 0 a {max}.</p><div className="mt-5 space-y-5">{data.Unidades.map(unit => {
       const items = data.Objetivos.filter(item => item.Unidade === unit.Unidade);
       const counts = groups.map((_, index) => items.filter(item => objectiveGroup(item) === index).length);
-      return <div key={unit.Unidade}><p className="mb-2 flex justify-between gap-2 text-sm"><span>{unit.Unidade}</span><strong>{items.length} objetivos</strong></p><div className="flex h-7 overflow-hidden rounded-lg bg-brand-50">{counts.map((count, index) => count > 0 && <button key={index} type="button" title={`${groups[index].label}: ${count}`} aria-label={`${unit.Unidade}: ${count} ${groups[index].label}`} onClick={() => onSelect(unit.Unidade, index === 0 ? 'all' : index === 1 || index === 2 ? 'stopped' : 'pending')} className="h-full text-xs font-bold text-white" style={{ width: `${count / max * 100}%`, backgroundColor: groups[index].color, printColorAdjust: 'exact' }}>{count}</button>)}</div><p className="mt-2 text-xs text-surface-600">{counts.map((count, index) => count ? `${groups[index].label}: ${count}` : '').filter(Boolean).join(' · ') || 'Sem objetivos'}</p></div>;
+      const hasPending = items.some(item => item.Cumprimento < 1);
+      const summary = counts.map((count, index) => count ? `${groups[index].label}: ${count}` : '').filter(Boolean).join(' · ') || 'Sem objetivos';
+      const actionLabel = hasPending ? 'Ver pendências da concessionária' : 'Ver objetivos da concessionária';
+      return <div key={unit.Unidade}>
+        <p className="mb-2 flex justify-between gap-2 text-sm"><span>{unit.Unidade}</span><strong>{items.length} objetivos</strong></p>
+        <div role="img" aria-label={`${unit.Unidade}: ${summary}`} className="flex h-7 overflow-hidden rounded-lg bg-brand-50">
+          {counts.map((count, index) => count > 0 && <span key={index} aria-hidden="true" title={`${groups[index].label}: ${count}`} className="flex h-full items-center justify-center text-xs font-bold text-white" style={{ width: `${count / max * 100}%`, backgroundColor: groups[index].color, printColorAdjust: 'exact' }}>{count}</span>)}
+        </div>
+        <p className="mt-2 text-xs text-surface-600">{summary}</p>
+        <button type="button" onClick={() => onSelect(unit.Unidade, hasPending ? 'pending' : 'all')} aria-label={`${actionLabel}: ${unit.Unidade}`} className="eco-no-print mt-2 rounded text-left text-sm font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700">
+          {actionLabel} <span aria-hidden="true">→</span>
+        </button>
+      </div>;
     })}</div><div className="mt-4 flex flex-wrap gap-3 text-xs">{groups.map(group => <span key={group.label} className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: group.color, printColorAdjust: 'exact' }} />{group.label}</span>)}</div><details className="mt-3 text-xs text-surface-600"><summary className="cursor-pointer">Critérios de agrupamento</summary><p className="mt-2">Concluídos: cumprimento de 100%. Entre os demais, Parado, Aguardando e Não iniciado seguem a situação registrada; zero também indica não iniciado. Demais registros ficam em Outros pendentes, inclusive prazos vencidos. Cada objetivo pertence a um único grupo.</p></details></section>
   </div>;
 }
