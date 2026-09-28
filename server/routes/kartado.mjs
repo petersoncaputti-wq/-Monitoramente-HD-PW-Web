@@ -249,7 +249,7 @@ kartadoRouter.post('/reportings', async (req, res) => {
       success: true, ...SOURCE,
       auth:        { latencyMs: authMs },
       companyUuid,
-      filter:      { foundAtAfter, foundAtBefore },
+      filter:      { foundAtAfter, foundAtBefore, origin },
       pagination:  { returned: data.reportings.length, totalApi: data.totalCount, totalPages: data.totalPages, isFirstPage: data.isFirstPage },
       reportings:  data.reportings,
       metrics,
