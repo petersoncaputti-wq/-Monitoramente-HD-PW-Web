@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getTicketReasonOptions, resolveTicketReason } from '@/utils/ticketReasons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AverageGrowthRateCard } from '@/components/AverageGrowthRateCard';
 import { FreeSpaceCard } from '@/components/FreeSpaceCard';
@@ -487,6 +488,10 @@ export function DashboardPage() {
   const ticketRows = useMemo(
     () => (ticketsData?.rows.filter(isTicketRow) ?? []),
     [ticketsData],
+  );
+  const ticketReasonOptions = useMemo(
+    () => getTicketReasonOptions(ticketRows.map((row) => String(row.Motivo ?? ''))),
+    [ticketRows],
   );
   const getTicketValue = (row: TicketRow, targetKey: string) => {
     const normalizeKey = (value: string) =>
@@ -1051,10 +1056,14 @@ export function DashboardPage() {
     setTicketFormStatus({ state: 'saving' });
 
     try {
+      const input = {
+        ...ticketForm,
+        reason: resolveTicketReason(ticketForm.reason ?? '', ticketReasonOptions),
+      };
       if (ticketForm.id) {
-        await updateTicket(validAccessToken, ticketForm);
+        await updateTicket(validAccessToken, input);
       } else {
-        await createTicket(validAccessToken, ticketForm);
+        await createTicket(validAccessToken, input);
       }
 
       setTicketFormStatus({
@@ -2031,10 +2040,21 @@ export function DashboardPage() {
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Motivo
                     <input
+                      list="ticket-reason-options"
+                      placeholder="Selecione ou digite um motivo"
+                      autoComplete="off"
                       value={ticketForm.reason ?? ''}
                       onChange={(event) => updateTicketForm('reason', event.target.value)}
                       className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
                     />
+                    <datalist id="ticket-reason-options">
+                      {ticketReasonOptions.map((reason) => (
+                        <option key={reason} value={reason} />
+                      ))}
+                    </datalist>
+                    <span className="text-xs font-normal text-surface-500">
+                      Use um motivo existente. Se necessário, digite um novo.
+                    </span>
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Prioridade
