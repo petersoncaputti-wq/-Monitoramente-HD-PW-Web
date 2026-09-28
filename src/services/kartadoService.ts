@@ -17,6 +17,7 @@ export interface KartadoUser {
 }
 
 export interface KartadoReporting {
+  origin?: string | null;
   id?: string;
   number?: string | number | null;
   roadName?: string | null;
@@ -159,7 +160,7 @@ export async function searchKartadoUsers(companyUuid: string, query: string): Pr
 
 export async function loadKartadoReportings(
   companyUuid: string,
-  options: { foundAtAfter?: string; foundAtBefore?: string } = {},
+  options: { foundAtAfter?: string; foundAtBefore?: string; origin?: string } = {},
 ): Promise<KartadoConcessionDashboard['reportings']> {
   const result = await request<{
     success: boolean;
@@ -169,6 +170,7 @@ export async function loadKartadoReportings(
     companyUuid,
     foundAtAfter: options.foundAtAfter || '',
     foundAtBefore: options.foundAtBefore || '',
+    origin: options.origin || '',
     pageSize: 100,
     maxPages: 2,
   });
