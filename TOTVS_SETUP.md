@@ -30,10 +30,19 @@ definitiva. O total numerico final do Excel nao e um ticket. IDs duplicados,
 datas invalidas, arquivos acima de 10 MB e conteudo acima de 30 MB sao rejeitados.
 Os textos integrais de detalhes nao sao armazenados.
 
-Cada XLSX substitui a importacao do mes da ultima abertura no recorte, inclusive
-seu recorte anterior. Outros meses sao versoes independentes. Nao ha soma de
-tickets entre versoes. Envie a exportacao completa atualizada; arquivos
-incrementais nao sao mesclados. Aberturas usam criacao; encerramentos usam
+Cada XLSX e preservado como uma importacao independente, inclusive no mesmo mes.
+O painel abre por padrao Todos os chamados importados (XLSX), reunindo os IDs
+unicos de todos os arquivos. Para IDs repetidos, prevalece a importacao mais
+recente por imported_at e id. Chamados ausentes no novo arquivo sao preservados.
+Arquivos individuais continuam disponiveis no seletor. Recortes mistos sao
+rotulados como multiplos sistemas se algum arquivo usar o recorte completo.
+GET /api/totvs/consolidated retorna essa base sem limite de meses/importacoes;
+sem XLSX, retorna {id: 'consolidated', payload: null}.
+Dados substituidos antes desta correcao exigem reimportacao do arquivo anterior.
+Ao recuperar arquivos antigos, reimporte o arquivo atual por ultimo para manter
+os status mais recentes nos IDs em comum.
+
+Aberturas usam criacao; encerramentos usam
 resolucao e status Closed/Resolved. Encerrados sem data nao entram em series nem
 tempos. Pendentes sao os criados no periodo e nao finalizados na exportacao.
 Tempo medio e mediana usam horas corridas. SLA permanece indisponivel.
@@ -66,7 +75,22 @@ geram novos pontos. O historico misto do ZIP nao alimenta este grafico.
 A tabela public.totvs_imports foi criada no Azure pelo administrador durante
 esta tarefa. O usuario da aplicacao recebeu SELECT, INSERT, UPDATE na tabela
 e USAGE na sequencia; a leitura foi confirmada no terminal do App Service.
-O indice unico totvs_imports_report_period_uidx garante um registro por mes.
+A migracao remove o indice mensal antigo totvs_imports_report_period_uidx e
+cria totvs_imports_zip_period_uidx, unico apenas para payloads nao detalhados.
+Nenhuma linha existente e excluida. Execute npm run db:migrate-totvs junto da
+publicacao desta versao (suspenda importacoes durante a troca); a API anterior
+usa o indice antigo e nao e compativel com o novo esquema.
+
+Teste de regressao com PostgreSQL isolado (sem acessar Azure):
+
+```powershell
+npm install --prefix tmp/totvs-preview/sql-test --no-package-lock --no-save @electric-sql/pglite
+node scripts/test-totvs-accumulation.mjs tmp/totvs-preview/sql-test/node_modules/@electric-sql/pglite/dist/index.js
+```
+
+Verifica migracao repetivel, preservacao do legado, arquivos do mesmo mes e de
+meses diferentes, IDs repetidos, atualizacao de status, concorrencia, recortes,
+autorizacao, isolamento do ZIP e limpeza.
 
 Cada ZIP atualiza o acumulado do mes informado: ON CONFLICT (report_period)
 substitui payload e datas. Meses diferentes permanecem separados. Apenas
@@ -111,8 +135,10 @@ direto existe apenas em desenvolvimento, nunca no build de producao.
 
 O fluxo existente em .github/workflows publica pushes da branch
 azure-migration no App Service monitoramentohdpwdatabase. A conexao utiliza
-as configuracoes DB_* do ambiente Azure. Nao executar db:migrate geral
-para publicar a tela; a tabela e as permissoes ja foram preparadas.
+as configuracoes DB_* do ambiente Azure. Executar npm run db:migrate-totvs
+na publicacao desta correcao, inclusive em instalacoes existentes. Nao executar
+db:migrate geral para publicar a tela. Suspender importacoes durante a troca
+da versao e do indice, conforme a secao Banco e atualizacao.
 
 Para uma nova instalacao, executar scripts/migrate-totvs.mjs com as
 credenciais de migracao configuradas e conceder os mesmos privilegios ao

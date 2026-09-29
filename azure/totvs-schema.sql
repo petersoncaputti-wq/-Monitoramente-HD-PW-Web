@@ -9,14 +9,15 @@ CREATE TABLE IF NOT EXISTS public.totvs_imports (
   payload jsonb NOT NULL CHECK (jsonb_typeof(payload) = 'object')
 );
 
--- One accumulated record per month. Reimports update this row.
--- If a previous installation contains duplicate months, fail atomically;
--- this creation script never deletes historical records automatically.
-CREATE UNIQUE INDEX IF NOT EXISTS totvs_imports_report_period_uidx
-  ON public.totvs_imports (report_period);
+-- Detailed files are preserved individually. Only aggregate ZIP reports
+-- represent a replaceable monthly snapshot. No historical rows are removed.
+DROP INDEX IF EXISTS public.totvs_imports_report_period_uidx;
+CREATE UNIQUE INDEX IF NOT EXISTS totvs_imports_zip_period_uidx
+  ON public.totvs_imports (report_period)
+  WHERE (payload->>'kind' IS DISTINCT FROM 'detailed');
 
 COMMENT ON TABLE public.totvs_imports IS
-  'Acumulado mensal TOTVS. Uma linha por mês; atualizações semanais substituem os dados do mês.';
+  'Importações TOTVS: arquivos detalhados preservados e acumulados ZIP por mês.';
 COMMENT ON COLUMN public.totvs_imports.report_period IS
   'Mês selecionado na exportação, no formato YYYY-MM.';
 COMMENT ON COLUMN public.totvs_imports.source_updated_at IS
