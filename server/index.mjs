@@ -12,6 +12,8 @@ import { kartadoRouter } from './routes/kartado.mjs';
 import { requireUser } from './auth.mjs';
 import totvsRouter from './routes/totvs.mjs';
 import ecoRouter from './routes/kartado-eco.mjs';
+import auditRouter from './routes/kartado-audit.mjs';
+import { auditWorker } from './services/kartado-audit-jobs.mjs';
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -68,6 +70,8 @@ app.use('/api/e365-import', (request, response, next) => {
   importsRouter(request, response, next);
 });
 app.use('/api/v1/kartado', requireUser, kartadoRouter);
+app.use('/api/kartado-audit', auditRouter);
+auditWorker.start();
 
 if (existsSync(distPath)) {
   app.use(express.static(distPath, { index: false }));

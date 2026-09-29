@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "test:kartado-audit": "node scripts/test-kartado-audit.mjs",
+    "db:migrate-kartado-audit": "node --env-file=.env.local scripts/migrate-kartado-audit.mjs",
     "test:kartado-eco": "node scripts/test-kartado-eco.mjs",
     "db:migrate-kartado-eco": "node --env-file=.env.local scripts/migrate-kartado-eco.mjs",
     "preview:totvs": "node scripts/preview-totvs.mjs",
@@ -43,6 +45,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^25.5.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

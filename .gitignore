@@ -6,3 +6,4 @@ dist/
 public/dados/*
 !public/dados/.gitkeep
 tmp/totvs-preview/
+tmp/kartado-audit-qa/
