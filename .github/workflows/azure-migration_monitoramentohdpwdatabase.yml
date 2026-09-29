@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test audit reporting integration
+        run: npm run test:kartado-audit
+
       - name: Build application
         run: npm run build
         env:

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { KartadoAuditReportings } from '@/components/KartadoAuditReportings';
+import { getAuditConfig } from '@/services/kartadoAuditService';
 import {
   loadKartadoCompanies,
   loadKartadoConcession,
@@ -368,6 +370,16 @@ function riskLabel(user: KartadoUser) {
 }
 
 export function KartadoPage({ area }: { area: KartadoArea }) {
+  const [reportingsProvider, setReportingsProvider] = useState<'auditor' | 'legacy'>('auditor');
+  const useAuditor = reportingsProvider === 'auditor';
+  useEffect(() => {
+    if (area !== 'audit') return;
+    const controller = new AbortController();
+    getAuditConfig(controller.signal).then(config => setReportingsProvider(config.provider)).catch(() => {
+      // A nova aba exibe a indisponibilidade. Nunca faz fallback silencioso à amostra antiga.
+    });
+    return () => controller.abort();
+  }, [area]);
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
   const [concessions, setConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
   const [failedCompanies, setFailedCompanies] = useState<Record<string, string>>({});
@@ -592,6 +604,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
 
   async function openTab(nextTab: KartadoTab) {
     setTab(nextTab);
+    if (nextTab === 'reportings' && useAuditor) return;
     if (nextTab !== 'reportings' || !selected) return;
     if (appliedFilters) return;
     if (reportingsLoaded.has(selected.company.uuid)) return;
@@ -711,7 +724,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Sistema Kartado</p>
             <h2 className="mt-3 text-2xl font-semibold text-surface-900 md:text-3xl">Painel de auditoria</h2>
-            <p className="mt-2 text-sm text-surface-700">Dados em tempo real da API Kartado.</p>
+            <p className="mt-2 text-sm text-surface-700">Dados do Kartado por unidade. A consulta de apontamentos informa seu período e atualização.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
@@ -820,7 +833,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             ))}
           </nav>
 
-          <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+          {!(tab === 'reportings' && useAuditor) ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-surface-900">Filtrar apontamentos por data e origem</h3>
               <p className="text-xs text-surface-600">Combine a origem com a data em que o apontamento foi encontrado para atualizar totais, gráficos, lista e alertas da unidade selecionada.</p>
@@ -848,7 +861,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             {appliedFilters ? <p className="mt-3 text-xs font-medium text-brand-700">Filtros aplicados: {appliedFilters.from || 'início da base'} até {appliedFilters.to || 'sem data final'} · Origem: {appliedFilters.origin || 'Todas'}.</p> : null}
             {selected.reportings.items.length < Number(selected.reportings.counts.totalApi || 0) ? <p className="mt-3 text-xs text-surface-600">Consulta parcial: {formatNumber(selected.reportings.items.length)} de {formatNumber(Number(selected.reportings.counts.totalApi))} apontamentos. Gráficos e alertas de apontamentos consideram apenas os registros carregados. Refine o período e a origem para reduzir o resultado.</p> : null}
             {reportingsError ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reportingsError}</p> : null}
-          </div>
+          </div> : null}
 
           {tab === 'overview' ? (
             <div className="mt-5 space-y-5">
@@ -906,7 +919,9 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             </div>
           ) : null}
 
-          {tab === 'reportings' ? (
+          {tab === 'reportings' && useAuditor ? <KartadoAuditReportings key={selectedUuid} initialCompany={selectedUuid} /> : null}
+
+          {tab === 'reportings' && !useAuditor ? (
             <div className="mt-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-surface-700">
                 <span>
