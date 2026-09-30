@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { KartadoAuditCharts } from './KartadoAuditCharts';
 import {
   AuditRequestError, getActiveAuditJob, getAuditCompanies, getAuditJob, getAuditOrigins, getAuditResult, startAuditJob,
   type AuditCompany, type AuditOrigin, type AuditParams, type AuditResult,
@@ -192,6 +193,7 @@ export function KartadoAuditReportings({ initialCompany }: { initialCompany: str
           <label className="grid gap-1 text-xs text-surface-700">Criado até<input type="date" className={field} min={filters.from || undefined} value={filters.to} onChange={event => updateFilter('to', event.target.value)} /></label>
         </div><p className="mt-3 text-xs text-surface-600">As datas filtram a criação nos registros já recebidos. Não ampliam o período consultado e não equivalem à data em que a ocorrência foi encontrada.</p>
       </div>
+      <KartadoAuditCharts items={visible} partial={partial} sectionAvailable={result.trechoDisponivel} />
       <div className="rounded-2xl border border-brand-100 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h4 className="font-semibold text-surface-900">Apontamentos encontrados</h4><span className="text-xs text-surface-600" aria-live="polite">{number(visible.length)} de {number(result.items.length)} registros carregados</span></div>
         {!visible.length ? <p className="py-8 text-center text-sm text-surface-600">{result.items.length ? 'Nenhum registro corresponde aos filtros selecionados.' : partial ? 'Nenhum registro recebido. A consulta está incompleta.' : 'Nenhum apontamento encontrado para esta origem e período.'}</p> : null}
