@@ -4,6 +4,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { query } from './db.mjs';
 import authRouter from './routes/auth.mjs';
+import samlRouter from './routes/saml.mjs';
 import adminUsersRouter from './routes/admin-users.mjs';
 import dataRouter from './routes/data.mjs';
 import ticketsRouter from './routes/tickets.mjs';
@@ -52,6 +53,7 @@ app.get('/api/health', async (_request, response) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/auth/saml', samlRouter);
 app.use('/api/admin-users', adminUsersRouter);
 app.use('/api/data', dataRouter);
 app.use('/api/totvs', totvsRouter);

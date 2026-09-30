@@ -7,6 +7,7 @@ const pool = createPool({ migration: true });
 try {
   const schema = await readFile(resolve('azure/schema.sql'), 'utf8');
   await pool.query(schema);
+  await pool.query(await readFile(resolve('azure/saml-schema.sql'), 'utf8'));
   await pool.query(await readFile(resolve('azure/totvs-schema.sql'), 'utf8'));
   await pool.query(await readFile(resolve('azure/kartado-audit-schema.sql'), 'utf8'));
   await pool.query((await readFile(resolve('azure/kartado-eco-schema.sql'), 'utf8')).replace(/^\uFEFF/, ''));
