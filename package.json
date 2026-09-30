@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "test:saml": "node scripts/test-saml.mjs",
+    "db:migrate-saml": "node --env-file=.env.local scripts/migrate-saml.mjs",
+    "auth:link-saml-user": "node --env-file=.env.local scripts/link-saml-user.mjs",
     "test:kartado-audit": "node scripts/test-kartado-audit.mjs",
     "db:migrate-kartado-audit": "node --env-file=.env.local scripts/migrate-kartado-audit.mjs",
     "test:kartado-eco": "node scripts/test-kartado-eco.mjs",
@@ -33,6 +36,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@node-saml/node-saml": "^5.1.0",
+    "@xmldom/xmldom": "^0.8.15",
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
@@ -54,6 +59,7 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "xml-crypto": "^6.3.2"
   }
 }
