@@ -1,5 +1,15 @@
 # Upgrade da aba Apontamentos
 
+## Consulta completa por unidade
+
+A aba do painel agora utiliza diretamente `POST /api/v1/kartado/reportings/page`, com as credenciais Kartado do servidor e a autenticação do portal. Ao abrir, percorre todas as páginas de 100 registros, sem filtro de origem ou data, com progresso e deduplicação por identificador. As rotas do Auditor abaixo permanecem disponíveis, mas não controlam mais esta aba.
+
+Os filtros são locais e atualizam os seis cards, gráficos e tabela. Norte/Sul dependem de um campo explícito `trecho` ou `section`; não são inferidos pelo sentido de tráfego. Consultas incompletas são sinalizadas, inclusive quando a contagem muda durante o carregamento. Sair da aba interrompe o carregamento; consultas completas são reutilizadas por cinco minutos na sessão da página (até cinco unidades). Atualizar ignora esse cache.
+
+Validação: `node scripts/test-kartado-unit-reportings.mjs`, `npm run test:kartado-audit` e `npm run build`. Validar também em uma sessão autenticada com uma unidade de grande volume.
+
+## Integração anterior com o Auditor
+
 A nova aba usa o Agente Auditor para consultar uma origem por vez. A ativação é explícita por `KARTADO_REPORTINGS_PROVIDER=auditor`; sem essa configuração, o painel conserva o provedor anterior. Usuários, saúde, fotos e os indicadores gerais continuam na integração Kartado existente. Os totais da consulta não substituem os totais gerais da concessão.
 
 ## Configuração e publicação

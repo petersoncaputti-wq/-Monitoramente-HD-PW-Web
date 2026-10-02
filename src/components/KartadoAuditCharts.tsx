@@ -3,7 +3,7 @@ import type { AuditItem } from '@/services/kartadoAuditService';
 
 type Bucket = { label: string; count: number };
 const number = (value: number) => value.toLocaleString('pt-BR');
-function group(items: AuditItem[], field: 'status' | 'natureza' | 'rodovia' | 'trecho'): Bucket[] {
+function group(items: AuditItem[], field: 'status' | 'natureza' | 'classe' | 'rodovia' | 'trecho'): Bucket[] {
   const counts = new Map<string, number>();
   for (const item of items) {
     const label = item[field]?.trim() || 'Não informado';
@@ -53,16 +53,31 @@ export function KartadoAuditCharts({ items, partial, sectionAvailable }: { items
         monthly.push({ label: key, count: months.get(key) || 0 });
       }
     }
-    return { status: group(items, 'status'), nature: group(items, 'natureza'), road: group(items, 'rodovia'), section: group(items, 'trecho'), monthly, undated };
+    return { status: group(items, 'status'), nature: group(items, 'natureza'), classes: group(items, 'classe'), road: group(items, 'rodovia'), section: group(items, 'trecho'), monthly, undated };
   }, [items]);
   const max = Math.max(1, ...data.monthly.map(item => item.count));
   return <section aria-label="Gráficos dos apontamentos" className="space-y-4">
     <div><h4 className="text-lg font-semibold text-surface-900">Análise dos apontamentos{partial ? ' · resultado parcial' : ''}</h4>
-      <p className="mt-1 text-sm text-surface-600">{number(items.length)} registros após os filtros. {partial ? 'Os gráficos estão incompletos porque algumas páginas da consulta falharam.' : 'Os gráficos acompanham os filtros acima.'}</p></div>
+      <p className="mt-1 text-sm text-surface-600">{number(items.length)} registros após os filtros. {partial ? 'A consulta ainda está incompleta; os gráficos consideram somente os registros recebidos.' : 'Os gráficos acompanham os filtros acima.'}</p></div>
     {!items.length ? <p className="rounded-2xl border border-brand-100 p-6 text-sm text-surface-600">Sem registros para exibir nos gráficos.</p> : <>
       <div className="grid gap-4 lg:grid-cols-2">
+        {sectionAvailable ? <section aria-label="Norte e Sul — visão geral" className="rounded-2xl border border-brand-100 bg-white p-5">
+          <h5 className="font-semibold text-surface-900">Norte e Sul — visão geral</h5>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-6">
+            <div role="img" aria-label={data.section.map(bucket => `${bucket.label}: ${number(bucket.count)}`).join('; ')} className="h-44 w-44 shrink-0 rounded-full" style={{ background: (() => {
+              let offset = 0;
+              return `conic-gradient(${data.section.map(bucket => {
+                const start = offset; offset += bucket.count / items.length * 100;
+                const color = bucket.label === 'Norte' ? '#3b82f6' : bucket.label === 'Sul' ? '#38bdf8' : '#94a3b8';
+                return `${color} ${start}% ${offset}%`;
+              }).join(', ')})`;
+            })() }} />
+            <ul className="space-y-3 text-sm">{data.section.map(bucket => <li key={bucket.label}><span className={`mr-2 inline-block h-3 w-3 rounded-full ${bucket.label === 'Norte' ? 'bg-blue-500' : bucket.label === 'Sul' ? 'bg-sky-400' : 'bg-slate-400'}`} />{bucket.label}: <strong>{number(bucket.count)}</strong> · {(bucket.count / items.length * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</li>)}</ul>
+          </div>
+        </section> : null}
+        <Distribution title="Principais naturezas" buckets={data.nature} total={items.length} color="bg-blue-500" />
+        <Distribution title="Por classe" buckets={data.classes} total={items.length} color="bg-sky-500" />
         <Distribution title="Por status" buckets={data.status} total={items.length} color="bg-brand-600" />
-        <Distribution title="Por natureza" buckets={data.nature} total={items.length} color="bg-teal-600" />
         <Distribution title="Por rodovia" buckets={data.road} total={items.length} color="bg-sky-600" />
         {sectionAvailable ? <Distribution title="Por trecho" buckets={data.section} total={items.length} color="bg-emerald-700" /> : null}
       </div>

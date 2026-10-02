@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { KartadoAuditReportings } from '@/components/KartadoAuditReportings';
-import { getAuditConfig } from '@/services/kartadoAuditService';
+import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
 import {
   loadKartadoCompanies,
   loadKartadoConcession,
@@ -370,16 +369,6 @@ function riskLabel(user: KartadoUser) {
 }
 
 export function KartadoPage({ area }: { area: KartadoArea }) {
-  const [reportingsProvider, setReportingsProvider] = useState<'auditor' | 'legacy'>('auditor');
-  const useAuditor = reportingsProvider === 'auditor';
-  useEffect(() => {
-    if (area !== 'audit') return;
-    const controller = new AbortController();
-    getAuditConfig(controller.signal).then(config => setReportingsProvider(config.provider)).catch(() => {
-      // A nova aba exibe a indisponibilidade. Nunca faz fallback silencioso à amostra antiga.
-    });
-    return () => controller.abort();
-  }, [area]);
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
   const [concessions, setConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
   const [failedCompanies, setFailedCompanies] = useState<Record<string, string>>({});
@@ -400,9 +389,6 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   const [reportingsError, setReportingsError] = useState('');
   const [usersPage, setUsersPage] = useState(1);
   const [usersPageSize, setUsersPageSize] = useState(20);
-  const [reportingsPage, setReportingsPage] = useState(1);
-  const [reportingsPageSize, setReportingsPageSize] = useState(20);
-  const [reportingsLoaded, setReportingsLoaded] = useState<Set<string>>(() => new Set());
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthCompleted, setHealthCompleted] = useState(0);
   const [healthConcessions, setHealthConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
@@ -420,7 +406,6 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     setConcessions({});
     setFailedCompanies({});
     setDetailedCompanies(new Set());
-    setReportingsLoaded(new Set());
     setHealthConcessions({});
     setCompletedCount(0);
     try {
@@ -571,23 +556,15 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     ...(selected?.reportings.alerts || []),
   ];
   const paginatedUsers = users.slice((usersPage - 1) * usersPageSize, usersPage * usersPageSize);
-  const reportingItems = selected?.reportings.items || [];
   const originOptions = [...new Set([
     ...(concessions[selectedUuid]?.reportings.items || []),
-    ...reportingItems,
+    ...(selected?.reportings.items || []),
   ].map(item => item.origin).filter((value): value is string => typeof value === 'string' && !!value.trim()))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  const paginatedReportings = reportingItems.slice(
-    (reportingsPage - 1) * reportingsPageSize,
-    reportingsPage * reportingsPageSize,
-  );
 
   useEffect(() => {
     setUsersPage(1);
   }, [search, selectedUuid, usersPageSize]);
 
-  useEffect(() => {
-    setReportingsPage(1);
-  }, [selectedUuid, reportingsPageSize]);
 
   async function searchRemote() {
     if (!selected || !search.trim()) return;
@@ -602,34 +579,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     }
   }
 
-  async function openTab(nextTab: KartadoTab) {
-    setTab(nextTab);
-    if (nextTab === 'reportings' && useAuditor) return;
-    if (nextTab !== 'reportings' || !selected) return;
-    if (appliedFilters) return;
-    if (reportingsLoaded.has(selected.company.uuid)) return;
-
-    setReportingsLoading(true);
-    setReportingsError('');
-    try {
-      const reportings = await loadKartadoReportings(selected.company.uuid);
-      setConcessions((current) => ({
-        ...current,
-        [selected.company.uuid]: {
-          ...selected,
-          reportings,
-          alerts: [...(selected.users.alertas || []), ...(reportings.alerts || [])],
-        },
-      }));
-      setReportingsLoaded((current) => new Set(current).add(selected.company.uuid));
-    } catch (reason) {
-      setReportingsError(
-        reason instanceof Error ? reason.message : 'Não foi possível carregar os apontamentos.',
-      );
-    } finally {
-      setReportingsLoading(false);
-    }
-  }
+  function openTab(nextTab: KartadoTab) { setTab(nextTab); }
 
   function withReportings(
     concession: KartadoConcessionDashboard,
@@ -655,7 +605,6 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
       setFilteredConcession(null);
       setAppliedFilters(null);
       setReportingsError('');
-      setReportingsPage(1);
       return;
     }
     if (dateFrom && dateTo && dateFrom > dateTo) {
@@ -673,7 +622,6 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
       });
       setFilteredConcession(withReportings(concessions[selected.company.uuid] || selected, reportings));
       setAppliedFilters({ from: dateFrom, to: dateTo, origin: origin.trim() });
-      setReportingsPage(1);
     } catch (reason) {
       setReportingsError(reason instanceof Error ? reason.message : 'Não foi possível aplicar os filtros.');
     } finally {
@@ -688,34 +636,8 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     setAppliedFilters(null);
     setFilteredConcession(null);
     setReportingsError('');
-    setReportingsPage(1);
   }
 
-  async function refreshReportings() {
-    if (!selected) return;
-    setReportingsLoading(true);
-    setReportingsError('');
-    try {
-      const reportings = await loadKartadoReportings(selected.company.uuid, {
-        foundAtAfter: appliedFilters?.from,
-        foundAtBefore: appliedFilters?.to,
-        origin: appliedFilters?.origin,
-      });
-      if (appliedFilters) {
-        setFilteredConcession(withReportings(concessions[selected.company.uuid] || selected, reportings));
-      } else {
-        setConcessions((current) => ({
-          ...current,
-          [selected.company.uuid]: withReportings(selected, reportings),
-        }));
-      }
-      setReportingsPage(1);
-    } catch (reason) {
-      setReportingsError(reason instanceof Error ? reason.message : 'Falha ao atualizar apontamentos.');
-    } finally {
-      setReportingsLoading(false);
-    }
-  }
 
   return (
     <section className="mt-6 space-y-5">
@@ -833,7 +755,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             ))}
           </nav>
 
-          {!(tab === 'reportings' && useAuditor) ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+          {tab !== 'reportings' ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-surface-900">Filtrar apontamentos por data e origem</h3>
               <p className="text-xs text-surface-600">Combine a origem com a data em que o apontamento foi encontrado para atualizar totais, gráficos, lista e alertas da unidade selecionada.</p>
@@ -919,24 +841,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             </div>
           ) : null}
 
-          {tab === 'reportings' && useAuditor ? <KartadoAuditReportings key={selectedUuid} initialCompany={selectedUuid} /> : null}
-
-          {tab === 'reportings' && !useAuditor ? (
-            <div className="mt-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-surface-700">
-                <span>
-                  Exibindo {formatNumber(selected.reportings.items?.length || 0)} de{' '}
-                  {formatNumber(Number(selected.summary.apontamentosTotal || 0))} apontamentos.
-                </span>
-                <button type="button" onClick={() => void refreshReportings()} disabled={reportingsLoading} className="rounded-xl border border-brand-100 px-3 py-2 text-xs font-semibold text-brand-700 disabled:opacity-50">
-                  Atualizar apontamentos
-                </button>
-              </div>
-              {reportingsLoading ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-700">Carregando apontamentos da unidade...</p> : null}
-              {!reportingsLoading && !reportingsError && !selected.reportings.items?.length ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-surface-700">Nenhum apontamento retornado para esta consulta.</p> : null}
-              {reportingItems.length ? <><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600"><tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th><th className="p-3">Origem</th></tr></thead><tbody>{paginatedReportings.map((item, index) => <tr key={item.id || index} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td><td className="p-3">{item.origin || 'Não informada'}</td></tr>)}</tbody></table></div><Pagination page={reportingsPage} pageSize={reportingsPageSize} total={reportingItems.length} onPageChange={setReportingsPage} onPageSizeChange={setReportingsPageSize} /></> : null}
-            </div>
-          ) : null}
+          {tab === 'reportings' ? <KartadoUnitReportings key={selectedUuid} company={selectedUuid} name={selected.company.name} /> : null}
 
           {tab === 'alerts' ? (
             <div className="mt-5 grid gap-3">{alerts.length ? alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4"><div className="flex justify-between gap-4"><h3 className="font-semibold text-surface-900">{alert.title}</h3><span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span></div>{alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}{alert.action ? <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p> : null}<AlertDetails alert={alert} users={selected.users.users || []} reportings={selected.reportings.items || []} /></article>) : <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>}</div>

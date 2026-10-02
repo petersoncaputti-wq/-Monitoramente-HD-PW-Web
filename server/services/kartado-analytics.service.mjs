@@ -143,6 +143,7 @@ function normalizeReporting(raw) {
     endKm:          a.endKm           ?? a.end_km           ?? null,
     sentido:        a.sentido         || a.direction        || null,
     faixa:          a.faixa           || a.lane             || a.faixa_pista || null,
+    trecho:         a.trecho || a.section || null,
     natureza:       a.natureza        || a.nature           || null,
     classe:         a.classe          || a.class            || a.classification || null,
     occurrenceType: a.occurrenceType  || a.occurrence_type  || a.natureza || a.nature
