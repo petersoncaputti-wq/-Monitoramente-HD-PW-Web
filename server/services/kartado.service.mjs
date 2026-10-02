@@ -831,10 +831,12 @@ export async function runDiagnostics(token, sampleCompanyUuid = null) {
 export async function listReportingPage(token, companyUuid, page = 1) {
   let totalCount = null;
   let requests = 0;
+  let consecutiveFailures = 0;
   const failedRecords = [];
   async function read(offset, size) {
     // Limita a recuperação quando o serviço inteiro está indisponível.
-    if (++requests > 20) throw { httpStatus: 500, message: 'Limite de recuperação da página atingido.' };
+    // A árvore completa tem 125 chamadas (1 + 4 + 20 + 100).
+    if (++requests > 125 || consecutiveFailures >= 20) throw { httpStatus: 500, message: 'Limite de recuperação da página atingido.' };
     let payload;
     try {
       payload = await apiFetch(token, '/Reporting/Spreadsheet/', {
@@ -842,6 +844,7 @@ export async function listReportingPage(token, companyUuid, page = 1) {
       });
     } catch (error) {
       if (error.httpStatus !== 500) throw error;
+      consecutiveFailures++;
       if (size === 1) { failedRecords.push(offset + 1); return []; }
       const smaller = size === 100 ? 25 : size === 25 ? 5 : 1;
       const items = [];
@@ -854,6 +857,7 @@ export async function listReportingPage(token, companyUuid, page = 1) {
     if (!Array.isArray(payload) && !Array.isArray(payload?.data) && !Array.isArray(payload?.data?.results) && !Array.isArray(payload?.results)) {
       throw { httpStatus: 502, message: 'Formato de apontamentos não reconhecido.' };
     }
+    consecutiveFailures = 0;
     const data = extractPage(payload, size);
     if (totalCount !== null && totalCount !== data.totalCount) throw { httpStatus: 502, message: 'O total mudou durante a recuperação da página.' };
     totalCount = data.totalCount;

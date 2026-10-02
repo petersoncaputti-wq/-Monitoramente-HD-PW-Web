@@ -77,6 +77,22 @@ try {
   const partialPage = await loadUnitReportings('company', new AbortController().signal, () => {}, async () => ({ items: recovered.items.map(normalizeUnitReporting), total: 100, pages: 1, failedRecords: recovered.failedRecords }));
   assert.deepEqual(partialPage.failedPages, [1]);
   assert.match(partialPage.issue, /31117/);
+  // Vários registros ruins ultrapassam o antigo limite de 20 chamadas.
+  const badOffsets = [31116, 31141, 31166];
+  let multipleRecoveryCalls = 0;
+  globalThis.fetch = async url => {
+    multipleRecoveryCalls++;
+    const query = new URL(url).searchParams;
+    const size = Number(query.get('page_size'));
+    const start = (Number(query.get('page')) - 1) * size;
+    if (badOffsets.some(offset => offset >= start && offset < start + size)) return Response.json({}, { status: 500 });
+    return Response.json({ count: 34187, results: Array.from({ length: size }, (_, i) => ({ uuid: `item-${start + i}` })) });
+  };
+  const multipleRecovered = await listReportingPage('token', 'company', 312);
+  assert.ok(multipleRecoveryCalls > 20);
+  assert.equal(multipleRecovered.items.length, 97);
+  assert.equal(new Set(multipleRecovered.items.map(item => item.uuid)).size, 97);
+  assert.deepEqual(multipleRecovered.failedRecords, badOffsets.map(offset => offset + 1));
   let unavailableCalls = 0;
   globalThis.fetch = async () => { unavailableCalls++; return Response.json({}, { status: 500 }); };
   await assert.rejects(listReportingPage('token', 'company', 312), error => error.httpStatus === 500);
