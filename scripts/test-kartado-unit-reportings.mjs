@@ -8,12 +8,12 @@ const compile = async path => {
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
   return import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
 };
-const { normalizeUnitReporting, loadUnitReportingPage } = await compile('../src/services/kartadoUnitReportings.ts');
+const { normalizeUnitReporting, loadUnitReportingPage, loadUnitReportings, ReportingPageError } = await compile('../src/services/kartadoUnitReportings.ts');
 const { auditCounts, filterAuditItems, emptyAuditFilters } = await compile('../src/utils/kartadoAudit.ts');
 const realFetch = globalThis.fetch;
 try {
   const rows = Array.from({ length: 205 }, (_, index) => ({ id: `id-${index}`, attributes: {
-    number: index + 1, origin: index % 2 ? 'TRO' : 'NS', trecho: index % 2 ? 'Sul' : 'Norte',
+    number: index + 1, origin: index % 2 ? 'TRO' : 'NS', direction: index % 2 ? 'Sul' : 'Norte', occurrenceKind: 'Drenagem',
     status: index % 2 ? 'Executado' : 'Identificado', createdAt: '2026-09-01T12:00:00Z', dueAt: '2026-09-02',
   } }));
   const requests = [];
@@ -37,6 +37,19 @@ try {
   assert.equal(filterAuditItems(received, emptyAuditFilters).length, 205);
   assert.deepEqual(auditCounts(received, '2026-10-02'), { total: 205, pending: 103, completed: 102, overdue: 103, other: 0 });
   assert.equal(normalizeUnitReporting({ id: 'missing' }).trecho, 'Não identificado');
+  assert.equal(received[0].natureza, 'Drenagem');
+  assert.equal(filterAuditItems(received, { ...emptyAuditFilters, nature: 'Drenagem' }).length, 205);
+  const realShape = { uuid: 'sample', direction: 'Sul', trecho: 'Norte', occurrenceKind: 'Drenagem e Obras de Arte Corrente (OAC)', occurrenceType: 'Limpeza / Desobstrução de Drenagem' };
+  const mapped = normalizeUnitReporting(buildReportingMetrics([realShape], 1).items[0]);
+  assert.equal(mapped.trecho, 'Sul');
+  assert.equal(mapped.natureza, realShape.occurrenceKind);
+  assert.equal(mapped.classe, realShape.occurrenceType);
+  assert.equal(normalizeUnitReporting({ direction: ' NORTE ' }).trecho, 'Norte');
+  assert.equal(normalizeUnitReporting({ direction: 'Leste', trecho: 'Norte' }).trecho, 'Não identificado');
+  assert.equal(normalizeUnitReporting({ trecho: 'Norte' }).trecho, 'Não identificado');
+  assert.equal(normalizeUnitReporting({ sentido: 'sul' }).trecho, 'Sul');
+  assert.equal(normalizeUnitReporting({ natureza: 'Natureza explícita', occurrenceKind: 'Outra' }).natureza, 'Natureza explícita');
+
   globalThis.fetch = async () => Response.json({ unexpected: [] });
   await assert.rejects(listReportingPage('token', 'company'), error => error.httpStatus === 502);
   globalThis.fetch = async () => Response.json({ detail: 'denied' }, { status: 401 });
@@ -47,3 +60,59 @@ try {
   await assert.rejects(loadUnitReportingPage('company', 1, new AbortController().signal), /sem identificação/);
 } finally { globalThis.fetch = realFetch; }
 console.log('Apontamentos por unidade: paginação sem filtros, normalização, cards, filtros, resposta inválida e falha de autenticação OK.');
+
+// Volume equivalente ao relato: 21.200 registros, 212 páginas, fora de ordem.
+let active = 0, peak = 0, firstFinished = false;
+const calls = [], progressEvents = [];
+const makePage = (page, total = 21200) => ({ total, pages: Math.ceil(total / 100), items: Array.from({ length: Math.min(100, total - (page - 1) * 100) }, (_, i) => normalizeUnitReporting({ id: `row-${(page - 1) * 100 + i}`, status: 'Identificado' })) });
+const complete = await loadUnitReportings('company', new AbortController().signal, progress => progressEvents.push(progress.processed), async (_, page) => {
+  if (page > 1) assert.equal(firstFinished, true);
+  calls.push(page); active++; peak = Math.max(peak, active);
+  await new Promise(resolve => setTimeout(resolve, page % 3));
+  active--; if (page === 1) firstFinished = true;
+  return makePage(page);
+});
+assert.equal(peak, 3);
+assert.equal(complete.items.length, 21200);
+assert.equal(complete.issue, '');
+assert.equal(new Set(calls).size, 212);
+assert.equal(progressEvents.at(-1), 212);
+assert.ok(progressEvents.every((value, index) => !index || value > progressEvents[index - 1]));
+
+const attempts = new Map();
+const partialResult = await loadUnitReportings('company', new AbortController().signal, () => {}, async (_, page) => {
+  const attempt = (attempts.get(page) || 0) + 1; attempts.set(page, attempt);
+  if (page === 2 || (page === 3 && attempt === 1)) throw new ReportingPageError('upstream failure', 500);
+  return makePage(page, 600);
+});
+assert.equal(attempts.get(2), 3);
+assert.equal(attempts.get(3), 2);
+assert.equal(attempts.get(6), 1);
+assert.deepEqual(partialResult.failedPages, [2]);
+assert.equal(partialResult.items.length, 500);
+assert.match(partialResult.issue, /HTTP 500/);
+
+const mismatch = await loadUnitReportings('company', new AbortController().signal, () => {}, async (_, page) => {
+  const data = makePage(page, 300);
+  if (page === 2) { data.items[0] = makePage(1, 300).items[0]; data.total = 301; }
+  return data;
+});
+assert.equal(mismatch.changed, true);
+assert.equal(mismatch.duplicates, 1);
+assert.equal(mismatch.items.length, 299);
+assert.ok(mismatch.issue);
+
+const authCalls = [];
+await assert.rejects(loadUnitReportings('company', new AbortController().signal, () => {}, async (_, page) => {
+  authCalls.push(page);
+  if (page === 2) throw new ReportingPageError('session expired', 401);
+  return makePage(page, 1000);
+}), error => error.status === 401);
+assert.deepEqual(authCalls, [1, 2, 3, 4]);
+const cancellation = new AbortController();
+let cancelCalls = 0;
+await assert.rejects(loadUnitReportings('company', cancellation.signal, () => cancellation.abort(), async (_, page) => {
+  cancelCalls++; return makePage(page);
+}), error => error.name === 'AbortError');
+assert.equal(cancelCalls, 1);
+console.log('21.200 registros: primeira página isolada, concorrência máxima 3, progresso, retry 500, falha parcial, deduplicação, total variável, sessão expirada e cancelamento OK.');
