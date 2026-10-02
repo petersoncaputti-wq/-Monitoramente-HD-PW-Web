@@ -33,7 +33,7 @@ function Distribution({ title, buckets, total, color }: { title: string; buckets
   </section>;
 }
 
-export function KartadoAuditCharts({ items, partial, sectionAvailable }: { items: AuditItem[]; partial: boolean; sectionAvailable: boolean }) {
+export function KartadoAuditCharts({ items, partial, sectionAvailable, sectionLabel = 'trecho' }: { items: AuditItem[]; partial: boolean; sectionAvailable: boolean; sectionLabel?: string }) {
   const data = useMemo(() => {
     const months = new Map<string, number>();
     let undated = 0;
@@ -79,7 +79,7 @@ export function KartadoAuditCharts({ items, partial, sectionAvailable }: { items
         <Distribution title="Por classe" buckets={data.classes} total={items.length} color="bg-sky-500" />
         <Distribution title="Por status" buckets={data.status} total={items.length} color="bg-brand-600" />
         <Distribution title="Por rodovia" buckets={data.road} total={items.length} color="bg-sky-600" />
-        {sectionAvailable ? <Distribution title="Por trecho" buckets={data.section} total={items.length} color="bg-emerald-700" /> : null}
+        {sectionAvailable ? <Distribution title={`Por ${sectionLabel}`} buckets={data.section} total={items.length} color="bg-emerald-700" /> : null}
       </div>
       <section aria-label="Evolução mensal" className="min-w-0 rounded-2xl border border-brand-100 bg-white p-5">
         <h5 className="font-semibold text-surface-900">Evolução mensal</h5>

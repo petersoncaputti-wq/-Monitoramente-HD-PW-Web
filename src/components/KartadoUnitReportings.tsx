@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AuditItem } from '@/services/kartadoAuditService';
-import { loadUnitReportingPage } from '@/services/kartadoUnitReportings';
+import { loadUnitReportings } from '@/services/kartadoUnitReportings';
 import { auditCounts, auditToday, emptyAuditFilters, filterAuditItems, safeKartadoLink } from '@/utils/kartadoAudit';
 import { KartadoAuditCharts } from './KartadoAuditCharts';
 
@@ -28,23 +28,19 @@ export function KartadoUnitReportings({ company, name }: { company: string; name
       setItems(saved.items); setTotal(saved.total); setUpdated(saved.at); setBusy(false);
       return () => controller.abort();
     }
-    setBusy(true); setError(''); setItems([]); setTotal(0); setUpdated(0);
+    setBusy(true); setError(''); setItems([]); setTotal(0); setUpdated(0); cache.delete(company);
     void (async () => {
-      const collected = new Map<string, AuditItem>();
-      let pages = 1, expected = 0;
-      for (let current = 1; current <= pages; current++) {
-        setProgress(`Buscando página ${current} de ${pages}...`);
-        const data = await loadUnitReportingPage(company, current, controller.signal);
+      setProgress('Buscando a primeira página...');
+      const result = await loadUnitReportings(company, controller.signal, progress => {
         if (controller.signal.aborted) return;
-        if (current === 1) { pages = data.pages; expected = data.total; setTotal(expected); }
-        for (const item of data.items) collected.set(item.uuid, item);
-        setItems([...collected.values()]);
-        if (data.total !== expected || data.pages !== pages) throw new Error('O total mudou durante a consulta. Atualize para obter o resultado completo.');
-      }
-      if (collected.size !== expected) throw new Error('A quantidade recebida difere do total da API. Atualize para tentar completar a consulta.');
+        setItems(progress.items); setTotal(progress.total);
+        setProgress(`${progress.processed} de ${progress.pages} páginas processadas · ${progress.failedPages.length} com falha · até 3 buscas simultâneas.`);
+      });
+      if (controller.signal.aborted) return;
+      if (result.issue) { setError(result.issue); return; }
       const at = Date.now();
       if (cache.size >= 5) cache.delete(cache.keys().next().value!);
-      cache.set(company, { items: [...collected.values()], total: expected, at }); setUpdated(at);
+      cache.set(company, { items: result.items, total: result.total, at }); setUpdated(at);
     })().catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Falha na consulta.'); })
       .finally(() => { if (!controller.signal.aborted) setBusy(false); });
     return () => controller.abort();
@@ -68,15 +64,15 @@ export function KartadoUnitReportings({ company, name }: { company: string; name
         <label className="text-xs">Origem<select className={field} value={origin} onChange={e => { setOrigin(e.target.value); setPage(1); }}><option value="">Todas</option>{options('origem').map(value => <option key={value}>{value}</option>)}</select></label>
         <label className="text-xs">Classe<select className={field} value={classFilter} onChange={e => { setClassFilter(e.target.value); setPage(1); }}><option value="">Todas</option>{options('classe').map(value => <option key={value}>{value}</option>)}</select></label>
         {([['nature', 'natureza', 'Natureza'], ['status', 'status', 'Status'], ['road', 'rodovia', 'Rodovia']] as const).map(([key, source, label]) => <label key={key} className="text-xs">{label}<select className={field} value={filters[key]} onChange={e => { setFilters({ ...filters, [key]: e.target.value }); setPage(1); }}><option value="">Todos</option>{options(source).map(value => <option key={value}>{value}</option>)}</select></label>)}
-        <label className="text-xs">Trecho<select className={field} value={filters.section} onChange={e => { setFilters({ ...filters, section: e.target.value }); setPage(1); }}><option value="">Todos</option>{['Norte', 'Sul', 'Não identificado'].map(value => <option key={value}>{value}</option>)}</select></label>
+        <label className="text-xs">Sentido de tráfego<select className={field} value={filters.section} onChange={e => { setFilters({ ...filters, section: e.target.value }); setPage(1); }}><option value="">Todos</option>{['Norte', 'Sul', 'Não identificado'].map(value => <option key={value}>{value}</option>)}</select></label>
         <div className="grid grid-cols-2 gap-2"><label className="text-xs">Criado de<input type="date" className={field} value={filters.from} max={filters.to || undefined} onChange={e => { setFilters({ ...filters, from: e.target.value }); setPage(1); }} /></label><label className="text-xs">Criado até<input type="date" className={field} value={filters.to} min={filters.from || undefined} onChange={e => { setFilters({ ...filters, to: e.target.value }); setPage(1); }} /></label></div>
       </div>
     </div>
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">{[
-      ['Total', counts.total, 'dos registros filtrados', 'text-surface-900'], ['Trecho Norte', north, percent(north), 'text-blue-600'], ['Trecho Sul', south, percent(south), 'text-sky-500'], ['Concluídos', counts.completed, percent(counts.completed), 'text-emerald-600'], ['Em aberto', counts.pending, percent(counts.pending), 'text-amber-600'], ['Vencidos', counts.overdue, `${percent(counts.overdue, counts.pending)} dos abertos`, 'text-red-600'],
+      ['Total', counts.total, 'dos registros filtrados', 'text-surface-900'], ['Sentido Norte', north, percent(north), 'text-blue-600'], ['Sentido Sul', south, percent(south), 'text-sky-500'], ['Concluídos', counts.completed, percent(counts.completed), 'text-emerald-600'], ['Em aberto', counts.pending, percent(counts.pending), 'text-amber-600'], ['Vencidos', counts.overdue, `${percent(counts.overdue, counts.pending)} dos abertos`, 'text-red-600'],
     ].map(([label, value, detail, color]) => <div key={label} className="rounded-2xl border border-brand-100 bg-white p-4"><p className="text-xs text-surface-600">{label}{partial ? ' · parcial' : ''}</p><p className={`mt-2 text-3xl font-semibold ${color}`}>{number(Number(value))}</p><p className="mt-1 text-xs text-surface-600">{detail}</p></div>)}</div>
-    <p className="text-xs text-surface-600">{number(visible.length - north - south)} sem trecho Norte/Sul identificado; {number(counts.other)} em outros status. Vencidos: pendentes com vencimento anterior a hoje, no horário de Brasília. Datas filtram a criação.</p>
-    <KartadoAuditCharts items={visible} partial={partial} sectionAvailable />
-    <div className="rounded-2xl border border-brand-100 bg-white p-4"><h4 className="mb-3 font-semibold">Tabela detalhada · {number(visible.length)} registros</h4><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{['Número', 'Origem', 'Natureza / classe', 'Trecho', 'Rodovia', 'Status', 'Vencimento'].map(label => <th key={label} className="p-3">{label}</th>)}</tr></thead><tbody>{visible.slice((safePage - 1) * 20, safePage * 20).map(item => <tr key={item.uuid} className="border-t border-brand-100"><td className="p-3">{safeKartadoLink(item.link) ? <a className="text-brand-700 underline" href={safeKartadoLink(item.link)!} target="_blank" rel="noopener noreferrer">{item.numero || 'Abrir'}</a> : item.numero || '—'}</td><td className="p-3">{item.origem || 'Não informada'}</td><td className="p-3">{item.natureza || 'Não informada'}<span className="block text-xs text-surface-600">{item.classe}</span></td><td className="p-3">{item.trecho}</td><td className="p-3">{item.rodovia || '—'}</td><td className="p-3">{item.status || 'Não informado'}</td><td className="p-3">{item.dataVencimento?.split('-').reverse().join('/') || '—'}</td></tr>)}</tbody></table></div>{!visible.length ? <p className="p-6 text-center text-sm">{busy ? 'Aguardando registros...' : partial ? 'Nenhum registro recebido para os filtros. A consulta está incompleta.' : 'Nenhum apontamento corresponde aos filtros.'}</p> : null}<div className="mt-4 flex items-center justify-end gap-3"><button className={button} disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Anterior</button><span className="text-xs">{safePage} / {pages}</span><button className={button} disabled={safePage === pages} onClick={() => setPage(safePage + 1)}>Próxima</button></div></div>
+    <p className="text-xs text-surface-600">{number(visible.length - north - south)} sem sentido Norte/Sul identificado; {number(counts.other)} em outros status. Vencidos: pendentes com vencimento anterior a hoje, no horário de Brasília. Datas filtram a criação.</p>
+    <KartadoAuditCharts items={visible} partial={partial} sectionAvailable sectionLabel="sentido de tráfego" />
+    <div className="rounded-2xl border border-brand-100 bg-white p-4"><h4 className="mb-3 font-semibold">Tabela detalhada · {number(visible.length)} registros</h4><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{['Número', 'Origem', 'Natureza / classe', 'Sentido', 'Rodovia', 'Status', 'Vencimento'].map(label => <th key={label} className="p-3">{label}</th>)}</tr></thead><tbody>{visible.slice((safePage - 1) * 20, safePage * 20).map(item => <tr key={item.uuid} className="border-t border-brand-100"><td className="p-3">{safeKartadoLink(item.link) ? <a className="text-brand-700 underline" href={safeKartadoLink(item.link)!} target="_blank" rel="noopener noreferrer">{item.numero || 'Abrir'}</a> : item.numero || '—'}</td><td className="p-3">{item.origem || 'Não informada'}</td><td className="p-3">{item.natureza || 'Não informada'}<span className="block text-xs text-surface-600">{item.classe}</span></td><td className="p-3">{item.trecho}</td><td className="p-3">{item.rodovia || '—'}</td><td className="p-3">{item.status || 'Não informado'}</td><td className="p-3">{item.dataVencimento?.split('-').reverse().join('/') || '—'}</td></tr>)}</tbody></table></div>{!visible.length ? <p className="p-6 text-center text-sm">{busy ? 'Aguardando registros...' : partial ? 'Nenhum registro recebido para os filtros. A consulta está incompleta.' : 'Nenhum apontamento corresponde aos filtros.'}</p> : null}<div className="mt-4 flex items-center justify-end gap-3"><button className={button} disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>Anterior</button><span className="text-xs">{safePage} / {pages}</span><button className={button} disabled={safePage === pages} onClick={() => setPage(safePage + 1)}>Próxima</button></div></div>
   </section>;
 }

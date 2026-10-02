@@ -2,9 +2,9 @@
 
 ## Consulta completa por unidade
 
-A aba do painel agora utiliza diretamente `POST /api/v1/kartado/reportings/page`, com as credenciais Kartado do servidor e a autenticação do portal. Ao abrir, percorre todas as páginas de 100 registros, sem filtro de origem ou data, com progresso e deduplicação por identificador. As rotas do Auditor abaixo permanecem disponíveis, mas não controlam mais esta aba.
+A aba do painel agora utiliza diretamente `POST /api/v1/kartado/reportings/page`, com as credenciais Kartado do servidor e a autenticação do portal. Ao abrir, percorre todas as páginas de 100 registros, sem filtro de origem ou data, com progresso e deduplicação por identificador. A primeira página descobre o total; as demais são carregadas em lotes de até três chamadas simultâneas. Falhas de rede e HTTP 408/429/500/502/503/504 recebem até duas novas tentativas com espera crescente (ou Retry-After). Uma página com falha persistente é sinalizada e as demais continuam. HTTP 401/403 e 429 persistente interrompem novos lotes. Mudanças no total e registros duplicados também impedem marcar o resultado como completo. As rotas do Auditor abaixo permanecem disponíveis, mas não controlam mais esta aba.
 
-Os filtros são locais e atualizam os seis cards, gráficos e tabela. Norte/Sul dependem de um campo explícito `trecho` ou `section`; não são inferidos pelo sentido de tráfego. Consultas incompletas são sinalizadas, inclusive quando a contagem muda durante o carregamento. Sair da aba interrompe o carregamento; consultas completas são reutilizadas por cinco minutos na sessão da página (até cinco unidades). Atualizar ignora esse cache.
+Os filtros são locais e atualizam os seis cards, gráficos e tabela. Norte/Sul representam o sentido de tráfego (`direction`, ou seu equivalente normalizado `sentido`), conforme a regra definida para o painel. Outros valores ficam como não identificados na distribuição Norte/Sul. A natureza utiliza `natureza`/`nature` e, na ausência, `occurrenceKind`/`occurrence_kind`; a classe continua separada em `occurrenceType`. Consultas incompletas são sinalizadas, inclusive quando a contagem muda durante o carregamento. Sair da aba interrompe o carregamento; consultas completas são reutilizadas por cinco minutos na sessão da página (até cinco unidades). Atualizar ignora esse cache.
 
 Validação: `node scripts/test-kartado-unit-reportings.mjs`, `npm run test:kartado-audit` e `npm run build`. Validar também em uma sessão autenticada com uma unidade de grande volume.
 
@@ -54,3 +54,7 @@ A consulta pesada roda no backend, sem manter aberta a conexão do navegador. A 
 ## Reversão
 
 Configure `KARTADO_REPORTINGS_PROVIDER=legacy`, reinicie e recarregue a página. Isso restaura explicitamente a aba anterior. Não há fallback automático: a consulta antiga é uma amostra e o filtro de origem não foi respeitado no teste de integração. A tabela de jobs pode permanecer; não é necessário apagar dados para reverter.
+
+### Diagnóstico de falhas em grandes consultas
+
+A rota de página registra unidade, página, etapa (authentication/kartado/normalization), status HTTP e duração, sem tokens ou corpo externo. O status 500 isolado não permite identificar a causa histórica; é necessário correlacionar esses registros com uma nova consulta. O teste automatizado simula 21.200 registros e uma página com HTTP 500 persistente. Não substitui teste de desempenho contra o Kartado real.

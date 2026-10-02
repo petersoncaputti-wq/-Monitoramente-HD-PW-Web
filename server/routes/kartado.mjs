@@ -824,12 +824,22 @@ kartadoRouter.post('/reportings/page', async (req, res) => {
   if (typeof companyUuid !== 'string' || !/^[0-9a-f-]{36}$/i.test(companyUuid) || !Number.isSafeInteger(page) || page < 1) {
     return res.status(400).json({ error: 'Unidade ou página inválida.' });
   }
+  const started = Date.now();
+  let stage = 'authentication';
   try {
     const { token } = await getToken(creds.username, creds.password);
+    stage = 'kartado';
     const data = await listReportingPage(token, companyUuid, page);
+    stage = 'normalization';
     const metrics = buildReportingMetrics(data.items, data.totalCount);
     res.set('Cache-Control', 'no-store').json({ items: metrics.items, total: data.totalCount, pages: data.totalPages });
   } catch (err) {
-    res.status(err.httpStatus >= 400 ? err.httpStatus : 502).json({ error: 'Não foi possível carregar esta página de apontamentos. Tente novamente.' });
+    const status = Number.isInteger(err.httpStatus) && err.httpStatus >= 400 && err.httpStatus <= 599 ? err.httpStatus : 502;
+    // Não registra tokens, credenciais ou corpos retornados pela API externa.
+    console.error('[Kartado/reportings/page]', { companyUuid, page, stage, status, elapsedMs: Date.now() - started, kind: err.name || 'UpstreamError' });
+    const retry = Number(err.retryAfter);
+    if (Number.isFinite(retry) && retry > 0) res.set('Retry-After', String(Math.ceil(retry)));
+    const reason = stage === 'normalization' ? 'Falha ao processar os registros recebidos.' : stage === 'authentication' ? 'Falha na autenticação com o Kartado.' : 'Falha ao consultar o Kartado.';
+    res.status(status).json({ error: reason, page, stage });
   }
 });

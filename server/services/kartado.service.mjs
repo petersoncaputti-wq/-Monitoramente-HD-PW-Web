@@ -45,7 +45,7 @@ async function safeFetch(url, options = {}) {
   try {
     const res  = await fetch(url, { ...options, signal: ctrl.signal });
     const body = await res.text();
-    return { ok: res.ok, status: res.status, body };
+    return { ok: res.ok, status: res.status, body, retryAfter: res.headers.get('Retry-After') };
   } catch (e) {
     if (e.name === 'AbortError') throw { httpStatus: 504, message: `Timeout (${TIMEOUT_MS}ms): ${url}` };
     throw e;
@@ -61,7 +61,7 @@ async function apiFetch(token, path, params = {}) {
   const qs    = Object.keys(clean).length ? '?' + new URLSearchParams(clean) : '';
   const url   = `${BASE}${path}${qs}`;
 
-  const { ok, status, body } = await safeFetch(url, {
+  const { ok, status, body, retryAfter } = await safeFetch(url, {
     headers: { 'Accept': ACCEPT, 'Authorization': `JWT ${token}` },
   });
 
@@ -70,7 +70,7 @@ async function apiFetch(token, path, params = {}) {
     // Evita incluir HTML completo na mensagem de erro (respostas 404/500 em HTML)
     const rawDetail = p?.errors?.[0]?.detail || p?.detail || (body.startsWith('<') ? null : body.slice(0, 200));
     const detail = rawDetail || `HTTP ${status}`;
-    const err = { httpStatus: status, message: `[${status}] ${path}: ${detail}` };
+    const err = { httpStatus: status, message: `[${status}] ${path}: ${detail}`, retryAfter };
     if (status === 403 || status === 401) {
       // Token rejeitado — invalida cache para forçar nova autenticação
       for (const [u, v] of _tokenCache.entries()) {
