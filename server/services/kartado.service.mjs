@@ -827,13 +827,39 @@ export async function runDiagnostics(token, sampleCompanyUuid = null) {
   return Object.fromEntries(results);
 }
 
-// Consulta uma página do histórico completo, sem condicionar a paginação aos filtros.
+// Mantém a página lógica de 100 registros; isola HTTP 500 em blocos menores.
 export async function listReportingPage(token, companyUuid, page = 1) {
-  const payload = await apiFetch(token, '/Reporting/Spreadsheet/', {
-    company: companyUuid, page_size: 100, page, ordering: 'uuid',
-  });
-  if (!Array.isArray(payload) && !Array.isArray(payload?.data) && !Array.isArray(payload?.data?.results) && !Array.isArray(payload?.results)) {
-    throw { httpStatus: 502, message: 'Formato de apontamentos não reconhecido.' };
+  let totalCount = null;
+  let requests = 0;
+  const failedRecords = [];
+  async function read(offset, size) {
+    // Limita a recuperação quando o serviço inteiro está indisponível.
+    if (++requests > 20) throw { httpStatus: 500, message: 'Limite de recuperação da página atingido.' };
+    let payload;
+    try {
+      payload = await apiFetch(token, '/Reporting/Spreadsheet/', {
+        company: companyUuid, page_size: size, page: offset / size + 1, ordering: 'uuid',
+      });
+    } catch (error) {
+      if (error.httpStatus !== 500) throw error;
+      if (size === 1) { failedRecords.push(offset + 1); return []; }
+      const smaller = size === 100 ? 25 : size === 25 ? 5 : 1;
+      const items = [];
+      for (let start = offset; start < offset + size; start += smaller) {
+        if (totalCount !== null && start >= totalCount) break;
+        items.push(...await read(start, smaller));
+      }
+      return items;
+    }
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data) && !Array.isArray(payload?.data?.results) && !Array.isArray(payload?.results)) {
+      throw { httpStatus: 502, message: 'Formato de apontamentos não reconhecido.' };
+    }
+    const data = extractPage(payload, size);
+    if (totalCount !== null && totalCount !== data.totalCount) throw { httpStatus: 502, message: 'O total mudou durante a recuperação da página.' };
+    totalCount = data.totalCount;
+    return data.items;
   }
-  return extractPage(payload, 100);
+  const items = await read((page - 1) * 100, 100);
+  if (totalCount === null) throw { httpStatus: 500, message: 'Nenhum registro da página pôde ser recuperado.' };
+  return { items, totalCount, totalPages: Math.max(1, Math.ceil(totalCount / 100)), failedRecords };
 }

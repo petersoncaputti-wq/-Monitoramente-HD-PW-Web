@@ -832,7 +832,8 @@ kartadoRouter.post('/reportings/page', async (req, res) => {
     const data = await listReportingPage(token, companyUuid, page);
     stage = 'normalization';
     const metrics = buildReportingMetrics(data.items, data.totalCount);
-    res.set('Cache-Control', 'no-store').json({ items: metrics.items, total: data.totalCount, pages: data.totalPages });
+    if (data.failedRecords.length) console.warn('[Kartado/reportings/page/partial]', { companyUuid, page, failedRecords: data.failedRecords, elapsedMs: Date.now() - started });
+    res.set('Cache-Control', 'no-store').json({ items: metrics.items, total: data.totalCount, pages: data.totalPages, failedRecords: data.failedRecords });
   } catch (err) {
     const status = Number.isInteger(err.httpStatus) && err.httpStatus >= 400 && err.httpStatus <= 599 ? err.httpStatus : 502;
     // Não registra tokens, credenciais ou corpos retornados pela API externa.

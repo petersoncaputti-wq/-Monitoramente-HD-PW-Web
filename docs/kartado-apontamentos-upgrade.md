@@ -58,3 +58,9 @@ Configure `KARTADO_REPORTINGS_PROVIDER=legacy`, reinicie e recarregue a página.
 ### Diagnóstico de falhas em grandes consultas
 
 A rota de página registra unidade, página, etapa (authentication/kartado/normalization), status HTTP e duração, sem tokens ou corpo externo. O status 500 isolado não permite identificar a causa histórica; é necessário correlacionar esses registros com uma nova consulta. O teste automatizado simula 21.200 registros e uma página com HTTP 500 persistente. Não substitui teste de desempenho contra o Kartado real.
+
+### Recuperação de páginas com HTTP 500
+
+Quando uma página de 100 registros falha com HTTP 500, a consulta direta divide o mesmo intervalo ordenado por UUID em blocos de 25, 5 e finalmente 1 registro. A recuperação tem limite de 20 chamadas por página; outros erros são propagados normalmente. Registros que ainda falham individualmente são informados em `failedRecords` (posições na consulta, não UUIDs). A página permanece parcial, não entra no cache de resultados completos e os registros recuperáveis são preservados.
+
+Teste real em 02/10/2026, Ecovias Capixaba: página 312 retornou HTTP 500; a recuperação retornou 99 registros e isolou a posição 31.117 com HTTP 500, com total informado de 34.187. O conteúdo desse registro não foi retornado pela API, portanto a causa interna depende de investigação do Kartado.

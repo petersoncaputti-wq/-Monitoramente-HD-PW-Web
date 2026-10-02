@@ -30,10 +30,12 @@ export async function loadUnitReportingPage(company: string, page: number, signa
   if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || data.total < 0 || !Number.isSafeInteger(data.pages) || data.pages < 1) throw new Error('Paginação inválida na resposta do Kartado.');
   const items = data.items.map(normalizeUnitReporting) as AuditItem[];
   if (items.some(item => !item.uuid)) throw new Error('A API retornou apontamentos sem identificação.');
-  return { items, total: data.total as number, pages: data.pages as number };
+  const failedRecords: number[] = data.failedRecords ?? [];
+  if (!Array.isArray(failedRecords) || failedRecords.some(value => !Number.isSafeInteger(value) || value < 1)) throw new Error('Diagnóstico de registros indisponíveis inválido.');
+  return { items, total: data.total as number, pages: data.pages as number, failedRecords };
 }
 
-type ReportingPage = Awaited<ReturnType<typeof loadUnitReportingPage>>;
+type ReportingPage = Omit<Awaited<ReturnType<typeof loadUnitReportingPage>>, 'failedRecords'> & { failedRecords?: number[] };
 export type ReportingProgress = {
   items: AuditItem[]; total: number; pages: number; processed: number;
   failedPages: number[]; changed: boolean; duplicates: number;
@@ -74,7 +76,11 @@ export async function loadUnitReportings(
   }
   const first = await fetchPage(1);
   signal.throwIfAborted();
-  function accept(data: ReportingPage) {
+  function accept(data: ReportingPage, page: number) {
+    if (data.failedRecords?.length) {
+      failedPages.push(page);
+      failureDetails.push(`Página ${page}: o Kartado retornou HTTP 500 para os registros nas posições ${data.failedRecords.join(', ')}; os demais registros desta página foram recuperados`);
+    }
     if (data.total !== first.total || data.pages !== first.pages) changed = true;
     for (const item of data.items) {
       if (collected.has(item.uuid)) duplicates++;
@@ -82,7 +88,7 @@ export async function loadUnitReportings(
     }
   }
   const snapshot = (): ReportingProgress => ({ items: [...collected.values()], total: first.total, pages: first.pages, processed, failedPages: [...failedPages], changed, duplicates });
-  accept(first); processed++; onProgress(snapshot());
+  accept(first, 1); processed++; onProgress(snapshot());
   for (let start = 2; start <= first.pages; start += 3) {
     signal.throwIfAborted();
     const pages = Array.from({ length: Math.min(3, first.pages - start + 1) }, (_, index) => start + index);
@@ -91,7 +97,7 @@ export async function loadUnitReportings(
     let fatal: Error | undefined;
     results.forEach((result, index) => {
       processed++;
-      if (result.status === 'fulfilled') accept(result.value);
+      if (result.status === 'fulfilled') accept(result.value, pages[index]);
       else {
         failedPages.push(pages[index]);
         failureDetails.push(`Página ${pages[index]}: ${result.reason instanceof ReportingPageError ? `HTTP ${result.reason.status}` : result.reason instanceof Error ? result.reason.message : 'erro de comunicação'}`);
