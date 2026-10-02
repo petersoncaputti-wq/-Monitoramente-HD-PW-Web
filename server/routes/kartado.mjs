@@ -7,7 +7,7 @@
 
 import { Router } from 'express';
 import {
-  getToken, listCompanies, listUsers, listReportings,
+  getToken, listCompanies, listUsers, listReportings, listReportingPage,
   listInventoryCounts, listJobProgress, listMDRDays, listFirmCounts,
   loadAllCompanies, runDiagnostics, validateProgramacoes, getReportingPhotos,
   listPhotosForCompany, extractPage,
@@ -813,5 +813,23 @@ kartadoRouter.post('/validate-programacoes', async (req, res) => {
     });
   } catch (err) {
     return res.status((err.httpStatus || 500) < 500 ? 400 : 500).json({ success: false, error: err.message, ...SOURCE });
+  }
+});
+
+// Páginas curtas evitam manter uma requisição HTTP aberta durante todo o histórico.
+kartadoRouter.post('/reportings/page', async (req, res) => {
+  const creds = requireCreds(req, res);
+  if (!creds) return;
+  const { companyUuid, page = 1 } = req.body;
+  if (typeof companyUuid !== 'string' || !/^[0-9a-f-]{36}$/i.test(companyUuid) || !Number.isSafeInteger(page) || page < 1) {
+    return res.status(400).json({ error: 'Unidade ou página inválida.' });
+  }
+  try {
+    const { token } = await getToken(creds.username, creds.password);
+    const data = await listReportingPage(token, companyUuid, page);
+    const metrics = buildReportingMetrics(data.items, data.totalCount);
+    res.set('Cache-Control', 'no-store').json({ items: metrics.items, total: data.totalCount, pages: data.totalPages });
+  } catch (err) {
+    res.status(err.httpStatus >= 400 ? err.httpStatus : 502).json({ error: 'Não foi possível carregar esta página de apontamentos. Tente novamente.' });
   }
 });

@@ -74,7 +74,7 @@ async function apiFetch(token, path, params = {}) {
     if (status === 403 || status === 401) {
       // Token rejeitado — invalida cache para forçar nova autenticação
       for (const [u, v] of _tokenCache.entries()) {
-        if (v.token === options?.headers?.Authorization?.replace('JWT ', '')) {
+        if (v.token === token) {
           _tokenCache.delete(u);
           break;
         }
@@ -825,4 +825,15 @@ export async function runDiagnostics(token, sampleCompanyUuid = null) {
   );
 
   return Object.fromEntries(results);
+}
+
+// Consulta uma página do histórico completo, sem condicionar a paginação aos filtros.
+export async function listReportingPage(token, companyUuid, page = 1) {
+  const payload = await apiFetch(token, '/Reporting/Spreadsheet/', {
+    company: companyUuid, page_size: 100, page, ordering: 'uuid',
+  });
+  if (!Array.isArray(payload) && !Array.isArray(payload?.data) && !Array.isArray(payload?.data?.results) && !Array.isArray(payload?.results)) {
+    throw { httpStatus: 502, message: 'Formato de apontamentos não reconhecido.' };
+  }
+  return extractPage(payload, 100);
 }
