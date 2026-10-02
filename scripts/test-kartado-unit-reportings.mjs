@@ -58,6 +58,29 @@ try {
   await assert.rejects(loadUnitReportingPage('company', 1, new AbortController().signal), /Paginação inválida/);
   globalThis.fetch = async () => Response.json({ items: [{ number: 1 }], total: 1, pages: 1 });
   await assert.rejects(loadUnitReportingPage('company', 1, new AbortController().signal), /sem identificação/);
+  // Reproduz a página 312: uma única posição quebra todos os blocos que a contêm.
+  let recoveryCalls = 0;
+  globalThis.fetch = async url => {
+    recoveryCalls++;
+    const query = new URL(url).searchParams;
+    const size = Number(query.get('page_size')), page = Number(query.get('page'));
+    const start = (page - 1) * size;
+    if (start <= 31116 && start + size > 31116) return Response.json({}, { status: 500 });
+    return Response.json({ count: 34187, results: Array.from({ length: Math.min(size, 34187 - start) }, (_, i) => ({ uuid: `item-${start + i}` })) });
+  };
+  const recovered = await listReportingPage('token', 'company', 312);
+  assert.equal(recovered.items.length, 99);
+  assert.equal(new Set(recovered.items.map(item => item.uuid)).size, 99);
+  assert.equal(recovered.totalPages, 342);
+  assert.deepEqual(recovered.failedRecords, [31117]);
+  assert.equal(recoveryCalls, 15);
+  const partialPage = await loadUnitReportings('company', new AbortController().signal, () => {}, async () => ({ items: recovered.items.map(normalizeUnitReporting), total: 100, pages: 1, failedRecords: recovered.failedRecords }));
+  assert.deepEqual(partialPage.failedPages, [1]);
+  assert.match(partialPage.issue, /31117/);
+  let unavailableCalls = 0;
+  globalThis.fetch = async () => { unavailableCalls++; return Response.json({}, { status: 500 }); };
+  await assert.rejects(listReportingPage('token', 'company', 312), error => error.httpStatus === 500);
+  assert.equal(unavailableCalls, 20);
 } finally { globalThis.fetch = realFetch; }
 console.log('Apontamentos por unidade: paginação sem filtros, normalização, cards, filtros, resposta inválida e falha de autenticação OK.');
 
