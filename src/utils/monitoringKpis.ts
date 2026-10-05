@@ -242,39 +242,30 @@ export function getTotalCapacityKpi(rows: MonitoringRow[]): TotalCapacityResult 
     };
   }
 
-  const validCapacities = rows
-    .map((row) => parseSpreadsheetNumber(row.TotalGB))
-    .filter((value): value is number => value !== null);
+  const latestRow = getLatestValidRow(rows);
 
-  if (validCapacities.length === 0) {
+  if (!latestRow) {
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'TotalGB indisponível na planilha',
+      helperText: 'Data e hora indisponíveis na planilha',
     };
   }
 
-  const frequencyMap = new Map<string, { value: number; count: number }>();
+  const totalCapacity = parseSpreadsheetNumber(latestRow.TotalGB);
 
-  for (const capacity of validCapacities) {
-    const key = capacity.toFixed(2);
-    const current = frequencyMap.get(key);
-
-    if (current) {
-      current.count += 1;
-    } else {
-      frequencyMap.set(key, { value: capacity, count: 1 });
-    }
+  if (totalCapacity === null || totalCapacity <= 0) {
+    return {
+      status: 'invalid',
+      value: '-- GB',
+      helperText: 'TotalGB indisponível no registro mais recente',
+    };
   }
-
-  const selectedCapacity = [...frequencyMap.values()].reduce((best, candidate) =>
-    candidate.count > best.count ? candidate : best,
-  ).value;
 
   return {
     status: 'ready',
-    value: formatStorageValue(selectedCapacity),
-    helperText: 'Capacidade identificada na planilha',
+    value: formatStorageValue(totalCapacity),
+    helperText: 'Capacidade do registro mais recente',
   };
 }
 
