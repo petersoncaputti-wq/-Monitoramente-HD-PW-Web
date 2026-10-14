@@ -1,3 +1,4 @@
+import { KartadoTicketsPage } from '@/pages/KartadoTicketsPage';
 import { useEffect, useMemo, useState } from 'react';
 import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
 import {
@@ -13,7 +14,7 @@ import {
   type KartadoUser,
 } from '@/services/kartadoService';
 
-type KartadoTab = 'overview' | 'users' | 'reportings' | 'alerts';
+type KartadoTab = 'overview' | 'users' | 'reportings' | 'alerts' | 'tickets';
 type KartadoArea = 'audit' | 'health';
 
 const tabs: Array<{ id: KartadoTab; label: string }> = [
@@ -21,6 +22,7 @@ const tabs: Array<{ id: KartadoTab; label: string }> = [
   { id: 'users', label: 'Usuários' },
   { id: 'reportings', label: 'Apontamentos' },
   { id: 'alerts', label: 'Alertas' },
+  { id: 'tickets', label: 'Chamados' },
 ];
 
 const numberFormatter = new Intl.NumberFormat('pt-BR');
@@ -785,6 +787,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             {reportingsError ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reportingsError}</p> : null}
           </div> : null}
 
+          {tab === 'tickets' ? <KartadoTicketsPage key={selected.company.uuid} unit={selected.company} /> : null}
           {tab === 'overview' ? (
             <div className="mt-5 space-y-5">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
