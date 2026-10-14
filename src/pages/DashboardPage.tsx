@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserSettingsPage } from '@/pages/UserSettingsPage';
 import { EngineeringSystemsHomePage } from '@/pages/EngineeringSystemsHomePage';
 import { KartadoPage } from '@/pages/KartadoPage';
+import { KartadoTicketsPage } from '@/pages/KartadoTicketsPage';
 import { KartadoEcoPage } from '@/pages/KartadoEcoPage';
 import { TotvsPage } from '@/pages/TotvsPage';
 import {
@@ -145,7 +146,7 @@ function filterRowsByPeriod(
   });
 }
 
-type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartadoAudit' | 'kartadoHealth' | 'kartadoEco' | 'totvs' | 'settings';
+type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartadoAudit' | 'kartadoHealth' | 'kartadoEco' | 'kartadoTickets' | 'totvs' | 'settings';
 
 const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
   totvs: '/totvs/chamados',
@@ -155,6 +156,7 @@ const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
   kartadoAudit: '/kartado/auditoria',
   kartadoHealth: '/kartado/saude',
   kartadoEco: '/kartado/acompanhamento-eco',
+  kartadoTickets: '/kartado/chamados',
   settings: '/configuracoes',
 };
 
@@ -166,6 +168,7 @@ const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
   kartadoAudit: 'Auditoria',
   kartadoHealth: 'Saúde',
   kartadoEco: 'Acompanhamento Eco',
+  kartadoTickets: 'Chamados',
   settings: 'Configurações',
 };
 
@@ -440,7 +443,7 @@ export function DashboardPage() {
   const isHomePage = normalizedPath === '/';
   const isProjectWisePage =
     activeTab === 'storage' || activeTab === 'projectWiseUsers' || activeTab === 'tickets';
-  const isKartadoPage = activeTab === 'kartadoAudit' || activeTab === 'kartadoHealth' || activeTab === 'kartadoEco';
+  const isKartadoPage = activeTab === 'kartadoAudit' || activeTab === 'kartadoHealth' || activeTab === 'kartadoEco' || activeTab === 'kartadoTickets';
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
@@ -1496,6 +1499,7 @@ export function DashboardPage() {
             <NavLink to={DASHBOARD_ROUTES.kartadoAudit} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Auditoria</NavLink>
             <NavLink to={DASHBOARD_ROUTES.kartadoHealth} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Saúde</NavLink>
             <NavLink to={DASHBOARD_ROUTES.kartadoEco} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Acompanhamento Eco</NavLink>
+            <NavLink to={DASHBOARD_ROUTES.kartadoTickets} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Chamados</NavLink>
           </nav>
         ) : null}
 
@@ -1505,6 +1509,7 @@ export function DashboardPage() {
         {activeTab === 'kartadoAudit' ? <KartadoPage area="audit" /> : null}
         {activeTab === 'kartadoHealth' ? <KartadoPage area="health" /> : null}
         {activeTab === 'kartadoEco' ? <KartadoEcoPage /> : null}
+        {activeTab === 'kartadoTickets' ? <KartadoTicketsPage /> : null}
 
         {activeTab === 'storage' ? (
           <>

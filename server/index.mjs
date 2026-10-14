@@ -1,3 +1,4 @@
+import kartadoTicketsRouter from './routes/kartado-tickets.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import express from 'express';
@@ -59,6 +60,7 @@ app.use('/api/data', dataRouter);
 app.use('/api/totvs', totvsRouter);
 app.use('/api/kartado-eco', ecoRouter);
 app.use('/api/tickets', ticketsRouter);
+app.use('/api/kartado-tickets', kartadoTicketsRouter);
 app.use('/api/storage-import', (request, response, next) => {
   request.url = '/storage';
   importsRouter(request, response, next);
