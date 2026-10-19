@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { PanelShell } from '@/components/PanelShell';
 import { TicketKpiCard } from '@/components/TicketKpiCard';
 import type { TicketRow } from '@/types/monitoring';
@@ -208,6 +209,7 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
   const [periodEndDate, setPeriodEndDate] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [situationFilter, setSituationFilter] = useState('');
   const [organizationFilter, setOrganizationFilter] = useState('');
   const [requesterFilter, setRequesterFilter] = useState('');
   const [allPending, setAllPending] = useState(false);
@@ -215,20 +217,25 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
   const normalizeSearch = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
   const filterOptions = useMemo(() => {
     const values = (key: keyof TicketRow) => Array.from(new Set(rows.map(row => String(row[key] ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    return { statuses: values('Status'), organizations: values('Organizaçãodosolicitante'), requesters: values('Solicitante') };
-  }, [rows]);
+    const statuses = values('Status').filter(value => {
+      const situation = allPending ? 'pending' : situationFilter;
+      return !situation || (situation === 'closed' ? isClosedStatus(value) : !isClosedStatus(value));
+    });
+    return { statuses, organizations: values('Organizaçãodosolicitante'), requesters: values('Solicitante') };
+  }, [rows, situationFilter, allPending]);
   const detailedRows = useMemo(() => detailedTotvs ? rows.filter(row => {
     const opened = row.Abertoem.slice(0, 10);
     const inPeriod = (!periodStartDate || opened >= periodStartDate) && (!periodEndDate || opened <= periodEndDate);
     const closed = isClosedStatus(row.Status);
-    const matchesStatus = !statusFilter || (statusFilter === 'pending' ? !closed : statusFilter === 'closed' ? closed : String(row.Status ?? '').trim() === statusFilter.slice(6));
+    const matchesStatus = !statusFilter || String(row.Status ?? '').trim() === statusFilter;
+    const matchesSituation = !situationFilter || (situationFilter === 'pending' ? !closed : closed);
     const searchable = normalizeSearch([row['Caso n.º'], row.Resumo, row.Status, row.Organizaçãodosolicitante, row.Solicitante].join(' '));
-    return (allPending ? !closed : inPeriod) && matchesStatus
+    return (allPending ? !closed : inPeriod) && matchesStatus && matchesSituation
       && (!organizationFilter || String(row.Organizaçãodosolicitante ?? '').trim() === organizationFilter)
       && (!requesterFilter || String(row.Solicitante ?? '').trim() === requesterFilter)
       && normalizeSearch(search).split(/\s+/).filter(Boolean).every(term => searchable.includes(term));
-  }).sort((a, b) => b.Abertoem.localeCompare(a.Abertoem)) : [], [rows, detailedTotvs, periodStartDate, periodEndDate, search, statusFilter, organizationFilter, requesterFilter, allPending]);
-  useEffect(() => setPage(1), [periodStartDate, periodEndDate, search, rows, statusFilter, organizationFilter, requesterFilter, allPending]);
+  }).sort((a, b) => b.Abertoem.localeCompare(a.Abertoem)) : [], [rows, detailedTotvs, periodStartDate, periodEndDate, search, statusFilter, situationFilter, organizationFilter, requesterFilter, allPending]);
+  useEffect(() => setPage(1), [periodStartDate, periodEndDate, search, rows, statusFilter, situationFilter, organizationFilter, requesterFilter, allPending]);
   const pages = Math.max(1, Math.ceil(detailedRows.length / 50));
   const visiblePage = Math.min(page, pages);
 
@@ -279,6 +286,19 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
     });
     setPeriodStartDate(period.startDate);
     setPeriodEndDate(period.endDate);
+  }
+
+  function exportFilteredTickets() {
+    const sheet = XLSX.utils.json_to_sheet(detailedRows.map(row => ({
+      Chamado: row['Caso n.º'], Descrição: row.Resumo || '', Status: row.Status,
+      Criação: formatTicketDate(row.Abertoem), Resolução: row.Fechadoem ? formatTicketDate(row.Fechadoem) : '',
+      Organização: row.Organizaçãodosolicitante || '', Solicitante: row.Solicitante || '',
+    })));
+    sheet['!cols'] = [18, 80, 20, 22, 22, 40, 35].map(wch => ({ wch }));
+    sheet['!autofilter'] = { ref: sheet['!ref'] || 'A1:G1' };
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Chamados filtrados');
+    XLSX.writeFile(workbook, 'totvs-chamados-filtrados.xlsx');
   }
 
   return (
@@ -425,16 +445,18 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
       </div>
 
       {detailedTotvs && <PanelShell title="Lista de chamados" description={allPending ? 'Pendentes de toda a base importada, independentemente da data de criação. Os filtros abaixo afetam somente esta lista.' : 'Chamados criados no período selecionado. Os filtros abaixo afetam somente esta lista.'}>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Buscar chamado<input className="h-11 rounded-2xl border border-brand-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300" value={search} onChange={event => setSearch(event.target.value)} placeholder="Número, descrição ou solicitante" type="search" /></label>
-          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Status<select className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={statusFilter} onChange={event => setStatusFilter(event.target.value)} disabled={allPending}><option value="">Todos os status</option><option value="pending">Pendentes (não finalizados)</option><option value="closed">Finalizados (fechados ou resolvidos)</option>{filterOptions.statuses.map(value => <option key={value} value={`exact:${value}`}>{value}</option>)}</select></label>
+          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Situação<select className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={situationFilter} onChange={event => { setSituationFilter(event.target.value); setStatusFilter(''); }} disabled={allPending}><option value="">Todas as situações</option><option value="pending">Não finalizados</option><option value="closed">Finalizados</option></select></label>
+          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Status específico<select className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="">Todos os status</option>{filterOptions.statuses.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Organização<select className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={organizationFilter} onChange={event => setOrganizationFilter(event.target.value)}><option value="">Todas as organizações</option>{filterOptions.organizations.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Solicitante<select className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={requesterFilter} onChange={event => setRequesterFilter(event.target.value)}><option value="">Todos os solicitantes</option>{filterOptions.requesters.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <label className="flex items-center gap-2 text-sm text-surface-700"><input type="checkbox" checked={allPending} onChange={event => { setAllPending(event.target.checked); setStatusFilter(event.target.checked ? 'pending' : ''); }} className="h-4 w-4 accent-brand-700" />Ver todos os pendentes, incluindo os criados antes do período</label>
-          <button type="button" onClick={() => { setSearch(''); setStatusFilter(''); setOrganizationFilter(''); setRequesterFilter(''); setAllPending(false); }} className="rounded-xl border border-brand-100 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">Limpar filtros da lista</button>
+          <label className="flex items-center gap-2 text-sm text-surface-700"><input type="checkbox" checked={allPending} onChange={event => { setAllPending(event.target.checked); setSituationFilter(event.target.checked ? 'pending' : ''); setStatusFilter(''); }} className="h-4 w-4 accent-brand-700" />Ver todos os pendentes, incluindo os criados antes do período</label>
+          <button type="button" onClick={() => { setSearch(''); setStatusFilter(''); setSituationFilter(''); setOrganizationFilter(''); setRequesterFilter(''); setAllPending(false); }} className="rounded-xl border border-brand-100 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">Limpar filtros da lista</button>
         </div>
+        <button type="button" onClick={exportFilteredTickets} disabled={!detailedRows.length} className="mt-4 rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">Exportar filtrados em Excel ({detailedRows.length})</button>
         <p className="mt-3 text-sm text-surface-600" role="status">{detailedRows.length} chamado(s) encontrado(s). Pendentes: status diferente de Fechado e Resolvido na exportação.</p>
         <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm">
           <thead><tr className="border-b border-brand-100">{['Chamado', 'Descrição', 'Status', 'Criação', 'Resolução', 'Organização'].map(label => <th key={label} scope="col" className="p-3">{label}</th>)}</tr></thead>
