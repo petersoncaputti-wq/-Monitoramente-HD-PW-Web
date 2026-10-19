@@ -94,7 +94,7 @@ function formatPercentage(count: number, total: number): string {
   })}%`;
 }
 
-function isClosedStatus(status: unknown): boolean {
+export function isClosedStatus(status: unknown): boolean {
   const normalized = normalizeComparable(status);
   return normalized === 'fechado' || normalized === 'resolvido';
 }

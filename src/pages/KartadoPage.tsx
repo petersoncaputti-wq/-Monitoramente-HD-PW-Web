@@ -27,6 +27,10 @@ const tabs: Array<{ id: KartadoTab; label: string }> = [
 
 const numberFormatter = new Intl.NumberFormat('pt-BR');
 const PAGE_SIZE_OPTIONS = [20, 40, 80, 160, 200] as const;
+const INACTIVE_UNITS = [
+  'Sisobras Ecovias Noroeste Paulista',
+  'Sisobras Ecovias Raposo Castello',
+] as const;
 
 function formatNumber(value: number) {
   return numberFormatter.format(Number.isFinite(value) ? value : 0);
@@ -738,6 +742,17 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 </button>
               );
             })}
+            {INACTIVE_UNITS.map((name) => (
+              <button
+                key={name}
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded-2xl border border-surface-200 bg-surface-50 p-4 text-left"
+              >
+                <span className="block font-semibold text-surface-600">{name}</span>
+                <span className="mt-2 inline-block rounded-full bg-surface-200 px-2 py-1 text-xs font-semibold text-surface-600">Desativado</span>
+              </button>
+            ))}
           </div>
         </div>
       ) : null}
