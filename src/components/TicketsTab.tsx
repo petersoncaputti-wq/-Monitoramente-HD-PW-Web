@@ -371,9 +371,9 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
             tone="good"
           />
           <TicketKpiCard
-            title="Chamados pendentes"
+            title="Chamados não finalizados"
             value={String(summary.pendingTickets)}
-            helperText={detailedTotvs ? 'Criados no período e ainda pendentes na exportação' : 'Status ainda não finalizados'}
+            helperText={detailedTotvs ? 'Criados no período e não finalizados na última importação.' : 'Status ainda não finalizados'}
             tone="attention"
           />
           {detailedTotvs ? <TicketKpiCard title="Mediana de solução" value={summary.medianResolutionTime} helperText="Metade dos chamados foi resolvida em até esse tempo. Horas corridas dos encerrados no período, com datas válidas." /> : <GaugeCard
@@ -445,19 +445,23 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
       </div>
 
       {detailedTotvs && <PanelShell title="Lista de chamados" description={allPending ? 'Pendentes de toda a base importada, independentemente da data de criação. Os filtros abaixo afetam somente esta lista.' : 'Chamados criados no período selecionado. Os filtros abaixo afetam somente esta lista.'}>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Buscar chamado<input className="h-11 rounded-2xl border border-brand-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300" value={search} onChange={event => setSearch(event.target.value)} placeholder="Número, descrição ou solicitante" type="search" /></label>
-          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Situação<select className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={situationFilter} onChange={event => { setSituationFilter(event.target.value); setStatusFilter(''); }} disabled={allPending}><option value="">Todas as situações</option><option value="pending">Não finalizados</option><option value="closed">Finalizados</option></select></label>
-          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Status específico<select className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="">Todos os status</option>{filterOptions.statuses.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Organização<select className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={organizationFilter} onChange={event => setOrganizationFilter(event.target.value)}><option value="">Todas as organizações</option>{filterOptions.organizations.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Solicitante<select className="h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={requesterFilter} onChange={event => setRequesterFilter(event.target.value)}><option value="">Todos os solicitantes</option>{filterOptions.requesters.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+          <label className="min-w-0 sm:col-span-2 lg:col-span-6 flex flex-col gap-2 text-sm font-medium text-surface-700">Buscar chamado<input className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300" value={search} onChange={event => setSearch(event.target.value)} placeholder="Número, descrição ou solicitante" type="search" /></label>
+          <label className="min-w-0 lg:col-span-3 flex flex-col gap-2 text-sm font-medium text-surface-700">Situação<select className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={situationFilter} onChange={event => { setSituationFilter(event.target.value); setStatusFilter(''); }} disabled={allPending}><option value="">Todas as situações</option><option value="pending">Não finalizados</option><option value="closed">Finalizados</option></select></label>
+          <label className="min-w-0 lg:col-span-3 flex flex-col gap-2 text-sm font-medium text-surface-700">Status específico<select className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="">Todos os status</option>{filterOptions.statuses.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="min-w-0 lg:col-span-6 flex flex-col gap-2 text-sm font-medium text-surface-700">Organização<select className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={organizationFilter} onChange={event => setOrganizationFilter(event.target.value)}><option value="">Todas as organizações</option>{filterOptions.organizations.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="min-w-0 lg:col-span-6 flex flex-col gap-2 text-sm font-medium text-surface-700">Solicitante<select className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={requesterFilter} onChange={event => setRequesterFilter(event.target.value)}><option value="">Todos os solicitantes</option>{filterOptions.requesters.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <label className="flex items-center gap-2 text-sm text-surface-700"><input type="checkbox" checked={allPending} onChange={event => { setAllPending(event.target.checked); setSituationFilter(event.target.checked ? 'pending' : ''); setStatusFilter(''); }} className="h-4 w-4 accent-brand-700" />Ver todos os pendentes, incluindo os criados antes do período</label>
-          <button type="button" onClick={() => { setSearch(''); setStatusFilter(''); setSituationFilter(''); setOrganizationFilter(''); setRequesterFilter(''); setAllPending(false); }} className="rounded-xl border border-brand-100 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">Limpar filtros da lista</button>
+        <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/40 px-4 py-3">
+          <label className="flex items-start gap-3 text-sm leading-6 text-surface-700"><input type="checkbox" checked={allPending} onChange={event => { setAllPending(event.target.checked); setSituationFilter(event.target.checked ? 'pending' : ''); setStatusFilter(''); }} className="mt-1 h-4 w-4 shrink-0 accent-brand-700" />Ver todos os pendentes, incluindo os criados antes do período</label>
         </div>
-        <button type="button" onClick={exportFilteredTickets} disabled={!detailedRows.length} className="mt-4 rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">Exportar filtrados em Excel ({detailedRows.length})</button>
-        <p className="mt-3 text-sm text-surface-600" role="status">{detailedRows.length} chamado(s) encontrado(s). Pendentes: status diferente de Fechado e Resolvido na exportação.</p>
+        <div className="mt-4 flex flex-col gap-4 border-t border-brand-100 pt-4 xl:flex-row xl:items-center xl:justify-between">
+        <p className="min-w-0 flex-1 text-sm text-surface-600" role="status">{detailedRows.length} chamado(s) encontrado(s). Pendentes: status diferente de Fechado e Resolvido na exportação.</p>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+          <button type="button" onClick={() => { setSearch(''); setStatusFilter(''); setSituationFilter(''); setOrganizationFilter(''); setRequesterFilter(''); setAllPending(false); }} className="min-h-11 w-full rounded-xl border border-brand-100 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:w-auto">Limpar filtros da lista</button>
+        <button type="button" onClick={exportFilteredTickets} disabled={!detailedRows.length} className="min-h-11 w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 sm:w-auto disabled:cursor-not-allowed disabled:opacity-50">Exportar filtrados em Excel ({detailedRows.length})</button>
+          </div>
+        </div>
         <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm">
           <thead><tr className="border-b border-brand-100">{['Chamado', 'Descrição', 'Status', 'Criação', 'Resolução', 'Organização'].map(label => <th key={label} scope="col" className="p-3">{label}</th>)}</tr></thead>
           <tbody>{detailedRows.slice((visiblePage - 1) * 50, visiblePage * 50).map(row => <tr key={row['Caso n.º']} className="border-b border-brand-100">
