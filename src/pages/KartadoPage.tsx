@@ -751,6 +751,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
               >
                 <span className="block font-semibold text-surface-600">{name}</span>
                 <span className="mt-2 inline-block rounded-full bg-surface-200 px-2 py-1 text-xs font-semibold text-surface-600">Desativado</span>
+                <span className="mt-2 block text-xs text-surface-600">Obs.: Desativado devido à nova ferramenta Kartado - Obras.</span>
               </button>
             ))}
           </div>
