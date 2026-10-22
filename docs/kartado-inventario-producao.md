@@ -28,6 +28,20 @@ O primeiro acesso pode retornar 202. A tela respeita `Retry-After` e acompanha a
 
 Nenhum push/deploy deve ser considerado concluído apenas porque o build local passou. O Agente Auditor e o painel são serviços diferentes.
 
+### Conferência do backend publicado em 22/10
+
+Os três arquivos baixados do Kudu, com sufixo `(1).js`, já contêm a revisão de confiabilidade do contrato. Eles não são equivalentes aos originais de 20/10 preservados no backup inicial. Uma cópia com ajustes incrementais foi preparada em `C:/Users/Peterson/Downloads/backend-azure-corrigido`, preservando a interface atual dos catálogos (`names`, `completo`, `esperados`, `recebidos`).
+
+Somente os dois arquivos de `services` dessa nova pasta precisam ser substituídos em `/home/site/wwwroot/services/`: `kartado.service.js` e `inventario-consolidation.service.js`. O `monitoramento.router.js` da cópia é idêntico ao baixado do Azure e não precisa ser reenviado. Depois da troca, reiniciar o App Service do Agente Auditor para carregar os módulos atualizados.
+
+Os ajustes incrementais cobrem percentuais sem denominador, nomes não resolvidos, validação numérica da paginação, formato inválido em páginas posteriores, deduplicação em página única, semáforo compartilhado das varreduras e limpeza de timers. A validação isolada executou 18 grupos, incluindo compatibilidade das respostas reais da consolidação com o adaptador do painel:
+
+```powershell
+node scripts/validate-inventory-corrected.mjs C:/Users/Peterson/Downloads/backend-azure-corrigido
+```
+
+Isso verifica código com transporte simulado; não comprova que o upload/reinício do Azure ocorreu nem substitui a consulta autenticada ao serviço publicado.
+
 ## Validação
 
 `npm run test:kartado-inventory` exercita parâmetros, contrato atualizado, rejeição do contrato antigo, isolamento de credenciais, coleta parcial, métricas por status, detalhes paginados, sessão obrigatória, respostas HTTP e polling/cancelamento do cliente real do frontend. O workflow de publicação inclui essa suíte.
