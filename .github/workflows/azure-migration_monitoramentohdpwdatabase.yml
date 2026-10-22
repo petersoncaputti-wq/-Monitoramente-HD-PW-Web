@@ -30,6 +30,9 @@ jobs:
       - name: Test audit reporting integration
         run: npm run test:kartado-audit
 
+      - name: Test inventory integration
+        run: npm run test:kartado-inventory
+
       - name: Test SAML authentication
         run: npm run test:saml
 

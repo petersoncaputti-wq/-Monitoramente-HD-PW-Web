@@ -1,6 +1,7 @@
 import { KartadoTicketsPage } from '@/pages/KartadoTicketsPage';
 import { useEffect, useMemo, useState } from 'react';
 import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
+import { KartadoInventory } from '@/components/KartadoInventory';
 import {
   loadKartadoCompanies,
   loadKartadoConcession,
@@ -14,13 +15,14 @@ import {
   type KartadoUser,
 } from '@/services/kartadoService';
 
-type KartadoTab = 'overview' | 'users' | 'reportings' | 'alerts' | 'tickets';
+type KartadoTab = 'overview' | 'users' | 'reportings' | 'inventory' | 'alerts' | 'tickets';
 type KartadoArea = 'audit' | 'health';
 
 const tabs: Array<{ id: KartadoTab; label: string }> = [
   { id: 'overview', label: 'Visão geral' },
   { id: 'users', label: 'Usuários' },
   { id: 'reportings', label: 'Apontamentos' },
+  { id: 'inventory', label: 'Inventário' },
   { id: 'alerts', label: 'Alertas' },
   { id: 'tickets', label: 'Chamados' },
 ];
@@ -773,7 +775,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             ))}
           </nav>
 
-          {tab !== 'reportings' ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+          {tab !== 'reportings' && tab !== 'inventory' ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-surface-900">Filtrar apontamentos por data e origem</h3>
               <p className="text-xs text-surface-600">Combine a origem com a data em que o apontamento foi encontrado para atualizar totais, gráficos, lista e alertas da unidade selecionada.</p>
@@ -861,6 +863,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           ) : null}
 
           {tab === 'reportings' ? <KartadoUnitReportings key={selectedUuid} company={selectedUuid} name={selected.company.name} /> : null}
+          {tab === 'inventory' ? <KartadoInventory key={selectedUuid} company={selectedUuid} name={selected.company.name} /> : null}
 
           {tab === 'alerts' ? (
             <div className="mt-5 grid gap-3">{alerts.length ? alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4"><div className="flex justify-between gap-4"><h3 className="font-semibold text-surface-900">{alert.title}</h3><span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span></div>{alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}{alert.action ? <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p> : null}<AlertDetails alert={alert} users={selected.users.users || []} reportings={selected.reportings.items || []} /></article>) : <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>}</div>
