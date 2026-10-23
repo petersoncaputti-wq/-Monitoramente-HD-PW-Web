@@ -17,6 +17,7 @@ const read = async (path, query) => {
 };
 const client = createReportingMapClient({ read });
 const result = await client.page(params);
+assert.deepEqual(result.classes, ['Monitoração']);
 assert.equal(result.items[0].status, 'Executado'); assert.equal(result.items[0].classe, 'Monitoração');
 assert.deepEqual(result.items[0].coordinates, [-41, -17]); assert.equal(result.items[0].km, 0);
 assert.equal(calls.find(c => c.path === '/Reporting/').query.found_at_after, params.from);
@@ -29,10 +30,27 @@ const missing = await changed({ data: [{ ...record, attributes: { ...record.attr
 assert.equal(missing.items[0].coordinates, null);
 const withoutCatalog = await createReportingMapClient({ read: async (path, query) => { if (path !== '/Reporting/') throw new Error('Catalog failed'); return read(path, query); } }).page(params);
 assert.ok(withoutCatalog.avisos.length); assert.equal(withoutCatalog.items.length, 1);
+const catalogPages = [];
+const pagedCatalogClient = createReportingMapClient({ read: async (path, query) => {
+  if (path !== '/OccurrenceType/') return read(path, query);
+  catalogPages.push(query.page);
+  return { data: [{ id: query.page === '1' ? 'absent-class' : 'classe', attributes: { name: query.page === '1' ? 'Classe sem apontamento no período' : 'Monitoração' } }], meta: { pagination: { page: Number(query.page), count: 2, pages: 2 } } };
+} });
+const paginatedClasses = await pagedCatalogClient.page(params);
+assert.deepEqual(catalogPages, ['1', '2']);
+assert.equal(paginatedClasses.items[0].classe, 'Monitoração');
+assert.deepEqual(paginatedClasses.classes, ['Classe sem apontamento no período', 'Monitoração']);
+const partialCatalog = await createReportingMapClient({ read: async (path, query) => {
+  if (path !== '/OccurrenceType/') return read(path, query);
+  if (query.page === '2') throw new Error('Failed second page');
+  return { data: [{ id: 'first-class', attributes: { name: 'Classe preservada' } }], meta: { pagination: { count: 2, pages: 2 } } };
+} }).page(params);
+assert.deepEqual(partialCatalog.classes, ['Classe preservada']); assert.ok(partialCatalog.avisos.length);
 
 const source = readFileSync(new URL('../src/services/kartadoMapService.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-const { loadMapReportings, mapStatus, initialMapDates, heatMapItems, nearbyMapItems } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+const { loadMapReportings, mapStatus, initialMapDates, heatMapItems, nearbyMapItems, mapClassOptions } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+assert.deepEqual(mapClassOptions({ classes: ['Sem ocorrência', 'Monitoração'], items: [{ classe: 'Monitoração' }, { classe: 'Classe não identificada' }] }), ['Classe não identificada', 'Monitoração', 'Sem ocorrência']);
 assert.equal(mapStatus('Em execução'), 'progress'); assert.equal(mapStatus('Executado'), 'completed'); assert.equal(mapStatus('Programado'), 'pending'); assert.equal(mapStatus('Cancelado'), 'other');
 const heatRecords = [
   { uuid: 'completed', status: 'Executado', coordinates: [10, 10] },
@@ -55,10 +73,11 @@ let active = 0, maximum = 0;
 const mockPage = async (_company, _from, _to, page) => {
   active++; maximum = Math.max(active, maximum);
   await new Promise(resolve => setImmediate(resolve)); active--;
-  return { success: true, company, pagina: page, paginas: 7, total: 7, items: [{ uuid: `id-${page}`, coordinates: [-41, -17] }], avisos: [] };
+  return { success: true, company, pagina: page, paginas: 7, total: 7, classes: page === 1 ? ['Classe sem apontamentos'] : [], items: [{ uuid: `id-${page}`, coordinates: [-41, -17] }], avisos: [] };
 };
 const complete = await loadMapReportings(company, params.from, params.to, new AbortController().signal, () => {}, mockPage);
 assert.equal(complete.items.length, 7); assert.equal(complete.partial, false); assert.equal(maximum, 3);
+assert.deepEqual(complete.classes, ['Classe sem apontamentos']);
 const partial = await loadMapReportings(company, params.from, params.to, new AbortController().signal, () => {}, async (...args) => { if (args[3] === 3) throw new Error('failed'); return mockPage(...args); });
 assert.equal(partial.partial, true); assert.equal(partial.items.length, 6); assert.ok(partial.warnings.some(w => w.includes('3')));
 const controller = new AbortController(); let reads = 0;

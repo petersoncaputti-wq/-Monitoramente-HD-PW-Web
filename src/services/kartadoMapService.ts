@@ -2,9 +2,12 @@ export interface MapReporting {
   uuid: string; numero: string | null; rodovia: string | null; km: number | null; encontradoEm: string;
   classe: string; status: string; coordinates: [number, number] | null;
 }
-export interface MapResult { items: MapReporting[]; total: number; partial: boolean; warnings: string[]; pages: number; processed: number }
+export interface MapResult { items: MapReporting[]; classes: string[]; total: number; partial: boolean; warnings: string[]; pages: number; processed: number }
 export type MapCache = Map<string, { at: number; result: MapResult }>;
-interface MapPage { success: boolean; company: string; items: MapReporting[]; total: number; paginas: number; pagina: number; avisos: string[] }
+interface MapPage { success: boolean; company: string; items: MapReporting[]; classes?: string[]; total: number; paginas: number; pagina: number; avisos: string[] }
+export function mapClassOptions(result: Pick<MapResult, 'items'> & { classes?: string[] } | null) {
+  return [...new Set([...(result?.classes || []), ...(result?.items || []).map(item => item.classe)].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
 export function mapStatus(status: string): 'completed' | 'progress' | 'pending' | 'other' {
   const key = status.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   if (['executado', 'concluido', 'encerrado', 'finalizado'].includes(key)) return 'completed';
@@ -44,6 +47,7 @@ export async function loadMapReportings(company: string, from: string, to: strin
   signal.throwIfAborted();
   const items = new Map<string, MapReporting>();
   const warnings = new Set<string>();
+  const classes = new Set<string>();
   let processed = 0, partial = first.paginas > 100;
   if (partial) warnings.add('Limite de 100 páginas atingido. Reduza o período para consultar os demais registros.');
   const accept = (page: MapPage) => {
@@ -53,9 +57,10 @@ export async function loadMapReportings(company: string, from: string, to: strin
       items.set(item.uuid, item);
     }
     for (const warning of page.avisos || []) warnings.add(warning);
+    for (const name of page.classes || []) if (typeof name === 'string' && name.trim()) classes.add(name);
     processed++;
   };
-  const result = (): MapResult => ({ items: [...items.values()], total: first.total, partial, warnings: [...warnings], pages: first.paginas, processed });
+  const result = (): MapResult => ({ items: [...items.values()], classes: [...classes], total: first.total, partial, warnings: [...warnings], pages: first.paginas, processed });
   accept(first); onProgress(result());
   for (let start = 2; start <= Math.min(100, first.paginas); start += 3) {
     signal.throwIfAborted();

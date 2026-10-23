@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { initialMapDates, loadMapReportings, type MapCache, type MapResult } from '@/services/kartadoMapService';
+import { initialMapDates, loadMapReportings, mapClassOptions, type MapCache, type MapResult } from '@/services/kartadoMapService';
 import { KartadoReportingDialog } from './KartadoReportingDialog';
 const MapCanvas = lazy(() => import('./KartadoUnitMapCanvas'));
 const field = 'min-w-0 w-full rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-xs';
@@ -40,7 +40,7 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
   useEffect(() => { setPage(1); }, [status, classe, road, applied]);
   const visible = useMemo(() => (result?.items || []).filter(item => (!status || item.status === status) && (!classe || item.classe === classe) && (!road || item.rodovia === road)), [result, status, classe, road]);
   const mapped = useMemo(() => visible.filter(item => item.coordinates), [visible]);
-  const options = (key: 'status' | 'classe' | 'rodovia') => [...new Set((result?.items || []).map(item => item[key]).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const options = (key: 'status' | 'classe' | 'rodovia') => key === 'classe' ? mapClassOptions(result) : [...new Set((result?.items || []).map(item => item[key]).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const pages = Math.max(1, Math.ceil(visible.length / 20)), safePage = Math.min(page, pages);
   const dirty = dates.from !== applied.from || dates.to !== applied.to;
   return <section className="space-y-4 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5" aria-label={`Mapa de apontamentos de ${name}`}>
