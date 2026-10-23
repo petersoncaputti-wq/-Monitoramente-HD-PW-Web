@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
 import { KartadoInventory } from '@/components/KartadoInventory';
-import { InventoryCache, type InventorySummary } from '@/services/kartadoInventoryService';
+import { InventoryCache, prefetchUnitInventory } from '@/services/kartadoInventoryService';
 import {
   loadKartadoCompanies,
   loadKartadoConcession,
@@ -497,9 +497,8 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   useEffect(() => {
     if (area !== 'audit' || !unitModalOpen || !selectedUuid) return;
     const controller = new AbortController();
-    const query = new URLSearchParams({ concessao: selectedUuid }).toString();
     // Apenas a unidade aberta; a aba compartilha esta coleta se for acessada.
-    void inventoryCache.follow<InventorySummary>('resumo', query, controller.signal, () => {}).catch(() => {
+    void prefetchUnitInventory(inventoryCache, selectedUuid, controller.signal).catch(() => {
       // A antecipação é opcional; falhas serão apresentadas na consulta da aba.
     });
     return () => controller.abort();

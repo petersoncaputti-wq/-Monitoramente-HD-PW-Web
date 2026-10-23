@@ -4,6 +4,8 @@ import ts from 'typescript';
 import { readFileSync } from 'node:fs';
 import { createInventoryClient, inventoryParams, InventoryError, validateInventoryResponse } from '../server/services/kartado-inventory.service.mjs';
 import { createInventoryRouter } from '../server/routes/kartado-inventory.mjs';
+import { PGlite } from '@electric-sql/pglite';
+import { createSnapshotRepository, createSnapshotWorker, createPersistentInventory, snapshotTarget, snapshotResponse } from '../server/services/kartado-inventory-snapshots.mjs';
 
 const company = '067c811a-1fb4-4f97-9c34-9e68125da1c1';
 const asset = '349da6d1-0000-4000-8000-000000000001';
@@ -215,5 +217,133 @@ await test('Cache não oculta falhas nem trata coleta parcial como resultado fre
     await read(); await read(); assert.equal(calls, 3);
     await assert.rejects(read()); assert.equal(cache.get('resumo', query).coletaCompleta, false);
   } finally { globalThis.fetch = originalFetch; }
+});
+await test('Antecipação prepara cruzamento padrão após resumo e reaproveita a consulta explícita da tela', async () => {
+  const source = readFileSync(new URL('../src/services/kartadoInventoryService.ts', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const { InventoryCache, prefetchUnitInventory } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+  const originalFetch = globalThis.fetch;
+  const paths = [], cache = new InventoryCache();
+  globalThis.fetch = async url => { paths.push(url); return respond(url.includes('/cruzamento?') ? crossing : summary); };
+  try {
+    await prefetchUnitInventory(cache, company, new AbortController().signal);
+    assert.equal(paths.length, 2);
+    assert.ok(paths[0].includes('/resumo?')); assert.ok(paths[1].includes('/cruzamento?'));
+    const explicit = `concessao=${company}&dimensao=classe&periodo=recente&filtro=com&page=1&page_size=100`;
+    await cache.follow('cruzamento', explicit, new AbortController().signal, () => {});
+    assert.equal(paths.length, 2);
+    assert.equal(cache.get('cruzamento', explicit).totais.ativosNoRecorte, 2);
+    const cancelled = new AbortController(); cancelled.abort();
+    await assert.rejects(prefetchUnitInventory(new InventoryCache(), company, cancelled.signal), e => e.name === 'AbortError');
+    assert.equal(paths.length, 2);
+    // Não dispara o cruzamento quando o consumidor sai durante o resumo.
+    const leaving = new AbortController();
+    let startedCrossing = false;
+    globalThis.fetch = async url => {
+      if (url.includes('/cruzamento?')) startedCrossing = true;
+      leaving.abort(); return respond(summary);
+    };
+    await assert.rejects(prefetchUnitInventory(new InventoryCache(), company, leaving.signal), e => e.name === 'AbortError');
+    assert.equal(startedCrossing, false);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+await test('Quem entra durante a coleta recebe imediatamente a etapa atual e compartilha o polling', async () => {
+  const source = readFileSync(new URL('../src/services/kartadoInventoryService.ts', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const { InventoryCache } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+  const originalFetch = globalThis.fetch, originalTimeout = globalThis.setTimeout, originalClear = globalThis.clearTimeout;
+  const cache = new InventoryCache(), first = new AbortController(), second = new AbortController();
+  const query = `concessao=${company}`;
+  let calls = 0, release, waiting;
+  const sleeping = new Promise(resolve => { waiting = resolve; });
+  globalThis.fetch = async () => { calls++; return calls === 1 ? respond(processing, 202, { 'Retry-After': '17' }) : respond(crossing); };
+  globalThis.setTimeout = fn => { release = fn; waiting(); return 1; };
+  globalThis.clearTimeout = () => {};
+  try {
+    const a = cache.follow('cruzamento', query, first.signal, () => {});
+    await sleeping;
+    const updates = [];
+    const b = cache.follow('cruzamento', `${query}&dimensao=classe&periodo=recente&filtro=com&page=1&page_size=100`, second.signal, value => updates.push(value.status));
+    assert.deepEqual(updates, ['processando']); assert.equal(calls, 1);
+    release(); await Promise.all([a, b]);
+    assert.deepEqual(updates, ['processando', 'pronto']); assert.equal(calls, 2);
+  } finally { first.abort(); second.abort(); globalThis.fetch = originalFetch; globalThis.setTimeout = originalTimeout; globalThis.clearTimeout = originalClear; }
+});
+await test('Snapshots persistidos: fila SQL, leases, atualização, falha, reinício e preservação da coleta completa', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(readFileSync(new URL('../azure/kartado-inventory-schema.sql', import.meta.url), 'utf8'));
+    const repository = createSnapshotRepository({ execute: (sql, args) => db.query(sql, args) });
+    const target = snapshotTarget('cruzamento', query);
+    assert.equal(snapshotTarget('cruzamento', { ...query, status: 'Executado' }), null);
+    assert.equal(snapshotTarget('cruzamento', { ...query, periodo: 'completo' }), null);
+    assert.equal(snapshotTarget('cruzamento', { ...query, dimensao: 'ativo' }), null);
+    await repository.register(target);
+    let row = await repository.get(target.key);
+    assert.equal(snapshotResponse(row).status, 202);
+    const first = await repository.claim(); assert.equal(first.cache_key, target.key);
+    assert.equal(await repository.claim(), null);
+    // A lease de um worker antigo não pode sobrescrever o novo resultado.
+    await repository.refresh(company);
+    const second = await repository.claim(); assert.notEqual(second.lease_token, first.lease_token);
+    await repository.complete(first, crossing);
+    assert.equal((await repository.get(target.key)).payload, null);
+    await repository.complete(second, crossing);
+    row = await repository.get(target.key);
+    assert.equal(row.payload.coletaCompleta, true);
+    assert.equal(row.update_state, 'ociosa');
+    await repository.refresh(company); // Repetir refresh no polling não reinicia a coleta.
+    assert.equal(await repository.claim(), null);
+    // Simula uma réplica/reinício: outra instância lê a coleta já persistida.
+    const restarted = createSnapshotRepository({ execute: (sql, args) => db.query(sql, args) });
+    assert.equal((await restarted.get(target.key)).payload.totais.ativosNoRecorte, 2);
+    await db.query("update kartado_inventory_snapshots set next_attempt_at=now()-interval '1 second'");
+    const third = await repository.claim();
+    await repository.retry(third, 300, 'Falha de atualização simulada.');
+    row = await repository.get(target.key);
+    assert.equal(snapshotResponse(row).data.coleta.inventario.atualizacao.estado, 'falhou');
+    assert.equal(row.payload.coletaCompleta, true);
+    await db.query("update kartado_inventory_snapshots set next_attempt_at=now()-interval '1 second'");
+    const fourth = await repository.claim();
+    await repository.complete(fourth, { ...crossing, coletaCompleta: false });
+    row = await repository.get(target.key);
+    assert.equal(row.payload.coletaCompleta, true); assert.equal(row.update_state, 'incompleta');
+    const elapsed = snapshotResponse(row, new Date(row.saved_at).getTime() + 22_000_000);
+    assert.equal(elapsed.data.coleta.inventario.atualidade.expirado, true);
+    await db.query("update kartado_inventory_snapshots set next_attempt_at=now()-interval '1 second'");
+    const fifth = await repository.claim();
+    await repository.complete(fifth, { ...crossing, coleta: { ...crossing.coleta, apontamentos: { ...quality, atualizacao: { estado: 'em_andamento' } } } }, 27);
+    row = await repository.get(target.key);
+    assert.equal(row.update_state, 'em_andamento');
+    assert.equal(snapshotResponse(row).data.coleta.inventario.atualizacao.estado, 'em_andamento');
+    assert.ok(new Date(row.next_attempt_at).getTime() - Date.now() > 20_000);
+  } finally { await db.close(); }
+});
+
+await test('Worker persiste sem navegador, respeita 202 e limita execução; ausência da migração usa origem', async () => {
+  const row = { cache_key: 'key', company_uuid: company, kind: 'cruzamento', params: query, lease_token: asset, refresh_requested: false };
+  const events = [];
+  let result = { status: 202, retryAfter: 27, data: processing };
+  const repository = {
+    claim: async () => row,
+    retry: async (...args) => events.push(['retry', ...args]),
+    complete: async (...args) => events.push(['complete', ...args]),
+  };
+  const worker = createSnapshotWorker({ repository, client: { request: async () => result } });
+  await worker.tick(); assert.equal(events[0][0], 'retry'); assert.equal(events[0][2], 27);
+  result = { status: 200, data: crossing, retryAfter: 15 };
+  await worker.tick(); assert.equal(events[1][0], 'complete');
+  result = { status: 200, data: { ...crossing, coleta: { ...crossing.coleta, apontamentos: { ...quality, atualizacao: { estado: 'em_andamento' } } } }, retryAfter: 19 };
+  await worker.tick(); assert.equal(events[2][3], 19);
+  let finish, calls = 0;
+  const blocking = createSnapshotWorker({ repository, client: { request: () => { calls++; return new Promise(resolve => { finish = resolve; }); } } });
+  const pending = blocking.tick(); await new Promise(resolve => setImmediate(resolve));
+  await blocking.tick(); assert.equal(calls, 1); finish({ status: 200, data: crossing }); await pending;
+  const originalError = console.error; console.error = () => {};
+  try {
+    const fallback = createPersistentInventory({ repository: { register: async () => { throw new Error('table missing'); } }, client: { request: async () => ({ status: 200, data: summary }) }, env });
+    assert.equal((await fallback.request('resumo', query)).status, 200);
+  } finally { console.error = originalError; }
 });
 console.log(`\n${count} grupos de integração do inventário passaram.`);

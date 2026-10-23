@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { requireUser } from '../auth.mjs';
-import { createInventoryClient, InventoryError } from '../services/kartado-inventory.service.mjs';
+import { InventoryError } from '../services/kartado-inventory.service.mjs';
+import { persistentInventory } from '../services/kartado-inventory-snapshots.mjs';
 
-export function createInventoryRouter({ authenticate = requireUser, client = createInventoryClient() } = {}) {
+export function createInventoryRouter({ authenticate = requireUser, client = persistentInventory } = {}) {
   const router = Router();
   router.use(authenticate);
   router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
@@ -13,7 +14,7 @@ export function createInventoryRouter({ authenticate = requireUser, client = cre
       const started = performance.now();
       const result = await client.request(kind, req.query, req.params.uuid);
       res.set('Server-Timing', `inventory;dur=${(performance.now() - started).toFixed(1)};desc="Consulta ao Agente Auditor"`);
-      if (result.status === 202) res.set('Retry-After', String(result.retryAfter));
+      if (result.status === 202 || (result.status === 200 && Object.values(result.data.coleta || {}).some(source => source?.atualizacao.estado === 'em_andamento'))) res.set('Retry-After', String(result.retryAfter));
       res.status(result.status).json(result.data);
     });
   }
