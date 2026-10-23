@@ -1,3 +1,14 @@
 .kartado-unit-map .leaflet-heatmap-layer {
   pointer-events: none;
 }
+
+.kartado-unit-map .leaflet-control-zoom a {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+}
+
+.kartado-unit-map:focus-visible {
+  outline: 2px solid #15803d;
+  outline-offset: 2px;
+}
