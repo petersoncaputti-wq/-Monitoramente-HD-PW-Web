@@ -12,6 +12,19 @@ export function mapStatus(status: string): 'completed' | 'progress' | 'pending' 
   if (['aberto', 'identificado', 'pendente', 'programado'].includes(key)) return 'pending';
   return 'other';
 }
+export function heatMapItems(items: MapReporting[], pendingOnly = false) {
+  return items.filter(item => {
+    const point = item.coordinates;
+    return point && point.every(Number.isFinite) && Math.abs(point[0]) <= 180 && Math.abs(point[1]) <= 85.05112878
+      && (!pendingOnly || ['pending', 'progress'].includes(mapStatus(item.status)));
+  });
+}
+export function nearbyMapItems(items: MapReporting[], center: { x: number; y: number }, project: (point: [number, number]) => { x: number; y: number }, radius = 40) {
+  return items.filter(item => item.coordinates).map(item => {
+    const point = project(item.coordinates!);
+    return { item, distance: (point.x - center.x) ** 2 + (point.y - center.y) ** 2 };
+  }).filter(value => value.distance <= radius ** 2).sort((a, b) => a.distance - b.distance).map(value => value.item);
+}
 export function initialMapDates() {
   const to = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const from = new Date(`${to}T12:00:00Z`); from.setUTCDate(from.getUTCDate() - 29);

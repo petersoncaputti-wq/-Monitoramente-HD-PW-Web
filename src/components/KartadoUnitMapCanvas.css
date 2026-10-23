@@ -1,0 +1,3 @@
+.kartado-unit-map .leaflet-heatmap-layer {
+  pointer-events: none;
+}

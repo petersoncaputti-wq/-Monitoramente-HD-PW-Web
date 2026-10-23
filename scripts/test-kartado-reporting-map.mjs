@@ -32,8 +32,24 @@ assert.ok(withoutCatalog.avisos.length); assert.equal(withoutCatalog.items.lengt
 
 const source = readFileSync(new URL('../src/services/kartadoMapService.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-const { loadMapReportings, mapStatus, initialMapDates } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+const { loadMapReportings, mapStatus, initialMapDates, heatMapItems, nearbyMapItems } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
 assert.equal(mapStatus('Em execução'), 'progress'); assert.equal(mapStatus('Executado'), 'completed'); assert.equal(mapStatus('Programado'), 'pending'); assert.equal(mapStatus('Cancelado'), 'other');
+const heatRecords = [
+  { uuid: 'completed', status: 'Executado', coordinates: [10, 10] },
+  { uuid: 'pending', status: 'Identificado', coordinates: [10, 10] },
+  { uuid: 'progress', status: 'Em execução', coordinates: [20, 10] },
+  { uuid: 'scheduled', status: 'Programado', coordinates: [60, 10] },
+  { uuid: 'missing', status: 'Pendente', coordinates: null },
+  { uuid: 'invalid', status: 'Pendente', coordinates: [181, 10] },
+  { uuid: 'cancelled', status: 'Cancelado', coordinates: [100, 10] },
+];
+const heat = heatMapItems(heatRecords);
+assert.equal(heat.length, 5); // Mantém a contagem de dois registros na mesma coordenada.
+assert.deepEqual(heatMapItems(heatRecords, true).map(item => item.uuid), ['pending', 'progress', 'scheduled']);
+const nearby = nearbyMapItems(heat, { x: 10, y: 10 }, point => ({ x: point[0], y: point[1] }), 50);
+assert.deepEqual(nearby.map(item => item.uuid), ['completed', 'pending', 'progress', 'scheduled']);
+assert.equal(nearbyMapItems(heat, { x: 0, y: 0 }, point => ({ x: point[0], y: point[1] }), 5).length, 0);
+assert.equal(heatMapItems([], true).length, 0);
 assert.equal((Date.parse(initialMapDates().to) - Date.parse(initialMapDates().from)) / 86400000, 29);
 let active = 0, maximum = 0;
 const mockPage = async (_company, _from, _to, page) => {
