@@ -10,7 +10,9 @@ export function createInventoryRouter({ authenticate = requireUser, client = cre
   router.use(rateLimit({ windowMs: 60_000, limit: 90, keyGenerator: req => String(req.user.id), standardHeaders: 'draft-7', legacyHeaders: false, message: { success: false, code: 'RATE_LIMIT', error: 'Muitas consultas. Aguarde um minuto e tente novamente.' } }));
   for (const [path, kind] of [['/resumo', 'resumo'], ['/cruzamento', 'cruzamento'], ['/itens', 'itens'], ['/:uuid/apontamentos', 'apontamentos']]) {
     router.get(path, async (req, res) => {
+      const started = performance.now();
       const result = await client.request(kind, req.query, req.params.uuid);
+      res.set('Server-Timing', `inventory;dur=${(performance.now() - started).toFixed(1)};desc="Consulta ao Agente Auditor"`);
       if (result.status === 202) res.set('Retry-After', String(result.retryAfter));
       res.status(result.status).json(result.data);
     });

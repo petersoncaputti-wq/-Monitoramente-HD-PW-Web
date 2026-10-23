@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { followInventory, requestInventory, type AssetReportings, type CollectionQuality, type InventoryAsset, type InventoryCrossing, type InventoryItems, type InventoryProcessing, type InventoryResult, type InventorySummary } from '@/services/kartadoInventoryService';
+import { followInventory, requestInventory, InventoryCache, type AssetReportings, type CollectionQuality, type InventoryAsset, type InventoryCrossing, type InventoryItems, type InventoryProcessing, type InventoryResult, type InventorySummary } from '@/services/kartadoInventoryService';
 import { safeKartadoLink } from '@/utils/kartadoAudit';
 
 const button = 'inline-flex items-center justify-center gap-2 rounded-xl border border-brand-100 bg-white px-4 py-2.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40';
@@ -11,8 +11,8 @@ const timestamp = (value: string) => new Date(value).toLocaleString('pt-BR', { t
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="flex min-w-[150px] flex-1 flex-col gap-2 text-xs font-medium text-surface-700"><span>{label}</span>{children}</label>; }
 function Metric({ label, value, note }: { label: string; value: string; note: string }) { return <article className="min-w-0 rounded-2xl border border-brand-100 bg-white p-4"><p className="text-xs text-surface-700">{label}</p><strong className="mt-3 block break-words text-2xl font-semibold text-brand-800">{value}</strong><p className="mt-2 text-[11px] leading-5 text-surface-600">{note}</p></article>; }
 
-function useInventory<T extends InventoryResult>(path: string, query: string, enabled: boolean, revision: number) {
-  const [data, setData] = useState<T | null>(null);
+function useInventory<T extends InventoryResult>(cache: InventoryCache, path: string, query: string, enabled: boolean, revision: number, refreshSource = false) {
+  const [data, setData] = useState<T | null>(() => cache.get<T>(path, query));
   const [processing, setProcessing] = useState<InventoryProcessing | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,17 +22,17 @@ function useInventory<T extends InventoryResult>(path: string, query: string, en
     if (!enabled) return;
     const controller = new AbortController();
     const key = `${path}?${query}`;
-    if (lastKey.current !== key) setData(null);
+    if (lastKey.current !== key) setData(cache.get<T>(path, query));
     lastKey.current = key;
-    const force = revision > lastRevision.current;
+    const force = refreshSource && revision > lastRevision.current;
     lastRevision.current = revision;
     setLoading(true); setProcessing(null); setError('');
-    void followInventory<T>(path, `${query}${force ? '&refresh=1' : ''}`, controller.signal, value => {
+    void cache.follow<T>(path, `${query}${force ? '&refresh=1' : ''}`, controller.signal, value => {
       if (value.status === 'processando') setProcessing(value);
       else { setData(value); setProcessing(null); setLoading(false); }
     }).catch(reason => { if (!controller.signal.aborted) { setProcessing(null); setError(reason instanceof Error ? reason.message : 'Inventário indisponível.'); } }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [path, query, enabled, revision]);
+  }, [cache, path, query, enabled, revision, refreshSource]);
   return { data, loading, processing, error };
 }
 function Quality({ name, value }: { name: string; value: CollectionQuality }) {
@@ -42,7 +42,7 @@ function Quality({ name, value }: { name: string; value: CollectionQuality }) {
 }
 interface Detail { classe?: string; rodovia?: string; asset?: InventoryAsset; crossing?: boolean; status?: string; mode?: string }
 
-export function KartadoInventory({ company, name }: { company: string; name: string }) {
+export function KartadoInventory({ company, name, cache }: { company: string; name: string; cache: InventoryCache }) {
   const [view, setView] = useState<'summary' | 'cross'>('summary');
   const [classe, setClasse] = useState('');
   const [road, setRoad] = useState('');
@@ -63,11 +63,11 @@ export function KartadoInventory({ company, name }: { company: string; name: str
   const dialog = useRef<HTMLDialogElement>(null);
   const baseQuery = new URLSearchParams({ concessao: company }).toString();
   const filterQuery = new URLSearchParams({ concessao: company, ...(classe && { classe }), ...(road && { rodovia: road }) }).toString();
-  const base = useInventory<InventorySummary>('resumo', baseQuery, true, revision);
-  const recut = useInventory<InventorySummary>('resumo', filterQuery, Boolean(classe || road) && view === 'summary', revision);
+  const base = useInventory<InventorySummary>(cache, 'resumo', baseQuery, true, revision, true);
+  const recut = useInventory<InventorySummary>(cache, 'resumo', filterQuery, Boolean(classe || road) && view === 'summary', revision);
   const summary = classe || road ? recut : base;
   const crossingQuery = new URLSearchParams({ concessao: company, dimensao: dimension, periodo: period, ...(classe && { classe }), ...(road && { rodovia: road }), ...(status && { status }), filtro: mode, page: String(page), page_size: '100' }).toString();
-  const crossing = useInventory<InventoryCrossing>('cruzamento', crossingQuery, view === 'cross', revision);
+  const crossing = useInventory<InventoryCrossing>(cache, 'cruzamento', crossingQuery, view === 'cross', revision);
   const active = view === 'summary' ? summary : crossing;
   const result = active.data;
   const isPartial = (view === 'cross' ? crossing.data?.coletaCompleta : summary.data?.coletaCompleta) === false;
@@ -118,7 +118,7 @@ export function KartadoInventory({ company, name }: { company: string; name: str
   function openDetail(value: Detail) { setDetailPage(1); setDetail(value); }
   function groupDetail(key: string) { openDetail({ classe: dimension === 'classe' ? key : classe, rodovia: dimension === 'rodovia' ? key : road, crossing: view === 'cross', status, mode: 'com' }); }
   function reset() { setClasse(''); setRoad(''); setPeriod('recente'); setStatus(''); setMode('com'); setPage(1); }
-  function refresh() { setRefreshUntil(Date.now() + 300_000); setCooldown(true); setRevision(value => value + 1); }
+  function refresh() { cache.invalidate(company); setRefreshUntil(Date.now() + 300_000); setCooldown(true); setRevision(value => value + 1); }
   const detailAssets = items ? 'itens' in items ? items.itens : items.linhas : [];
   const detailTotalPages = reports?.totalPaginas || items?.totalPaginas || 1;
 
