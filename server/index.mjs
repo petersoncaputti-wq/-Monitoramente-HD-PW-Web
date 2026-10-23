@@ -17,6 +17,7 @@ import ecoRouter from './routes/kartado-eco.mjs';
 import auditRouter from './routes/kartado-audit.mjs';
 import inventoryRouter from './routes/kartado-inventory.mjs';
 import reportingDetailsRouter from './routes/kartado-reporting-details.mjs';
+import reportingMapRouter from './routes/kartado-reporting-map.mjs';
 import { auditWorker } from './services/kartado-audit-jobs.mjs';
 import { persistentInventory } from './services/kartado-inventory-snapshots.mjs';
 
@@ -80,6 +81,7 @@ app.use('/api/v1/kartado', requireUser, kartadoRouter);
 app.use('/api/kartado-audit', auditRouter);
 app.use('/api/kartado-inventory', inventoryRouter);
 app.use('/api/kartado-reporting-details', reportingDetailsRouter);
+app.use('/api/kartado-reporting-map', reportingMapRouter);
 auditWorker.start();
 persistentInventory.start();
 

@@ -66,7 +66,19 @@ Isso verifica código com transporte simulado; não comprova que o upload/reiní
 
 ## Validação
 
-### Ficha do apontamento no painel
+### Mapa de apontamentos na visão geral
+
+A visão geral de cada unidade inclui um mapa abaixo dos indicadores. O período inicial é de 30 dias pela data em que o apontamento foi encontrado (`found_at_after`/`found_at_before`), independente dos filtros gerais da unidade. Datas do mapa são aplicadas por botão; status, classe e rodovia filtram os registros recebidos. O período máximo é de 366 dias.
+
+`GET /api/kartado-reporting-map` exige sessão e valida unidade, datas e página. Consulta `/Reporting/` com Basic e campos esparsos em snake_case (incluindo `point`, `road_name`, `found_at`, `occurrence_type`), sem baixar formulário ou imagens. Página fixa de 200 registros, até três consultas simultâneas no navegador, subordinadas ao semáforo global do servidor. Até 100 páginas por consulta; além disso, o resultado é parcial e solicita redução do período. Respostas de outra unidade ou fora do período são recusadas. Catálogos de classe/status são reaproveitados por cinco minutos e falhas de resolução são informadas.
+
+O mapa usa Leaflet e agrupamento de marcadores, com módulos carregados sob demanda, inserção dos pontos em lotes e cores por status. Clicar em um grupo aproxima o mapa; clicar no marcador mostra número, classe, status, rodovia e km e permite abrir a ficha interna. A camada base é OpenStreetMap, com atribuição e política de referência explícita. Nenhuma chave nova é necessária. Registros também podem ser abertos pela lista paginada, inclusive os sem coordenadas, permitindo consulta por teclado e em falhas da camada de mapa.
+
+As contagens distinguem recebidos/total no período, pontos após filtros e registros sem coordenadas válidas. O carregamento é progressivo e informa falhas parciais. Consultas completas ficam em memória na página por cinco minutos (até cinco recortes), descartadas ao sair da página. Trocar de unidade ou aba cancela a consulta do navegador; imagens e fichas completas só são carregadas quando solicitadas. Não há migração de banco adicional para o mapa.
+
+Validação real em 23/10/2026, período 24/09 a 23/10: Ecovias das Gerais retornou 20 registros com coordenadas e nomes resolvidos; Ecovias Capixaba informou 12.170 registros em 61 páginas e retornou 200 pontos na primeira página em aproximadamente 3,4 segundos na execução local. Isso mede a primeira página e os catálogos, não toda a consulta nem o tempo de renderização do navegador. `scripts/test-kartado-reporting-map.mjs` cobre parâmetros, isolamento, coordenadas, catálogos, concorrência, paginação progressiva, falha parcial, cancelamento e autenticação, e faz parte de `npm run test:kartado-inventory`.
+
+### Consulta da ficha
 
 No histórico de um ativo, **Ver ficha do apontamento** abre informações e arquivos no próprio painel. O número na tabela da aba Apontamentos e o botão da consulta de auditoria também abrem essa ficha em um modal interno, usando a unidade do resultado consultado. O modal fecha por botão ou Esc e restaura o foco e a posição da tela anterior. A consulta detalhada usa a API pública `GET /Reporting/` com Basic, `company`, `uuid`, `page=1` e `page_size=1`. O endpoint direto `/Reporting/{uuid}/` retornou 403 na verificação, enquanto a listagem filtrada retornou o registro correto. O parâmetro `include` não é suportado; equipe, classe/formulário, status e inventário são resolvidos por listagens filtradas, com limite global de cinco chamadas. A autenticação JWT das consultas anteriores não foi alterada.
 
