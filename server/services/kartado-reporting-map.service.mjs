@@ -25,11 +25,25 @@ export function createReportingMapClient({ read = apiFetchBasic } = {}) {
     const saved = catalogs.get(company);
     if (saved && saved.expires > Date.now()) return saved.promise;
     const promise = Promise.all(['OccurrenceType', 'ServiceOrderActionStatus'].map(async kind => {
+      const names = new Map();
       try {
-        const payload = await read(`/${kind}/`, { company, page: '1', page_size: '1000', [`fields[${kind}]`]: 'uuid,name' });
-        const items = rows(payload);
-        return { names: new Map(items.map(item => [item.id, item.attributes?.name])), partial: (payload.meta?.pagination?.count ?? items.length) > items.length };
-      } catch { return { names: new Map(), partial: true }; }
+        let expected = 0, pages = 1, partial = false;
+        for (let page = 1; page <= Math.min(pages, 20); page++) {
+          const payload = await read(`/${kind}/`, { company, page: String(page), page_size: '1000', [`fields[${kind}]`]: 'uuid,name' });
+          const items = rows(payload);
+          const meta = payload.meta?.pagination || payload.data?.meta?.pagination;
+          if (page === 1) {
+            expected = meta?.count ?? items.length;
+            pages = Math.max(1, meta?.pages ?? Math.ceil(expected / Math.max(1, items.length)));
+            if (!Number.isSafeInteger(expected) || expected < items.length || !Number.isSafeInteger(pages)) throw new Error('Catálogo inválido');
+          } else if (meta && (meta.count !== expected || Math.max(1, meta.pages) !== pages)) partial = true;
+          for (const item of items) {
+            if (typeof item.id === 'string' && typeof item.attributes?.name === 'string' && item.attributes.name.trim()) names.set(item.id, item.attributes.name.trim());
+            else partial = true;
+          }
+        }
+        return { names, partial: partial || pages > 20 || names.size < expected };
+      } catch { return { names, partial: true }; }
     }));
     catalogs.set(company, { expires: Date.now() + 300000, promise });
     if (catalogs.size > 20) catalogs.delete(catalogs.keys().next().value);
@@ -60,6 +74,7 @@ export function createReportingMapClient({ read = apiFetchBasic } = {}) {
           coordinates: valid ? point.slice(0, 2) : null };
       });
       return { success: true, company: params.company, pagina: params.page, total: meta.count, paginas: Math.max(1, meta.pages),
+        classes: params.page === 1 ? [...new Set(classes.names.values())].sort((a, b) => a.localeCompare(b, 'pt-BR')) : [],
         items: points, avisos: classes.partial || statuses.partial ? ['Alguns nomes de classe ou status não puderam ser resolvidos.'] : [] };
     },
   };
