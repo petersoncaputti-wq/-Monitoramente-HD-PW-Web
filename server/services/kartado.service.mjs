@@ -89,6 +89,20 @@ async function apiFetch(token, path, params = {}) {
 }
 
 // ── Extrai items + paginação — todos os formatos Kartado ─────────────────────
+// A API pública de fichas usa Basic; mantém o mesmo limite global de conexões.
+export async function apiFetchBasic(path, params = {}, env = process.env) {
+  if (!env.KARTADO_USERNAME || !env.KARTADO_PASSWORD) throw { httpStatus: 503 };
+  const base = (env.KARTADO_API_URL || 'https://api.kartado.com.br').replace(/\/$/, '');
+  if (new URL(base).protocol !== 'https:') throw { httpStatus: 503 };
+  const url = `${base}${path}?${new URLSearchParams(params)}`;
+  const result = await safeFetch(url, {
+    redirect: 'error',
+    headers: { Accept: ACCEPT, Authorization: `Basic ${Buffer.from(`${env.KARTADO_USERNAME}:${env.KARTADO_PASSWORD}`).toString('base64')}` },
+  });
+  if (!result.ok) throw { httpStatus: result.status };
+  try { return JSON.parse(result.body); } catch { throw { httpStatus: 502 }; }
+}
+
 export function extractPage(payload, pageSize) {
   // Formato A — Reporting: { data: { results:[], meta:{pagination} } }
   if (payload?.data && Array.isArray(payload.data?.results)) {
