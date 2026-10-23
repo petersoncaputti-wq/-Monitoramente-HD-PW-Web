@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
 import { KartadoInventory } from '@/components/KartadoInventory';
+import { InventoryCache, type InventorySummary } from '@/services/kartadoInventoryService';
 import {
   loadKartadoCompanies,
   loadKartadoConcession,
@@ -415,6 +416,7 @@ function riskLabel(user: KartadoUser) {
 }
 
 export function KartadoPage({ area }: { area: KartadoArea }) {
+  const inventoryCache = useMemo(() => new InventoryCache(), []);
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
   const [concessions, setConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
@@ -491,6 +493,17 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
       : concessions[selectedUuid] || null,
     [concessions, filteredConcession, selectedUuid],
   );
+
+  useEffect(() => {
+    if (area !== 'audit' || !unitModalOpen || !selectedUuid) return;
+    const controller = new AbortController();
+    const query = new URLSearchParams({ concessao: selectedUuid }).toString();
+    // Apenas a unidade aberta; a aba compartilha esta coleta se for acessada.
+    void inventoryCache.follow<InventorySummary>('resumo', query, controller.signal, () => {}).catch(() => {
+      // A antecipação é opcional; falhas serão apresentadas na consulta da aba.
+    });
+    return () => controller.abort();
+  }, [area, unitModalOpen, selectedUuid, inventoryCache]);
 
   const totals = useMemo(
     () =>
@@ -917,7 +930,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           ) : null}
 
           {tab === 'reportings' ? <KartadoUnitReportings key={selectedUuid} company={selectedUuid} name={selected.company.name} /> : null}
-          {tab === 'inventory' ? <KartadoInventory key={selectedUuid} company={selectedUuid} name={selected.company.name} /> : null}
+          {tab === 'inventory' ? <KartadoInventory key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={inventoryCache} /> : null}
 
           {tab === 'alerts' ? (
             <div className="mt-5 grid gap-3">{alerts.length ? alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4"><div className="flex justify-between gap-4"><h3 className="font-semibold text-surface-900">{alert.title}</h3><span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span></div>{alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}{alert.action ? <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p> : null}<AlertDetails alert={alert} users={selected.users.users || []} reportings={selected.reportings.items || []} /></article>) : <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>}</div>

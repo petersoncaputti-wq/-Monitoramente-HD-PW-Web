@@ -91,6 +91,7 @@ await test('Rotas exigem sessão, mantêm no-store, 202 e detalhes de 409', asyn
     assert.equal((await fetch(`${url}/resumo?concessao=${company}`)).status, 401); assert.equal(calls, 0);
     assert.equal((await fetch(`${url}/resumo?concessao=invalid`, { headers })).status, 400); assert.equal(calls, 0);
     const progress = await fetch(`${url}/resumo?concessao=${company}`, { headers });
+    assert.match(progress.headers.get('Server-Timing'), /^inventory;dur=\d+\.\d/);
     assert.equal(progress.status, 202); assert.equal(progress.headers.get('Retry-After'), '27'); assert.equal(progress.headers.get('Cache-Control'), 'no-store');
     const result = await fetch(`${url}/cruzamento?concessao=${company}`, { headers });
     assert.equal(result.status, 200); assert.equal(JSON.stringify(await result.json()).includes(env.MONITORAMENTO_API_KEY), false);
@@ -118,5 +119,101 @@ await test('Cliente real do frontend acompanha 202, conserva query e cancela ao 
     await assert.rejects(followInventory('resumo', `concessao=${company}`, ctrl.signal, () => ctrl.abort()), e => e.name === 'AbortError');
     assert.equal(requests, 1);
   } finally { globalThis.fetch = originalFetch; globalThis.setTimeout = originalTimeout; globalThis.clearTimeout = originalClear; }
+});
+await test('Cache reaproveita antecipação, separa unidades e filtros, revalida e força atualização', async () => {
+  const source = readFileSync(new URL('../src/services/kartadoInventoryService.ts', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const { InventoryCache } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+  const cache = new InventoryCache();
+  const originalFetch = globalThis.fetch, originalNow = Date.now;
+  let now = originalNow(), calls = 0;
+  const query = `concessao=${company}`;
+  const signal = () => new AbortController().signal;
+  const read = (q = query) => cache.follow('resumo', q, signal(), () => {});
+  Date.now = () => now;
+  globalThis.fetch = async () => { calls++; return respond(summary); };
+  try {
+    await read(); await read(); assert.equal(calls, 1);
+    assert.equal(cache.get('resumo', query).totalFiltrado, 2);
+    now += 61_000;
+    const updates = [];
+    await cache.follow('resumo', query, signal(), value => updates.push(value.status));
+    assert.equal(calls, 2); assert.deepEqual(updates, ['pronto', 'pronto']);
+    await read(`${query}&classe=Ponte`); assert.equal(calls, 3);
+    await read(`classe=Ponte&${query}`); assert.equal(calls, 3);
+    await read(`concessao=${asset}`); assert.equal(calls, 4);
+    cache.invalidate(company);
+    await read(`${query}&refresh=1`); assert.equal(calls, 5);
+    await read(); assert.equal(calls, 5);
+    await read(`${query}&classe=Ponte`); assert.equal(calls, 6);
+    now += 22_000_000;
+    assert.equal(cache.get('resumo', query).coleta.inventario.atualidade.expirado, true);
+    await read(); assert.equal(calls, 7);
+    const isolated = new InventoryCache(); assert.equal(isolated.get('resumo', query), null);
+  } finally { globalThis.fetch = originalFetch; Date.now = originalNow; }
+});
+
+await test('Consultas simultâneas compartilham rede e só cancelam quando o último consumidor sai', async () => {
+  const source = readFileSync(new URL('../src/services/kartadoInventoryService.ts', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const { InventoryCache } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+  const originalFetch = globalThis.fetch;
+  const cache = new InventoryCache(), query = `concessao=${company}`;
+  let finish, networkSignal, calls = 0;
+  globalThis.fetch = (_url, options) => {
+    calls++; networkSignal = options.signal;
+    return new Promise((resolve, reject) => {
+      finish = () => resolve(respond(summary));
+      options.signal.addEventListener('abort', () => reject(new DOMException('Cancelado', 'AbortError')), { once: true });
+    });
+  };
+  try {
+    const first = new AbortController(), second = new AbortController();
+    const a = cache.follow('resumo', query, first.signal, () => {});
+    const b = cache.follow('resumo', query, second.signal, () => {});
+    assert.equal(calls, 1);
+    first.abort(); await assert.rejects(a, e => e.name === 'AbortError');
+    assert.equal(networkSignal.aborted, false);
+    finish(); await b;
+    assert.ok(cache.get('resumo', query));
+    cache.invalidate(company);
+    const last = new AbortController();
+    const c = cache.follow('resumo', query, last.signal, () => {});
+    last.abort(); await assert.rejects(c, e => e.name === 'AbortError');
+    assert.equal(networkSignal.aborted, true);
+    const next = cache.follow('resumo', query, new AbortController().signal, () => {});
+    assert.equal(calls, 3); finish(); await next;
+    // Resposta antiga não deve substituir uma atualização manual mais nova.
+    let oldFinish, freshFinish;
+    globalThis.fetch = (url) => new Promise(resolve => {
+      const done = () => resolve(respond({ ...summary, totalFiltrado: url.includes('refresh=1') ? 10 : 1 }));
+      if (url.includes('refresh=1')) freshFinish = done; else oldFinish = done;
+    });
+    cache.invalidate(company);
+    const old = cache.follow('resumo', query, new AbortController().signal, () => {});
+    cache.invalidate(company);
+    const fresh = cache.follow('resumo', `${query}&refresh=1`, new AbortController().signal, () => {});
+    freshFinish(); await fresh; oldFinish(); await old;
+    assert.equal(cache.get('resumo', query).totalFiltrado, 10);
+  } finally { globalThis.fetch = originalFetch; }
+});
+await test('Cache não oculta falhas nem trata coleta parcial como resultado fresco', async () => {
+  const source = readFileSync(new URL('../src/services/kartadoInventoryService.ts', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const { InventoryCache } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+  const originalFetch = globalThis.fetch;
+  const cache = new InventoryCache(), query = `concessao=${company}`;
+  const read = () => cache.follow('resumo', query, new AbortController().signal, () => {});
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1 || calls === 4) return respond({ success: false, error: 'Indisponível' }, 503);
+    return respond({ ...summary, coletaCompleta: false });
+  };
+  try {
+    await assert.rejects(read()); assert.equal(cache.get('resumo', query), null);
+    await read(); await read(); assert.equal(calls, 3);
+    await assert.rejects(read()); assert.equal(cache.get('resumo', query).coletaCompleta, false);
+  } finally { globalThis.fetch = originalFetch; }
 });
 console.log(`\n${count} grupos de integração do inventário passaram.`);

@@ -15,7 +15,17 @@ MONITORAMENTO_API_KEY=<chave vigente da integração>
 
 São as mesmas variáveis da integração anterior do Auditor; não é necessário mudar `KARTADO_REPORTINGS_PROVIDER`. Não há migração de banco para esta aba.
 
-O primeiro acesso pode retornar 202. A tela respeita `Retry-After` e acompanha a mesma consulta até concluir. Sair da aba cancela as requisições e esperas do navegador; a coleta já iniciada continua no serviço de origem. Com resultado anterior e atualização em andamento, os dados e metadados permanecem visíveis enquanto a tela acompanha o estado. O acompanhamento tem limite de 15 minutos; após isso o usuário pode consultar novamente. Uma atualização manual respeita intervalo de cinco minutos.
+O primeiro acesso pode retornar 202. A tela respeita `Retry-After` e acompanha a mesma consulta até concluir. As requisições e esperas do navegador são canceladas quando o último consumidor sai; a coleta já iniciada continua no serviço de origem. Com resultado anterior e atualização em andamento, os dados e metadados permanecem visíveis enquanto a tela acompanha o estado. O acompanhamento tem limite de 15 minutos; após isso o usuário pode consultar novamente. Uma atualização manual respeita intervalo de cinco minutos.
+
+## Reaproveitamento e antecipação no portal
+
+Abrir o modal de uma unidade antecipa somente o resumo dessa unidade. A aba Inventário compartilha a consulta e o acompanhamento em andamento. Fechar o modal ou trocar de unidade cancela a antecipação anterior. Sair apenas da aba pode manter a antecipação enquanto o modal continuar aberto.
+
+O cache é uma instância em memória da página Kartado, limitada a 80 consultas de resumo/cruzamento e descartada ao sair da página. As chaves separam unidade, caminho e filtros. Resultados completos, válidos e sem atualização pendente podem ser reutilizados sem rede durante 60 segundos. Depois disso, o resultado anterior aparece imediatamente e uma consulta verifica o estado atual. Coletas parciais, expiradas ou com falha de atualização sempre são verificadas novamente; a idade e a expiração dos dados exibidos consideram o tempo no cache.
+
+Atualizar inventário invalida os resultados da unidade e envia `refresh=1` apenas pelo resumo base, evitando disparar a mesma atualização pelas consultas filtradas. Respostas iniciadas antes da invalidação não substituem o cache atualizado. Falhas não são armazenadas como sucesso e preservam o último resultado disponível.
+
+As respostas bem-sucedidas e 202 de `/api/kartado-inventory/*` incluem `Server-Timing: inventory;dur=...`, com o tempo em milissegundos da consulta ao adaptador/Agente Auditor. Esse tempo pode ser inspecionado na aba Network do navegador por endpoint; não mede a duração total de uma coleta acompanhada por várias requisições. Não houve medição autenticada em produção nesta alteração.
 
 ## Ordem de publicação
 
