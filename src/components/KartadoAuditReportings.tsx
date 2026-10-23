@@ -4,7 +4,8 @@ import {
   AuditRequestError, getActiveAuditJob, getAuditCompanies, getAuditJob, getAuditOrigins, getAuditResult, startAuditJob,
   type AuditCompany, type AuditOrigin, type AuditParams, type AuditResult,
 } from '@/services/kartadoAuditService';
-import { auditCounts, auditOverdue, auditStatus, auditToday, emptyAuditFilters, filterAuditItems, safeKartadoLink, type AuditFilters } from '@/utils/kartadoAudit';
+import { auditCounts, auditOverdue, auditStatus, auditToday, emptyAuditFilters, filterAuditItems, type AuditFilters } from '@/utils/kartadoAudit';
+import { KartadoReportingDialog } from './KartadoReportingDialog';
 
 const field = 'min-w-0 w-full rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900 focus:outline-none focus:ring-2 focus:ring-brand-500';
 const secondary = 'rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 disabled:opacity-50';
@@ -21,6 +22,7 @@ function pause(ms: number, signal: AbortSignal) {
 }
 
 export function KartadoAuditReportings({ initialCompany }: { initialCompany: string }) {
+  const [selectedReporting, setSelectedReporting] = useState<{ company: string; uuid: string } | null>(null);
   const [companies, setCompanies] = useState<AuditCompany[]>([]);
   const [company, setCompany] = useState(initialCompany);
   const [origin, setOrigin] = useState('');
@@ -198,17 +200,18 @@ export function KartadoAuditReportings({ initialCompany }: { initialCompany: str
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h4 className="font-semibold text-surface-900">Apontamentos encontrados</h4><span className="text-xs text-surface-600" aria-live="polite">{number(visible.length)} de {number(result.items.length)} registros carregados</span></div>
         {!visible.length ? <p className="py-8 text-center text-sm text-surface-600">{result.items.length ? 'Nenhum registro corresponde aos filtros selecionados.' : partial ? 'Nenhum registro recebido. A consulta está incompleta.' : 'Nenhum apontamento encontrado para esta origem e período.'}</p> : null}
         {pageItems.map(item => {
-          const overdue = auditOverdue(item, today); const status = auditStatus(item); const link = safeKartadoLink(item.link);
+          const overdue = auditOverdue(item, today); const status = auditStatus(item);
           return <details key={item.uuid} className="border-t border-brand-100 py-4">
             <summary className="cursor-pointer text-sm text-surface-900"><span className="inline-flex w-[95%] flex-col gap-3 align-top sm:flex-row sm:items-start sm:justify-between"><span className="min-w-0 w-full sm:flex-1"><strong className="break-words font-semibold">{item.numero || 'Sem número'} · {item.classe || item.natureza || 'Sem classificação'}</strong><span className="mt-1 block text-xs text-surface-600">{item.rodovia || 'Rodovia não informada'} · km {item.km ?? '—'}{result.trechoDisponivel ? ` · ${item.trecho || 'Trecho não identificado'}` : ''}</span></span><span className="flex w-full flex-wrap items-center gap-2 sm:w-auto"><span className={`rounded-full px-2.5 py-1 text-xs font-medium ${status === 'completed' ? 'bg-brand-50 text-brand-800' : status === 'pending' ? 'bg-amber-50 text-amber-900' : 'bg-surface-100 text-surface-700'}`}>{item.status || 'Status não informado'}</span>{overdue ? <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">Vencido</span> : null}<span className="text-xs text-surface-600">Vencimento: {date(item.dataVencimento)}</span></span></span></summary>
             <dl className="mt-4 grid gap-3 rounded-xl bg-brand-50/50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">{[
               ['Natureza', item.natureza], ['Classe', item.classe], ['Origem', item.origem], ['Criado em', date(item.dataCriacao)], ['Executado em', date(item.dataExecucao)], ['Vencimento', date(item.dataVencimento)], ['Km inicial / final', `${item.km ?? '—'} / ${item.kmFinal ?? '—'}`], ['Sentido de tráfego', item.sentido], ['Faixa', item.faixa], ...(result.trechoDisponivel ? [['Trecho', item.trecho]] : []),
             ].map(([label, value]) => <div key={label}><dt className="text-xs text-surface-600">{label}</dt><dd className="mt-1 break-words text-surface-900">{value || 'Não informado'}</dd></div>)}</dl>
-            {link ? <a className="mt-3 inline-flex rounded-xl border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700" href={link} target="_blank" rel="noopener noreferrer">Abrir no Kartado ↗</a> : null}
+            <button type="button" className="mt-3 inline-flex rounded-xl border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700" onClick={() => setSelectedReporting({ company: result.companyUuid, uuid: item.uuid })}>Ver ficha do apontamento</button>
           </details>;
         })}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-brand-100 pt-4"><label className="flex items-center gap-2 text-xs text-surface-600">Por página<select className={field} value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }}>{[20, 40, 80].map(value => <option key={value}>{value}</option>)}</select></label><div className="flex items-center gap-3"><button type="button" className={secondary} disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>Anterior</button><span className="text-xs text-surface-600">{safePage} / {totalPages}</span><button type="button" className={secondary} disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)}>Próxima</button></div></div>
       </div>
     </> : null}
+    {selectedReporting && <KartadoReportingDialog company={selectedReporting.company} uuid={selectedReporting.uuid} onClose={() => setSelectedReporting(null)} />}
   </section>;
 }
