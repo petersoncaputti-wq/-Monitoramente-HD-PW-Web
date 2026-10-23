@@ -1,5 +1,6 @@
 import { KartadoTicketsPage } from '@/pages/KartadoTicketsPage';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
 import { KartadoInventory } from '@/components/KartadoInventory';
 import {
@@ -17,6 +18,43 @@ import {
 
 type KartadoTab = 'overview' | 'users' | 'reportings' | 'inventory' | 'alerts' | 'tickets';
 type KartadoArea = 'audit' | 'health';
+
+function UnitModal({ title, onClose, header, children }: {
+  title: string;
+  onClose: () => void;
+  header: ReactNode;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    dialog?.showModal();
+    document.body.style.overflow = 'hidden';
+    return () => {
+      dialog?.close();
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement) previousFocus.focus({ preventScroll: true });
+    };
+  }, []);
+
+  return createPortal(
+    <dialog ref={dialogRef} aria-labelledby="kartado-unit-title" onCancel={(event) => { event.preventDefault(); onClose(); }}
+      className="m-auto h-[100dvh] max-h-none w-full max-w-none overflow-hidden border-0 bg-white p-0 text-surface-900 shadow-2xl backdrop:bg-surface-900/60 sm:h-[92dvh] sm:max-h-[92dvh] sm:w-[94vw] sm:rounded-3xl">
+      <div className="flex h-full min-h-0 flex-col">
+        <header className="shrink-0 border-b border-brand-100 bg-white p-4 sm:px-6">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wider text-brand-700">Detalhes da unidade</p><h2 id="kartado-unit-title" className="mt-1 break-words text-lg font-semibold sm:text-2xl">{title}</h2></div>
+            <button autoFocus type="button" onClick={onClose} aria-label="Fechar detalhes da unidade" className="shrink-0 rounded-xl border border-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">Fechar <span aria-hidden="true">×</span></button>
+          </div>
+          {header}
+        </header>
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4 sm:p-6">{children}</div>
+      </div>
+    </dialog>, document.body,
+  );
+}
 
 const tabs: Array<{ id: KartadoTab; label: string }> = [
   { id: 'overview', label: 'Visão geral' },
@@ -377,6 +415,7 @@ function riskLabel(user: KartadoUser) {
 }
 
 export function KartadoPage({ area }: { area: KartadoArea }) {
+  const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
   const [concessions, setConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
   const [failedCompanies, setFailedCompanies] = useState<Record<string, string>>({});
@@ -485,6 +524,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   }));
 
   async function selectCompany(company: KartadoCompany) {
+    setUnitModalOpen(true);
     const uuid = company.uuid || company.id || '';
     setSelectedUuid(uuid);
     setFilteredConcession(null);
@@ -760,20 +800,34 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
         </div>
       ) : null}
 
-      {area === 'audit' && selected ? (
-        <div className="rounded-[28px] border border-brand-100 bg-white p-3 shadow-soft sm:p-5">
-          {loading && !detailedCompanies.has(selectedUuid) ? (
-            <p className="mb-4 rounded-2xl bg-brand-50 p-4 text-sm font-medium text-brand-700">
-              Carregando dados completos de {selected.company.name}...
-            </p>
-          ) : null}
-          <nav className="flex flex-wrap gap-2" aria-label="Navegação Kartado">
+      {area === 'audit' && selected && unitModalOpen ? (
+        <UnitModal title={selected.company.name} onClose={() => setUnitModalOpen(false)} header={<>
+          <label className="mb-3 flex flex-col gap-1 text-xs font-medium text-surface-700 sm:max-w-md">
+            Trocar unidade
+            <select value={selectedUuid} disabled={loading || reportingsLoading || searching} onChange={(event) => {
+              const company = companies.find((item) => (item.uuid || item.id || '') === event.target.value);
+              if (company) void selectCompany(company);
+            }} className="min-w-0 rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm disabled:opacity-50">
+              {companies.map((company) => {
+                const uuid = company.uuid || company.id || '';
+                return <option key={uuid} value={uuid} disabled={!concessions[uuid]}>{company.name}</option>;
+              })}
+            </select>
+          </label>
+          <nav className="flex gap-2 overflow-x-auto" aria-label="Navegação Kartado">
             {tabs.map((item) => (
-              <button key={item.id} type="button" onClick={() => void openTab(item.id)} className={`rounded-2xl px-4 py-3 text-sm font-semibold ${tab === item.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>
+              <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined} onClick={() => void openTab(item.id)} className={`shrink-0 rounded-2xl px-4 py-3 text-sm font-semibold ${tab === item.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>
                 {item.label}
               </button>
             ))}
           </nav>
+        </>}>
+          {error ? <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
+          {loading && !detailedCompanies.has(selectedUuid) ? (
+            <p role="status" className="mb-4 rounded-2xl bg-brand-50 p-4 text-sm font-medium text-brand-700">
+              Carregando dados completos de {selected.company.name}...
+            </p>
+          ) : null}
 
           {tab !== 'reportings' && tab !== 'inventory' ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
             <div className="flex flex-col gap-1">
@@ -868,7 +922,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           {tab === 'alerts' ? (
             <div className="mt-5 grid gap-3">{alerts.length ? alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4"><div className="flex justify-between gap-4"><h3 className="font-semibold text-surface-900">{alert.title}</h3><span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span></div>{alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}{alert.action ? <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p> : null}<AlertDetails alert={alert} users={selected.users.users || []} reportings={selected.reportings.items || []} /></article>) : <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>}</div>
           ) : null}
-        </div>
+        </UnitModal>
       ) : null}
     </section>
   );
