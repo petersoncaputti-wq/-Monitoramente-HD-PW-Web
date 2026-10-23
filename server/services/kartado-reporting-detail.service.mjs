@@ -77,7 +77,8 @@ export function createReportingDetailClient({ read = apiFetchBasic } = {}) {
         sentido: display(values.direction, definitions.direction), faixa: display(values.lane, definitions.lane),
         lote: display(values.lot, definitions.lot), municipio: text(values.city),
         coordinates: values.point?.type === 'Point' && Array.isArray(values.point.coordinates)
-          && values.point.coordinates.length >= 2 && values.point.coordinates.slice(0, 2).every(Number.isFinite) ? values.point.coordinates.slice(0, 2) : null,
+          && values.point.coordinates.length >= 2 && values.point.coordinates.slice(0, 2).every(Number.isFinite)
+          && Math.abs(values.point.coordinates[0]) <= 180 && Math.abs(values.point.coordinates[1]) <= 90 ? values.point.coordinates.slice(0, 2) : null,
       });
       let linkedClass = null;
       if (inventory) linkedClass = await optional('a classe do inventário', 'OccurrenceType', relId(inventory, 'occurrenceType'));

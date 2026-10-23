@@ -28,6 +28,12 @@ const client = createReportingDetailClient({ read });
 const detail = await client.get(company, uuid);
 assert.equal(detail.status, 'Executado'); assert.equal(detail.equipe, 'Equipe teste');
 assert.equal(detail.localizacao.km, 0); assert.equal(detail.localizacao.sentido, 'Sul'); assert.equal(detail.localizacao.faixa, 'Acostamento');
+assert.deepEqual(detail.localizacao.coordinates, [-41, -17]);
+for (const coordinates of [[181, -17], [-41, 91], [null, -17], ['-41', -17]]) {
+  const invalidPointClient = createReportingDetailClient({ read: async (path, params) => path === '/Reporting/'
+    ? { data: [{ ...record, attributes: { ...record.attributes, point: { type: 'Point', coordinates } } }] } : read(path, params) });
+  assert.equal((await invalidPointClient.get(company, uuid)).localizacao.coordinates, null);
+}
 assert.equal(detail.campos.find(f => f.key === 'ativo').value, 'Sinalização Vertical');
 assert.equal(detail.campos.find(f => f.key === 'ativo').manual, true);
 assert.equal(detail.campos.find(f => f.key === 'dano').value, 'Não');

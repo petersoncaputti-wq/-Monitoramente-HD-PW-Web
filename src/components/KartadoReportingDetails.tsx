@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { KartadoReportingMap } from './KartadoReportingMap';
 
 type Field = { key: string; label: string; value: string | null; type: string; manual: boolean };
 type Location = { rodovia: string | null; km: number | null; kmFinal: number | null; sentido: string | null; faixa: string | null; lote: string | null; municipio: string | null; coordinates: number[] | null };
@@ -85,6 +86,7 @@ export function KartadoReportingDetails({ company, uuid, onBack }: { company: st
         ['Lote', data.localizacao.lote], ['Sentido', data.localizacao.sentido], ['Faixa', data.localizacao.faixa], ['Município', data.localizacao.municipio],
         ['Latitude', data.localizacao.coordinates?.[1]], ['Longitude', data.localizacao.coordinates?.[0]],
       ]} /></Section>
+      <Section title="Mapa do apontamento"><KartadoReportingMap coordinates={data.localizacao.coordinates} numero={data.numero} /></Section>
       <Section title="Dados do formulário">{data.campos.length ? <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">{data.campos.map(field => <div key={field.key} className="min-w-0"><p className="text-xs text-surface-600">{field.label}</p><p className="mt-1 whitespace-pre-wrap break-words text-sm font-medium">{/date|time/i.test(field.type) ? date(field.value) : field.value ?? 'Não informado'}</p>{field.manual && <p className="mt-1 text-[11px] text-surface-500">Especificado manualmente</p>}</div>)}</div> : <p className="text-sm text-surface-600">Nenhum campo preenchido foi disponibilizado.</p>}</Section>
     </>}
     {tab === 'files' && <>
