@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
 import { KartadoInventory } from '@/components/KartadoInventory';
+import { KartadoUnitMap } from '@/components/KartadoUnitMap';
+import type { MapCache } from '@/services/kartadoMapService';
 import { InventoryCache, prefetchUnitInventory } from '@/services/kartadoInventoryService';
 import {
   loadKartadoCompanies,
@@ -416,6 +418,7 @@ function riskLabel(user: KartadoUser) {
 }
 
 export function KartadoPage({ area }: { area: KartadoArea }) {
+  const reportingMapCache = useMemo<MapCache>(() => new Map(), []);
   const inventoryCache = useMemo(() => new InventoryCache(), []);
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
@@ -880,6 +883,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
                 <MetricCard label={appliedFilters ? 'Saúde geral' : 'Saúde'} value={`${Number(selected.summary.saudeScore || 0)}/100`} />
               </div>
+              <KartadoUnitMap key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={reportingMapCache} />
               <div className="grid gap-5 xl:grid-cols-2">
                 <ChartCard
                   title="Perfil dos usuários"
