@@ -16,6 +16,8 @@ const hybridReferenceItem = '89b035a9cb1f4ed8bf638385ab8cebd7';
 export default function KartadoUnitMapCanvas({ items, onOpen }: { items: MapReporting[]; onOpen: (uuid: string) => void }) {
   const element = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const userNavigated = useRef(false);
+  const automaticView = useRef(false);
   const onOpenRef = useRef(onOpen); onOpenRef.current = onOpen;
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
@@ -24,14 +26,31 @@ export default function KartadoUnitMapCanvas({ items, onOpen }: { items: MapRepo
   const [labelsLoading, setLabelsLoading] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('heat');
   const heatItems = useMemo(() => heatMapItems(items, displayMode === 'pending'), [items, displayMode]);
+  function fitVisiblePoints() {
+    const map = mapRef.current;
+    if (!map || !heatItems.length) return;
+    automaticView.current = true;
+    try {
+      map.fitBounds(L.latLngBounds(heatItems.map(item => [item.coordinates![1], item.coordinates![0]] as L.LatLngTuple)), { padding: [35, 35], maxZoom: 16, animate: false });
+    } finally { automaticView.current = false; }
+    // A partir daqui, novas páginas não devem desfazer a escolha do usuário.
+    userNavigated.current = true;
+  }
   useEffect(() => {
     let cancelled = false;
     let resize: ResizeObserver | undefined;
     (window as Window & { L: typeof L }).L = L;
     void Promise.all([import('leaflet.markercluster'), import('leaflet.heat')]).then(() => {
       if (cancelled || !element.current) return;
-      const map = L.map(element.current, { maxZoom: 19, scrollWheelZoom: false }).setView([-15.8, -47.9], 4);
+      const map = L.map(element.current, {
+        maxZoom: 19, scrollWheelZoom: true, wheelPxPerZoomLevel: 100, wheelDebounceTime: 60,
+        zoomSnap: 0.5, zoomDelta: 0.5, zoomControl: false,
+      }).setView([-15.8, -47.9], 4);
       mapRef.current = map;
+      L.control.zoom({ zoomInTitle: 'Aproximar', zoomOutTitle: 'Afastar' }).addTo(map);
+      L.control.scale({ imperial: false, metric: true, maxWidth: 140 }).addTo(map);
+      const rememberNavigation = () => { if (!automaticView.current) userNavigated.current = true; };
+      map.on('dragstart zoomstart popupopen keydown', rememberNavigation);
       const pane = map.createPane('hybridLabels');
       pane.style.zIndex = '350'; pane.style.pointerEvents = 'none';
       resize = new ResizeObserver(() => map.invalidateSize()); resize.observe(element.current);
@@ -157,12 +176,16 @@ export default function KartadoUnitMapCanvas({ items, onOpen }: { items: MapRepo
   useEffect(() => {
     const map = mapRef.current;
     const points = items.filter(item => item.coordinates);
-    if (!ready || !map || !points.length) return;
-    map.fitBounds(L.latLngBounds(points.map(item => [item.coordinates![1], item.coordinates![0]] as L.LatLngTuple)), { padding: [30, 30], maxZoom: 16, animate: false });
+    if (!ready || !map || !points.length || userNavigated.current) return;
+    automaticView.current = true;
+    try {
+      map.fitBounds(L.latLngBounds(points.map(item => [item.coordinates![1], item.coordinates![0]] as L.LatLngTuple)), { padding: [35, 35], maxZoom: 16, animate: false });
+    } finally { automaticView.current = false; }
   }, [items, ready]);
   return <div className="space-y-2">
     <div role="group" aria-label="Camada de fundo do mapa" className="flex flex-wrap items-center gap-2">{([['map', 'Mapa'], ['satellite', 'Satélite'], ['hybrid', 'Híbrido']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={basemap === value} onClick={() => setBasemap(value)} className={`rounded-xl border px-4 py-2 text-xs font-semibold ${basemap === value ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>)}{labelsLoading && <span role="status" className="text-xs text-surface-600">Carregando referências…</span>}</div>
     <div role="group" aria-label="Visualização dos apontamentos" className="flex flex-wrap items-center gap-2">{([['heat', 'Concentração'], ['pending', 'Calor de pendências'], ['points', 'Pontos']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={displayMode === value} onClick={() => setDisplayMode(value)} className={`rounded-xl border px-4 py-2 text-xs font-semibold ${displayMode === value ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>)}</div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-surface-600">Arraste para mover. Use a roda do mouse, os botões +/− ou dois dedos para ajustar o zoom.</p><button type="button" disabled={!ready || !heatItems.length} onClick={fitVisiblePoints} className="rounded-xl border border-brand-100 bg-white px-4 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-40">Enquadrar pontos</button></div>
     {(error || layerError) && <p role="status" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">{error || layerError}</p>}
     <div ref={element} className="kartado-unit-map relative isolate z-0 h-[420px] w-full rounded-xl sm:h-[500px]" aria-label="Mapa interativo dos apontamentos da unidade" />
     {displayMode !== 'points' ? <div className="rounded-xl bg-brand-50 px-3 py-2 text-xs leading-5 text-surface-700"><div className="flex flex-wrap items-center gap-2"><span>Menor concentração</span><span aria-hidden="true" className="h-2 w-28 rounded-full" style={{ background: 'linear-gradient(to right,#fde047,#fb923c,#ef4444)' }} /><span>Maior concentração</span><strong className="sm:ml-auto">{heatItems.length.toLocaleString('pt-BR')} {displayMode === 'pending' ? 'pendências' : 'apontamentos'} com coordenadas</strong></div><p className="mt-1">Intensidade relativa ao zoom e aos filtros; não indica gravidade. Clique num ponto para selecionar o apontamento ou numa área para consultar registros próximos. Grupos numerados indicam a quantidade de pontos.{displayMode === 'pending' ? ' Inclui identificados, abertos, pendentes, programados e em andamento.' : ''}</p>{!heatItems.length && <p className="mt-1 font-medium">Nenhum registro para esta visualização nos dados carregados.</p>}</div> : <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-surface-700" aria-label="Legenda dos pontos">{[['Executado / concluído', '#15803d'], ['Em andamento', '#2563eb'], ['Pendente / programado', '#d97706'], ['Outros status', '#64748b']].map(([label, color]) => <span key={label} className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full" style={{ background: color }} />{label}</span>)}<span>Grupos numerados: quantidade de pontos</span></div>}
