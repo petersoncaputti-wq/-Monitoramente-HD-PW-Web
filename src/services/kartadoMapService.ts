@@ -8,6 +8,16 @@ interface MapPage { success: boolean; company: string; items: MapReporting[]; cl
 export function mapClassOptions(result: Pick<MapResult, 'items'> & { classes?: string[] } | null) {
   return [...new Set([...(result?.classes || []), ...(result?.items || []).map(item => item.classe)].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
+export function normalizeMapClass(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim().replace(/\s+/g, ' ');
+}
+export function matchesMapClass(value: string, selected: string) {
+  return !selected || normalizeMapClass(value) === normalizeMapClass(selected);
+}
+export function searchMapClasses(options: string[], search: string) {
+  const terms = normalizeMapClass(search).split(' ').filter(Boolean);
+  return options.filter(option => terms.every(term => normalizeMapClass(option).includes(term)));
+}
 export function mapStatus(status: string): 'completed' | 'progress' | 'pending' | 'other' {
   const key = status.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   if (['executado', 'concluido', 'encerrado', 'finalizado'].includes(key)) return 'completed';

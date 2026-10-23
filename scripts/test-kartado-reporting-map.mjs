@@ -49,7 +49,12 @@ assert.deepEqual(partialCatalog.classes, ['Classe preservada']); assert.ok(parti
 
 const source = readFileSync(new URL('../src/services/kartadoMapService.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-const { loadMapReportings, mapStatus, initialMapDates, heatMapItems, nearbyMapItems, mapClassOptions } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+const { loadMapReportings, mapStatus, initialMapDates, heatMapItems, nearbyMapItems, mapClassOptions, matchesMapClass, searchMapClasses } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+assert.equal(matchesMapClass('  Monitoração   de Sinalização ', 'monitoracao de sinalizacao'), true);
+assert.equal(matchesMapClass('Implantação', 'Monitoração'), false);
+assert.equal(matchesMapClass('Implantação', ''), true);
+assert.deepEqual(searchMapClasses(['Monitoração de Sinalização Vertical', 'Implantação de Placas'], 'sinalizacao MONITORACAO'), ['Monitoração de Sinalização Vertical']);
+assert.deepEqual(searchMapClasses(['Monitoração'], 'inexistente'), []);
 assert.deepEqual(mapClassOptions({ classes: ['Sem ocorrência', 'Monitoração'], items: [{ classe: 'Monitoração' }, { classe: 'Classe não identificada' }] }), ['Classe não identificada', 'Monitoração', 'Sem ocorrência']);
 assert.equal(mapStatus('Em execução'), 'progress'); assert.equal(mapStatus('Executado'), 'completed'); assert.equal(mapStatus('Programado'), 'pending'); assert.equal(mapStatus('Cancelado'), 'other');
 const heatRecords = [

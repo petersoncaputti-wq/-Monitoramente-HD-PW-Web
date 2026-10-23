@@ -13,7 +13,7 @@ type Basemap = 'map' | 'satellite' | 'hybrid';
 type DisplayMode = 'heat' | 'pending' | 'points';
 const imageryService = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer';
 const hybridReferenceItem = '89b035a9cb1f4ed8bf638385ab8cebd7';
-export default function KartadoUnitMapCanvas({ items, onOpen }: { items: MapReporting[]; onOpen: (uuid: string) => void }) {
+export default function KartadoUnitMapCanvas({ items, onOpen, viewKey = '' }: { items: MapReporting[]; onOpen: (uuid: string) => void; viewKey?: string }) {
   const element = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const userNavigated = useRef(false);
@@ -47,6 +47,7 @@ export default function KartadoUnitMapCanvas({ items, onOpen }: { items: MapRepo
         zoomSnap: 0.5, zoomDelta: 0.5, zoomControl: false,
       }).setView([-15.8, -47.9], 4);
       mapRef.current = map;
+      map.attributionControl.setPrefix(false);
       L.control.zoom({ zoomInTitle: 'Aproximar', zoomOutTitle: 'Afastar' }).addTo(map);
       L.control.scale({ imperial: false, metric: true, maxWidth: 140 }).addTo(map);
       const rememberNavigation = () => { if (!automaticView.current) userNavigated.current = true; };
@@ -173,15 +174,16 @@ export default function KartadoUnitMapCanvas({ items, onOpen }: { items: MapRepo
     addChunk();
     return () => { cancelled = true; clearTimeout(timer); map.closePopup(); if (map.hasLayer(group)) map.removeLayer(group); };
   }, [heatItems, ready, displayMode]);
+  useEffect(() => { userNavigated.current = false; }, [viewKey, displayMode]);
   useEffect(() => {
     const map = mapRef.current;
-    const points = items.filter(item => item.coordinates);
+    const points = heatItems;
     if (!ready || !map || !points.length || userNavigated.current) return;
     automaticView.current = true;
     try {
       map.fitBounds(L.latLngBounds(points.map(item => [item.coordinates![1], item.coordinates![0]] as L.LatLngTuple)), { padding: [35, 35], maxZoom: 16, animate: false });
     } finally { automaticView.current = false; }
-  }, [items, ready]);
+  }, [heatItems, ready, viewKey, displayMode]);
   return <div className="space-y-2">
     <div role="group" aria-label="Camada de fundo do mapa" className="flex flex-wrap items-center gap-2">{([['map', 'Mapa'], ['satellite', 'Satélite'], ['hybrid', 'Híbrido']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={basemap === value} onClick={() => setBasemap(value)} className={`rounded-xl border px-4 py-2 text-xs font-semibold ${basemap === value ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>)}{labelsLoading && <span role="status" className="text-xs text-surface-600">Carregando referências…</span>}</div>
     <div role="group" aria-label="Visualização dos apontamentos" className="flex flex-wrap items-center gap-2">{([['heat', 'Concentração'], ['pending', 'Calor de pendências'], ['points', 'Pontos']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={displayMode === value} onClick={() => setDisplayMode(value)} className={`rounded-xl border px-4 py-2 text-xs font-semibold ${displayMode === value ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>)}</div>
