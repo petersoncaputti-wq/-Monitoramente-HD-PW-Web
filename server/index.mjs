@@ -17,6 +17,7 @@ import ecoRouter from './routes/kartado-eco.mjs';
 import auditRouter from './routes/kartado-audit.mjs';
 import inventoryRouter from './routes/kartado-inventory.mjs';
 import { auditWorker } from './services/kartado-audit-jobs.mjs';
+import { persistentInventory } from './services/kartado-inventory-snapshots.mjs';
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -78,6 +79,7 @@ app.use('/api/v1/kartado', requireUser, kartadoRouter);
 app.use('/api/kartado-audit', auditRouter);
 app.use('/api/kartado-inventory', inventoryRouter);
 auditWorker.start();
+persistentInventory.start();
 
 if (existsSync(distPath)) {
   app.use(express.static(distPath, { index: false }));

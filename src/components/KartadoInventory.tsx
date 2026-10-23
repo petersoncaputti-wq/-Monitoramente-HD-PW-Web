@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { followInventory, requestInventory, InventoryCache, type AssetReportings, type CollectionQuality, type InventoryAsset, type InventoryCrossing, type InventoryItems, type InventoryProcessing, type InventoryResult, type InventorySummary } from '@/services/kartadoInventoryService';
+import { requestInventory, InventoryCache, type AssetReportings, type CollectionQuality, type InventoryAsset, type InventoryCrossing, type InventoryItems, type InventoryProcessing, type InventoryResult, type InventorySummary } from '@/services/kartadoInventoryService';
 import { safeKartadoLink } from '@/utils/kartadoAudit';
 
 const button = 'inline-flex items-center justify-center gap-2 rounded-xl border border-brand-100 bg-white px-4 py-2.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40';
@@ -104,7 +104,7 @@ export function KartadoInventory({ company, name, cache }: { company: string; na
     } else if (detail.crossing) {
       query.set('dimensao', 'ativo'); query.set('periodo', period); query.set('filtro', detail.mode || 'com');
       if (detail.status) query.set('status', detail.status);
-      void followInventory<InventoryCrossing>('cruzamento', query.toString(), controller.signal, data => {
+      void cache.follow<InventoryCrossing>('cruzamento', query.toString(), controller.signal, data => {
         if (data.status === 'pronto') { setItems(data); setDetailLoading(false); }
       }).catch(reason => { if (!controller.signal.aborted) setDetailError(reason instanceof Error ? reason.message : 'Ativos indisponíveis.'); }).finally(() => { if (!controller.signal.aborted) setDetailLoading(false); });
     } else {
@@ -113,7 +113,7 @@ export function KartadoInventory({ company, name, cache }: { company: string; na
       }).catch(reason => { if (!controller.signal.aborted) setDetailError(reason instanceof Error ? reason.message : 'Ativos indisponíveis.'); }).finally(() => { if (!controller.signal.aborted) setDetailLoading(false); });
     }
     return () => controller.abort();
-  }, [company, detail, detailPage, period]);
+  }, [cache, company, detail, detailPage, period]);
 
   function openDetail(value: Detail) { setDetailPage(1); setDetail(value); }
   function groupDetail(key: string) { openDetail({ classe: dimension === 'classe' ? key : classe, rodovia: dimension === 'rodovia' ? key : road, crossing: view === 'cross', status, mode: 'com' }); }

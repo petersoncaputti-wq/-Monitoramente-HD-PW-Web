@@ -9,6 +9,7 @@
     "auth:link-saml-user": "node --env-file=.env.local scripts/link-saml-user.mjs",
     "test:kartado-audit": "node scripts/test-kartado-audit.mjs",
     "test:kartado-inventory": "node scripts/test-kartado-inventory.mjs",
+    "db:migrate-kartado-inventory": "node --env-file=.env.local scripts/migrate-kartado-inventory.mjs",
     "db:migrate-kartado-audit": "node --env-file=.env.local scripts/migrate-kartado-audit.mjs",
     "test:kartado-eco": "node scripts/test-kartado-eco.mjs",
     "db:migrate-kartado-eco": "node --env-file=.env.local scripts/migrate-kartado-eco.mjs",

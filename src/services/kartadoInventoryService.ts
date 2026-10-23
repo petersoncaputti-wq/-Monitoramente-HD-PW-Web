@@ -73,11 +73,16 @@ export async function followInventory<T extends InventoryResult>(path: string, q
 export class InventoryCache {
   private entries = new Map<string, { data: InventoryResult; savedAt: number; invalidated: boolean }>();
   private generations = new Map<string, number>();
-  private jobs = new Map<string, { controller: AbortController; listeners: Set<(value: InventoryResult | InventoryProcessing) => void>; promise: Promise<void> }>();
+  private jobs = new Map<string, { controller: AbortController; listeners: Set<(value: InventoryResult | InventoryProcessing) => void>; promise: Promise<void>; latest?: InventoryResult | InventoryProcessing }>();
 
   private key(path: string, query: string) {
     const params = new URLSearchParams(query);
     params.delete('refresh');
+    if (path === 'cruzamento') {
+      for (const [field, value] of Object.entries({ dimensao: 'classe', periodo: 'recente', filtro: 'com', page: '1', page_size: '100' })) {
+        if (!params.has(field)) params.set(field, value);
+      }
+    }
     params.sort();
     return `${path}?${params}`;
   }
@@ -118,9 +123,10 @@ export class InventoryCache {
       const generation = this.generations.get(company) || 0;
       const controller = new AbortController();
       const listeners = new Set<(value: InventoryResult | InventoryProcessing) => void>();
-      const created = { controller, listeners, promise: Promise.resolve() };
+      const created: { controller: AbortController; listeners: typeof listeners; promise: Promise<void>; latest?: InventoryResult | InventoryProcessing } = { controller, listeners, promise: Promise.resolve() };
       this.jobs.set(jobKey, created);
       created.promise = followInventory<InventoryResult>(path, query, controller.signal, value => {
+        created.latest = value;
         if (value.status === 'pronto' && generation === (this.generations.get(company) || 0)) {
           this.entries.delete(key);
           this.entries.set(key, { data: value, savedAt: Date.now(), invalidated: false });
@@ -131,6 +137,7 @@ export class InventoryCache {
       job = created;
     }
     const current = job;
+    if (current.latest && current.latest.status === 'processando') onResult(current.latest);
     await new Promise<void>((resolve, reject) => {
       const listener = (value: InventoryResult | InventoryProcessing) => { if (!signal.aborted) onResult(value as T | InventoryProcessing); };
       const cleanup = () => {
@@ -148,4 +155,12 @@ export class InventoryCache {
       if (signal.aborted) abort();
     });
   }
+}
+
+export async function prefetchUnitInventory(cache: InventoryCache, company: string, signal: AbortSignal) {
+  const query = new URLSearchParams({ concessao: company }).toString();
+  await cache.follow<InventorySummary>('resumo', query, signal, () => {});
+  signal.throwIfAborted();
+  // O resumo tem prioridade; não antecipamos filtros nem o histórico completo.
+  await cache.follow<InventoryCrossing>('cruzamento', query, signal, () => {});
 }
