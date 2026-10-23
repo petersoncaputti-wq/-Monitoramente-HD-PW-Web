@@ -23,6 +23,17 @@ assert.deepEqual(result.items[0].coordinates, [-41, -17]); assert.equal(result.i
 assert.equal(calls.find(c => c.path === '/Reporting/').query.found_at_after, params.from);
 assert.ok(calls.find(c => c.path === '/Reporting/').query['fields[Reporting]'].includes('point'));
 await client.page(params); assert.equal(calls.filter(c => c.path === '/OccurrenceType/').length, 1);
+assert.throws(() => mapParams({ ...params, classe: ['invalid'] }), error => error.status === 400);
+assert.throws(() => mapParams({ ...params, classe: 'x'.repeat(301) }), error => error.status === 400);
+const filteredCalls = [];
+const filteredClient = createReportingMapClient({ read: async (path, query) => { filteredCalls.push({ path, query }); return read(path, query); } });
+await filteredClient.page({ ...params, classe: 'Monitoração' });
+assert.equal(filteredCalls.find(call => call.path === '/Reporting/').query.occurrence_type, 'classe');
+await assert.rejects(filteredClient.page({ ...params, classe: 'Inexistente' }), error => error.status === 400);
+await assert.rejects(createReportingMapClient({ read: async (path, query) => {
+  const response = await read(path, query);
+  return path === '/Reporting/' ? { ...response, data: [{ ...record, relationships: { ...record.relationships, occurrenceType: { data: { id: 'another-class' } } } }] } : response;
+} }).page({ ...params, classe: 'Monitoração' }));
 const changed = value => createReportingMapClient({ read: async (path, query) => path === '/Reporting/' ? value : read(path, query) });
 await assert.rejects(changed({ data: [{ ...record, relationships: { company: { data: { id: uuid } } } }], meta: { pagination: { count: 1, pages: 1 } } }).page(params));
 await assert.rejects(changed({ data: [{ ...record, attributes: { ...record.attributes, foundAt: '2020-01-01' } }], meta: { pagination: { count: 1, pages: 1 } } }).page(params));
@@ -83,6 +94,13 @@ const mockPage = async (_company, _from, _to, page) => {
 const complete = await loadMapReportings(company, params.from, params.to, new AbortController().signal, () => {}, mockPage);
 assert.equal(complete.items.length, 7); assert.equal(complete.partial, false); assert.equal(maximum, 3);
 assert.deepEqual(complete.classes, ['Classe sem apontamentos']);
+const classRequests = [];
+await loadMapReportings(company, params.from, params.to, new AbortController().signal, () => {}, async (...args) => {
+  classRequests.push(args[5]);
+  return mockPage(...args);
+}, 'Roçada Cerca a Cerca');
+assert.equal(classRequests.length, 7);
+assert.ok(classRequests.every(value => value === 'Roçada Cerca a Cerca'));
 const partial = await loadMapReportings(company, params.from, params.to, new AbortController().signal, () => {}, async (...args) => { if (args[3] === 3) throw new Error('failed'); return mockPage(...args); });
 assert.equal(partial.partial, true); assert.equal(partial.items.length, 6); assert.ok(partial.warnings.some(w => w.includes('3')));
 const controller = new AbortController(); let reads = 0;

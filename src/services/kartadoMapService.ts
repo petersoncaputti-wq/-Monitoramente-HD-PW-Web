@@ -43,8 +43,9 @@ export function initialMapDates() {
   const from = new Date(`${to}T12:00:00Z`); from.setUTCDate(from.getUTCDate() - 29);
   return { from: from.toISOString().slice(0, 10), to };
 }
-export async function requestMapPage(company: string, from: string, to: string, page: number, signal: AbortSignal): Promise<MapPage> {
+export async function requestMapPage(company: string, from: string, to: string, page: number, signal: AbortSignal, classe = ''): Promise<MapPage> {
   const query = new URLSearchParams({ company, from, to, page: String(page) });
+  if (classe) query.set('classe', classe);
   const response = await fetch(`/api/kartado-reporting-map?${query}`, { credentials: 'same-origin', headers: { Accept: 'application/json' }, cache: 'no-store', signal });
   const data = await response.json().catch(() => null);
   if (!response.ok || data?.success !== true) throw new Error(data?.error || 'Não foi possível carregar os pontos do mapa.');
@@ -52,8 +53,8 @@ export async function requestMapPage(company: string, from: string, to: string, 
   return data;
 }
 export async function loadMapReportings(company: string, from: string, to: string, signal: AbortSignal, onProgress: (result: MapResult) => void,
-  read = requestMapPage): Promise<MapResult> {
-  const first = await read(company, from, to, 1, signal);
+  read = requestMapPage, classe = ''): Promise<MapResult> {
+  const first = await read(company, from, to, 1, signal, classe);
   signal.throwIfAborted();
   const items = new Map<string, MapReporting>();
   const warnings = new Set<string>();
@@ -75,7 +76,7 @@ export async function loadMapReportings(company: string, from: string, to: strin
   for (let start = 2; start <= Math.min(100, first.paginas); start += 3) {
     signal.throwIfAborted();
     const pages = Array.from({ length: Math.min(3, Math.min(100, first.paginas) - start + 1) }, (_, index) => start + index);
-    const batch = await Promise.allSettled(pages.map(page => read(company, from, to, page, signal)));
+    const batch = await Promise.allSettled(pages.map(page => read(company, from, to, page, signal, classe)));
     signal.throwIfAborted();
     batch.forEach((response, index) => {
       if (response.status === 'fulfilled') accept(response.value);
