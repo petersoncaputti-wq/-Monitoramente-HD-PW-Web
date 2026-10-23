@@ -66,6 +66,18 @@ Isso verifica código com transporte simulado; não comprova que o upload/reiní
 
 ## Validação
 
+### Ficha do apontamento no painel
+
+No histórico de um ativo, **Ver ficha do apontamento** abre informações e arquivos no próprio painel. A consulta detalhada usa a API pública `GET /Reporting/` com Basic, `company`, `uuid`, `page=1` e `page_size=1`. O endpoint direto `/Reporting/{uuid}/` retornou 403 na verificação, enquanto a listagem filtrada retornou o registro correto. O parâmetro `include` não é suportado; equipe, classe/formulário, status e inventário são resolvidos por listagens filtradas, com limite global de cinco chamadas. A autenticação JWT das consultas anteriores não foi alterada.
+
+As novas rotas `/api/kartado-reporting-details/:uuid` e `/:uuid/arquivos` exigem sessão do portal. Usam as variáveis existentes `KARTADO_USERNAME`, `KARTADO_PASSWORD` e `KARTADO_API_URL`, sempre no servidor. UUID e unidade são conferidos na resposta; arquivos de outro apontamento são recusados. Falhas em catálogos opcionais geram avisos sem ocultar a ficha principal. Não há migração adicional para essa ficha.
+
+O formulário exibe os valores preenchidos com nomes e opções da classe, incluindo especificação manual. Coordenadas aparecem como latitude/longitude, sem conversão presumida para UTM. A aba de arquivos é carregada sob demanda em páginas de 20, com imagens no painel e endereços HTTPS temporários fornecidos pelo Kartado. Atualizar ficha renova a consulta. Mensagens e histórico de alterações não foram integrados.
+
+Validação real em 23/10/2026: unidade Ecovias das Gerais (`882c7a1a-bfb2-4766-9993-90eeead59662`), apontamento `00014854-55d0-41ca-873d-09c76b6613b3`, número `EDG-MONI-2026.04223`. A consulta normalizada confirmou Cadastro Inicial, Monitoração de Sinalização Vertical, Executado, inventário `EDG-INV-2026.05452`, 62 campos preenchidos e uma imagem. Os dados de tipo de ativo, identificação R-01, campanha inicial, inspeção periódica e fabricante RODOPLEX correspondem às capturas fornecidas. Não houve conferência visual em navegador automatizado.
+
+`npm run test:kartado-inventory` também executa `scripts/test-kartado-reporting-details.mjs`, cobrindo Basic, filtros por unidade/UUID, normalização do formulário, valores zero/falso, rejeição de respostas de outro registro, URLs de arquivos, erros parciais e autenticação das rotas.
+
 `npm run test:kartado-inventory` exercita parâmetros, contrato atualizado, rejeição do contrato antigo, isolamento de credenciais, coleta parcial, métricas por status, detalhes paginados, sessão obrigatória, respostas HTTP e polling/cancelamento do cliente real do frontend. O workflow de publicação inclui essa suíte.
 
 Homologação autenticada: resumo de uma unidade menor e uma maior; primeira coleta; filtros de classe/rodovia; status sem alterar presença; `Sem apontamento` apenas com ambas as fontes completas; detalhes com aviso de histórico completo; atualização/falha preservando dados; estados parcial e vazio. Não interpretar vínculo não localizado como exclusão do ativo.

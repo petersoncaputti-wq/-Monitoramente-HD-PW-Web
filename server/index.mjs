@@ -16,6 +16,7 @@ import totvsRouter from './routes/totvs.mjs';
 import ecoRouter from './routes/kartado-eco.mjs';
 import auditRouter from './routes/kartado-audit.mjs';
 import inventoryRouter from './routes/kartado-inventory.mjs';
+import reportingDetailsRouter from './routes/kartado-reporting-details.mjs';
 import { auditWorker } from './services/kartado-audit-jobs.mjs';
 import { persistentInventory } from './services/kartado-inventory-snapshots.mjs';
 
@@ -78,6 +79,7 @@ app.use('/api/e365-import', (request, response, next) => {
 app.use('/api/v1/kartado', requireUser, kartadoRouter);
 app.use('/api/kartado-audit', auditRouter);
 app.use('/api/kartado-inventory', inventoryRouter);
+app.use('/api/kartado-reporting-details', reportingDetailsRouter);
 auditWorker.start();
 persistentInventory.start();
 
