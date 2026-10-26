@@ -29,6 +29,19 @@ const filteredCalls = [];
 const filteredClient = createReportingMapClient({ read: async (path, query) => { filteredCalls.push({ path, query }); return read(path, query); } });
 await filteredClient.page({ ...params, classe: 'Monitoração' });
 assert.equal(filteredCalls.find(call => call.path === '/Reporting/').query.occurrence_type, 'classe');
+assert.throws(() => mapParams({ ...params, from: '', to: '' }), error => error.status === 400);
+assert.throws(() => mapParams({ ...params, period: 'all' }), error => error.status === 400);
+const historicalCalls = [];
+const historical = await createReportingMapClient({ read: async (path, query) => {
+  historicalCalls.push({ path, query });
+  const response = await read(path, query);
+  return path === '/Reporting/' ? { ...response, data: [{ ...record, attributes: { ...record.attributes, foundAt: '2022-01-29T00:00' } }] } : response;
+} }).page({ ...params, from: '', to: '', period: 'all', classe: 'Monitoração' });
+assert.equal(historical.items[0].encontradoEm, '2022-01-29');
+const historicalQuery = historicalCalls.find(call => call.path === '/Reporting/').query;
+assert.equal(historicalQuery.occurrence_type, 'classe');
+assert.ok(!('found_at_after' in historicalQuery));
+assert.ok(!('found_at_before' in historicalQuery));
 await assert.rejects(filteredClient.page({ ...params, classe: 'Inexistente' }), error => error.status === 400);
 await assert.rejects(createReportingMapClient({ read: async (path, query) => {
   const response = await read(path, query);

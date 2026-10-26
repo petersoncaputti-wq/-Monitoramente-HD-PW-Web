@@ -1,5 +1,5 @@
 export interface MapReporting {
-  uuid: string; numero: string | null; rodovia: string | null; km: number | null; encontradoEm: string;
+  uuid: string; numero: string | null; rodovia: string | null; km: number | null; encontradoEm: string | null;
   classe: string; status: string; coordinates: [number, number] | null;
 }
 export interface MapResult { items: MapReporting[]; classes: string[]; total: number; partial: boolean; warnings: string[]; pages: number; processed: number }
@@ -45,6 +45,7 @@ export function initialMapDates() {
 }
 export async function requestMapPage(company: string, from: string, to: string, page: number, signal: AbortSignal, classe = ''): Promise<MapPage> {
   const query = new URLSearchParams({ company, from, to, page: String(page) });
+  if (!from && !to) query.set('period', 'all');
   if (classe) query.set('classe', classe);
   const response = await fetch(`/api/kartado-reporting-map?${query}`, { credentials: 'same-origin', headers: { Accept: 'application/json' }, cache: 'no-store', signal });
   const data = await response.json().catch(() => null);

@@ -12,12 +12,13 @@ export function mapParams(query) {
   const { company, from, to } = query;
   const classe = query.classe ?? '';
   const page = query.page || '1';
-  if (typeof classe !== 'string' || classe.length > 300 || typeof company !== 'string' || !UUID.test(company) || !validDate(from) || !validDate(to)
-    || from > to || Date.parse(to) - Date.parse(from) > 365 * 86400000
+  const allHistory = query.period === 'all';
+  if (typeof classe !== 'string' || classe.length > 300 || typeof company !== 'string' || !UUID.test(company) || (allHistory ? from !== '' || to !== '' : !validDate(from) || !validDate(to)
+    || from > to || Date.parse(to) - Date.parse(from) > 365 * 86400000)
     || typeof page !== 'string' || !/^\d+$/.test(page) || Number(page) < 1 || Number(page) > 100) {
     throw new ReportingDetailError('Informe unidade, período de até 366 dias e página válidos.', 400);
   }
-  return { company, from, to, classe, page: Number(page) };
+  return { company, from, to, classe, allHistory, page: Number(page) };
 }
 
 export function createReportingMapClient({ read = apiFetchBasic } = {}) {
@@ -58,7 +59,7 @@ export function createReportingMapClient({ read = apiFetchBasic } = {}) {
       if (params.classe && !classIds.length) throw new ReportingDetailError('Classe não localizada no catálogo da unidade. Atualize o mapa e selecione novamente.', 400);
       const payload = await read('/Reporting/', { company: params.company, page: String(params.page), page_size: '200',
           ...(params.classe ? { occurrence_type: classIds.join(',') } : {}),
-          found_at_after: params.from, found_at_before: params.to, ordering: 'uuid',
+          ...(params.allHistory ? {} : { found_at_after: params.from, found_at_before: params.to }), ordering: 'uuid',
           'fields[Reporting]': 'uuid,number,point,road_name,km,found_at,status,occurrence_type,company' });
       const items = rows(payload);
       const meta = payload.meta?.pagination || payload.data?.meta?.pagination;
@@ -68,7 +69,7 @@ export function createReportingMapClient({ read = apiFetchBasic } = {}) {
         if (params.classe && !classIds.includes(item.relationships?.occurrenceType?.data?.id)) throw new ReportingDetailError('A origem retornou apontamentos de outra classe.');
         if (!UUID.test(item.id || '') || item.relationships?.company?.data?.id !== params.company) throw new ReportingDetailError('O mapa recebeu um registro de outra unidade ou sem identificação.');
         const found = typeof a.foundAt === 'string' ? a.foundAt.slice(0, 10) : null;
-        if (!found || found < params.from || found > params.to) throw new ReportingDetailError('A origem retornou registros fora do período solicitado.');
+        if (!params.allHistory && (!found || found < params.from || found > params.to)) throw new ReportingDetailError('A origem retornou registros fora do período solicitado.');
         const point = a.point?.type === 'Point' ? a.point.coordinates : null;
         const valid = Array.isArray(point) && point.length >= 2 && point.slice(0, 2).every(Number.isFinite) && Math.abs(point[0]) <= 180 && Math.abs(point[1]) <= 85.05112878;
         return { uuid: item.id, numero: a.number || null, rodovia: a.roadName || null, km: a.km ?? null, encontradoEm: found,

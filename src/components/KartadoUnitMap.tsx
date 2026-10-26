@@ -10,6 +10,7 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
   const [initial] = useState(initialMapDates);
   const [dates, setDates] = useState(initial);
   const [applied, setApplied] = useState(initial);
+  const [allHistory, setAllHistory] = useState(false);
   const [revision, setRevision] = useState(0);
   const [result, setResult] = useState<MapResult | null>(null);
   const [busy, setBusy] = useState(true);
@@ -48,15 +49,16 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
   if (classe && !classOptions.includes(classe)) classOptions.unshift(classe);
   const viewKey = JSON.stringify([company, applied.from, applied.to, status, classe, road]);
   const pages = Math.max(1, Math.ceil(visible.length / 20)), safePage = Math.min(page, pages);
-  const dirty = dates.from !== applied.from || dates.to !== applied.to;
+  const dirty = allHistory ? Boolean(applied.from || applied.to) : dates.from !== applied.from || dates.to !== applied.to;
   return <section className="space-y-4 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5" aria-label={`Mapa de apontamentos de ${name}`}>
     <header className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-semibold">Mapa dos apontamentos</h3><p className="mt-1 text-xs text-surface-600">{name} · use o mapa de calor para localizar concentrações e clique para consultar os apontamentos.</p></div><button type="button" className={button} disabled={busy} onClick={() => setRevision(value => value + 1)}>Atualizar mapa</button></header>
+    <label className="flex items-center gap-2 text-xs text-surface-700"><input type="checkbox" checked={allHistory} onChange={event => { const checked = event.target.checked; setAllHistory(checked); if (!checked) setDates(initial); setApplied(checked ? { from: '', to: '' } : { ...initial }); setRevision(0); setStatus(''); setRoad(''); }} />Histórico completo (todas as datas)</label>
     <form className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end" onSubmit={event => {
       event.preventDefault();
-      if (dates.from > dates.to || Date.parse(dates.to) - Date.parse(dates.from) > 365 * 86400000) { setError('Selecione um período de até 366 dias, com início anterior ao fim.'); return; }
-      setApplied({ ...dates }); setRevision(0); setStatus(''); setRoad('');
-    }}><label className="grid gap-1 text-xs text-surface-700">Encontrado de<input type="date" required max={dates.to} value={dates.from} onChange={event => setDates(value => ({ ...value, from: event.target.value }))} className={field} /></label><label className="grid gap-1 text-xs text-surface-700">Encontrado até<input type="date" required min={dates.from} value={dates.to} onChange={event => setDates(value => ({ ...value, to: event.target.value }))} className={field} /></label><button className={button} type="submit" disabled={!dirty}>Aplicar período</button></form>
-    <p className="text-[11px] text-surface-600">Período do mapa: {applied.from.split('-').reverse().join('/')} a {applied.to.split('-').reverse().join('/')} · data em que o apontamento foi encontrado. Inicialmente, últimos 30 dias.</p>
+      if (!allHistory && (dates.from > dates.to || Date.parse(dates.to) - Date.parse(dates.from) > 365 * 86400000)) { setError('Selecione um período de até 366 dias, com início anterior ao fim.'); return; }
+      setApplied(allHistory ? { from: '', to: '' } : { ...dates }); setRevision(0); setStatus(''); setRoad('');
+    }}><label className="grid gap-1 text-xs text-surface-700">Encontrado de<input type="date" disabled={allHistory} required max={dates.to} value={dates.from} onChange={event => setDates(value => ({ ...value, from: event.target.value }))} className={field} /></label><label className="grid gap-1 text-xs text-surface-700">Encontrado até<input type="date" disabled={allHistory} required min={dates.from} value={dates.to} onChange={event => setDates(value => ({ ...value, to: event.target.value }))} className={field} /></label><button className={button} type="submit" disabled={!dirty}>Aplicar período</button></form>
+    <p className="text-[11px] text-surface-600">Período do mapa: {applied.from ? `${applied.from.split('-').reverse().join('/')} a ${applied.to.split('-').reverse().join('/')}` : 'Histórico completo, sem filtro de data'} · data em que o apontamento foi encontrado. Inicialmente, últimos 30 dias.</p>
     <div className="grid gap-3 sm:grid-cols-3 sm:items-start">
       <label className="grid gap-1 text-xs text-surface-700">Status<select className={field} value={status} onChange={event => setStatus(event.target.value)}><option value="">Todos</option>{options('status').map(option => <option key={option}>{option}</option>)}</select></label>
       <div className="grid gap-2">
