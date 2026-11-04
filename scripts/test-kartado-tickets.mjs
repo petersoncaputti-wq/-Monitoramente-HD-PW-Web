@@ -32,6 +32,12 @@ try {
  assert.equal((await read('')).length,2); assert.equal((await read('?unit=unit-a')).length,1); assert.equal((await read('?unit=missing')).length,0);
  assert.equal((await send('user',body,'/'+row.id)).status,403);
  assert.equal((await send('admin',{...body,status:'Encerrado',closed_at:'2025-01-01'},'/'+row.id)).status,400);
+ const explicitClose = '2026-01-03T15:30:00.000Z';
+ const finalized = await send('admin',{...body,status:'Encerrado',closed_at:explicitClose},'/'+row.id);
+ assert.equal(finalized.status,200);
+ assert.equal((await finalized.json()).closed_at,explicitClose);
+ assert.equal((await send('admin',{...body,status:'Encerrado',closed_at:'invalid'},'/'+row.id)).status,400);
+ assert.equal((await send('admin',{...body,status:'Encerrado',closed_at:'2099-01-01T00:00:00Z'},'/'+row.id)).status,400);
  let updated=await (await send('admin',{...body,status:'Encerrado',resolution:'Resolvido',kartado_case_number:'KART-002'},'/'+row.id)).json(); assert.ok(updated.closed_at); assert.equal(updated.resolution,'Resolvido'); assert.equal(updated.kartado_case_number,'KART-002');
  updated=await (await send('admin',{...body,status:'Em atendimento',closed_at:updated.closed_at,kartado_case_number:''},'/'+row.id)).json(); assert.equal(updated.closed_at,null); assert.equal(updated.kartado_case_number,'');
  assert.equal((await send('admin',body,'/22222222-2222-4222-8222-222222222222')).status,404);
