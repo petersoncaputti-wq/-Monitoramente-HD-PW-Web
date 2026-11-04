@@ -5,7 +5,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { createKartadoTicketsRouter } from '../server/routes/kartado-tickets.mjs';
 const db = new PGlite();
 await db.exec(await readFile(new URL('../azure/kartado-tickets-schema.sql', import.meta.url), 'utf8'));
-// Reexecutar a migra??o sobre uma base anterior preserva os registros.
+// Reexecutar a migração sobre uma base anterior preserva os registros.
 await db.exec("alter table kartado_tickets drop column kartado_case_number; insert into kartado_tickets (id,case_number,unit_id,unit_name,subject,status,priority,opened_at,created_by,updated_by) values ('33333333-3333-4333-8333-333333333333','LEGADO','legacy','Legado','Legado','Novo','Normal',now(),'11111111-1111-4111-8111-111111111111','11111111-1111-4111-8111-111111111111')");
 const schema = await readFile(new URL('../azure/kartado-tickets-schema.sql', import.meta.url), 'utf8');
 await db.exec(schema); await db.exec(schema);
@@ -35,5 +35,14 @@ try {
  let updated=await (await send('admin',{...body,status:'Encerrado',resolution:'Resolvido',kartado_case_number:'KART-002'},'/'+row.id)).json(); assert.ok(updated.closed_at); assert.equal(updated.resolution,'Resolvido'); assert.equal(updated.kartado_case_number,'KART-002');
  updated=await (await send('admin',{...body,status:'Em atendimento',closed_at:updated.closed_at,kartado_case_number:''},'/'+row.id)).json(); assert.equal(updated.closed_at,null); assert.equal(updated.kartado_case_number,'');
  assert.equal((await send('admin',body,'/22222222-2222-4222-8222-222222222222')).status,404);
+ // Uma base desatualizada deve informar a necessidade de migração.
+ await db.exec('alter table kartado_tickets drop column kartado_case_number');
+ const outdated = await send('admin',body,'/'+row.id);
+ assert.equal(outdated.status,503);
+ assert.match((await outdated.json()).error, /precisa ser atualizada/);
+ await db.exec(schema);
+ const migrated = await send('admin',{...body,kartado_case_number:'KART-003'},'/'+row.id);
+ assert.equal(migrated.status,200);
+ assert.equal((await migrated.json()).kartado_case_number,'KART-003');
  console.log('Chamados Kartado: persistência, filtro por unidade, duplicidade, autenticação, permissões e encerramento/reabertura aprovados.');
 } finally { await new Promise(r=>server.close(r)); await db.close(); }

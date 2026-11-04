@@ -43,6 +43,7 @@ export function createKartadoTicketsRouter({ execute = query, authenticate = req
   router.post('/', admin, save);
   router.patch('/:id', admin, save);
   router.use((error, _req, res, next) => {
+    if (error.code === '42703') return res.status(503).json({ error: 'A base de chamados Kartado precisa ser atualizada. Execute a migra\u00e7\u00e3o de chamados Kartado no servidor.' });
     if (error.code === '42P01') return res.status(503).json({ error: 'A base de chamados Kartado ainda precisa ser preparada.' });
     if (error.code === '23505') return res.status(409).json({ error: 'Já existe um chamado com esse número nesta unidade.' });
     next(error);
