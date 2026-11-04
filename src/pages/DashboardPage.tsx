@@ -167,7 +167,7 @@ const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
   tickets: 'Chamados',
   kartadoAudit: 'Auditoria',
   kartadoHealth: 'Saúde',
-  kartadoEco: 'Acompanhamento Eco',
+  kartadoEco: 'Acompanhamento',
   kartadoTickets: 'Chamados',
   settings: 'Configurações',
 };
@@ -1498,7 +1498,7 @@ export function DashboardPage() {
           <nav aria-label="Navegação do Kartado" className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
             <NavLink to={DASHBOARD_ROUTES.kartadoAudit} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Auditoria</NavLink>
             <NavLink to={DASHBOARD_ROUTES.kartadoHealth} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Saúde</NavLink>
-            <NavLink to={DASHBOARD_ROUTES.kartadoEco} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Acompanhamento Eco</NavLink>
+            <NavLink to={DASHBOARD_ROUTES.kartadoEco} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Acompanhamento</NavLink>
             <NavLink to={DASHBOARD_ROUTES.kartadoTickets} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Chamados</NavLink>
           </nav>
         ) : null}

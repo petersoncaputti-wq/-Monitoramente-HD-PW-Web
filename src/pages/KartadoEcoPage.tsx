@@ -55,11 +55,11 @@ function EcoView({ data }: { data: EcoData }) {
 
   return <section id="eco-acompanhamento" className="mt-6 space-y-5">
     <header className={card}>
-      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Kartado · Grupo EcoRodovias</p><h2 className="mt-2 text-2xl font-semibold text-surface-900">Acompanhamento Eco</h2><p className="mt-2 text-sm text-surface-600">Compare as unidades e consulte o que precisa de acompanhamento.</p></div><button type="button" onClick={() => window.print()} className={`${control} eco-no-print font-semibold text-brand-700`}>Imprimir / salvar PDF</button></div>
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Kartado · Grupo EcoRodovias</p><h2 className="mt-2 text-2xl font-semibold text-surface-900">Acompanhamento</h2><p className="mt-2 text-sm text-surface-600">Compare as unidades e consulte o que precisa de acompanhamento.</p></div><button type="button" onClick={() => window.print()} className={`${control} eco-no-print font-semibold text-brand-700`}>Imprimir / salvar PDF</button></div>
       <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900"><strong>Referência dos dados: {[...new Set(data.Unidades.map(item => date(item.DataReferencia)))].join(', ')}.</strong> As situações e a agenda representam essa referência, não a data de hoje.</p>
     </header>
 
-    <nav role="tablist" aria-label="Visões do acompanhamento Eco" className="eco-no-print flex flex-wrap gap-2 rounded-2xl border border-brand-100 bg-white p-2">
+    <nav role="tablist" aria-label="Visões do acompanhamento" className="eco-no-print flex flex-wrap gap-2 rounded-2xl border border-brand-100 bg-white p-2">
       {tabs.map((tab, index) => <button key={tab.id} id={`eco-tab-${index}`} role="tab" type="button" aria-selected={unitName === tab.id} aria-controls="eco-active-panel" tabIndex={unitName === tab.id ? 0 : -1} onClick={() => selectUnit(tab.id)} onKeyDown={event => {
         const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null;
         if (next !== null) { event.preventDefault(); selectUnit(tabs[next].id); document.getElementById(`eco-tab-${next}`)?.focus(); }
