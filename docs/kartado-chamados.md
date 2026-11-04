@@ -31,7 +31,7 @@ Ao selecionar Encerrado, informe a data e hora real de finalização. O formulá
 
 Os filtros definem o recorte pela abertura. Finalizados representam os chamados desse recorte atualmente encerrados, mesmo que o fechamento ocorra fora do período de abertura. Pendências refletem o status atual. Escalados possuem Chamado Kartado preenchido após remover espaços. Os cartões filtram a lista e a exportação sem alterar os gráficos.
 
-Média, mediana e faixas de resolução usam horas corridas entre abertura e fechamento, somente de encerrados com datas válidas. A idade dos pendentes usa dias corridos até o momento atual. A evolução mostra até 12 meses consecutivos até a última movimentação do recorte. Assuntos recorrentes agrupam texto exato, pois não há categoria estruturada de motivo. O percentual de SLA aguarda definição do prazo e da regra de contagem.
+Média, mediana e faixas de resolução usam horas corridas entre abertura e fechamento, somente de encerrados com datas válidas. A idade dos pendentes usa dias corridos até o momento atual. A evolução mostra até 12 meses consecutivos até a última movimentação do recorte. Assuntos recorrentes agrupam texto exato, pois não há categoria estruturada de motivo. O SLA considera 8 horas úteis, de segunda a sexta, 08h–12h e 13h–17h, no fuso de São Paulo, sem descontar feriados (mesmo expediente do PW). O percentual usa encerrados com datas válidas; pendentes acima do prazo aparecem em indicador separado. Exatamente 8 horas ainda está dentro do SLA.
 
 Verificação dos cálculos: `node scripts/test-kartado-tickets-kpis.mjs` (Node 24).
 
