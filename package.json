@@ -4,6 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/sanitize-package-links.mjs",
+    "prebuild": "node scripts/sanitize-package-links.mjs",
+    "sanitize:package-links": "node scripts/sanitize-package-links.mjs",
+    "test:package-links": "node scripts/test-package-links.mjs",
     "test:saml": "node scripts/test-saml.mjs",
     "db:migrate-saml": "node --env-file=.env.local scripts/migrate-saml.mjs",
     "auth:link-saml-user": "node --env-file=.env.local scripts/link-saml-user.mjs",
