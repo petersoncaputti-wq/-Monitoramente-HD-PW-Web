@@ -24,3 +24,5 @@ npm run build
 Os testes usam PostgreSQL embarcado (PGlite), sem modificar o banco do ambiente, e verificam persistência, isolamento das consultas por unidade, duplicidade, autenticação, permissões, validação e encerramento/reabertura.
 
 Esta versão trabalha com cadastro manual. Importação de arquivos, anexos, SLA e sincronização externa ficam para versões posteriores.
+
+O campo **Chamado Kartado** é uma referência de texto opcional de até 100 caracteres, independente do número do chamado. Ele aparece no cadastro, edição, lista, detalhes e busca. Execute novamente a migração acima para adicionar `kartado_case_number` às bases existentes; os registros anteriores recebem texto vazio.
