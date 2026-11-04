@@ -19,3 +19,8 @@ create table if not exists public.kartado_tickets (
   unique (unit_id, case_number)
 );
 create index if not exists kartado_tickets_unit_date_idx on public.kartado_tickets (unit_id, opened_at desc);
+
+-- Referência externa opcional; também atualiza bases já existentes.
+alter table public.kartado_tickets
+  add column if not exists kartado_case_number text not null default ''
+  check (char_length(kartado_case_number) <= 100);
