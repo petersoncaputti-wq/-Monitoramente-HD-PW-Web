@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import type {} from 'leaflet.markercluster';
 import type {} from 'leaflet.heat';
@@ -11,6 +11,11 @@ import { heatMapItems, mapStatus, nearbyMapItems, type MapReporting } from '@/se
 const colors = { completed: '#15803d', progress: '#2563eb', pending: '#d97706', other: '#64748b' };
 type Basemap = 'map' | 'satellite' | 'hybrid';
 type DisplayMode = 'heat' | 'pending' | 'points';
+const displayModes = [
+  { value: 'heat', label: 'Concentração', help: 'Mostra onde se concentram todos os apontamentos filtrados, incluindo os concluídos. Cores mais quentes indicam maior concentração, sem indicar gravidade ou atraso.' },
+  { value: 'pending', label: 'Calor de pendências', help: 'Mostra a concentração de apontamentos identificados, abertos, pendentes, programados e em andamento ou execução. Ajuda a localizar demandas ainda por concluir.' },
+  { value: 'points', label: 'Pontos', help: 'Mostra cada localização com cores por status: verde para concluídos, azul para em andamento, laranja para pendentes ou programados e cinza para outros. Clique em um ponto para consultar sua ficha; grupos numerados indicam a quantidade de apontamentos.' },
+] as const;
 const imageryService = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer';
 const hybridReferenceItem = '89b035a9cb1f4ed8bf638385ab8cebd7';
 export default function KartadoUnitMapCanvas({ items, onOpen, viewKey = '' }: { items: MapReporting[]; onOpen: (uuid: string) => void; viewKey?: string }) {
@@ -25,6 +30,8 @@ export default function KartadoUnitMapCanvas({ items, onOpen, viewKey = '' }: { 
   const [layerError, setLayerError] = useState('');
   const [labelsLoading, setLabelsLoading] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('heat');
+  const [tooltip, setTooltip] = useState<DisplayMode | null>(null);
+  const tooltipId = useId();
   const heatItems = useMemo(() => heatMapItems(items, displayMode === 'pending'), [items, displayMode]);
   function fitVisiblePoints() {
     const map = mapRef.current;
@@ -186,7 +193,10 @@ export default function KartadoUnitMapCanvas({ items, onOpen, viewKey = '' }: { 
   }, [heatItems, ready, viewKey, displayMode]);
   return <div className="space-y-2">
     <div role="group" aria-label="Camada de fundo do mapa" className="flex flex-wrap items-center gap-2">{([['map', 'Mapa'], ['satellite', 'Satélite'], ['hybrid', 'Híbrido']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={basemap === value} onClick={() => setBasemap(value)} className={`rounded-xl border px-4 py-2 text-xs font-semibold ${basemap === value ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>)}{labelsLoading && <span role="status" className="text-xs text-surface-600">Carregando referências…</span>}</div>
-    <div role="group" aria-label="Visualização dos apontamentos" className="flex flex-wrap items-center gap-2">{([['heat', 'Concentração'], ['pending', 'Calor de pendências'], ['points', 'Pontos']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={displayMode === value} onClick={() => setDisplayMode(value)} className={`rounded-xl border px-4 py-2 text-xs font-semibold ${displayMode === value ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>)}</div>
+    <div role="group" aria-label="Visualização dos apontamentos" className="flex flex-wrap items-center gap-2">{displayModes.map(({ value, label, help }) => <div key={value} className="relative" onMouseEnter={() => setTooltip(value)} onMouseLeave={() => setTooltip(null)}>
+      <button type="button" aria-pressed={displayMode === value} aria-describedby={tooltip === value ? `${tooltipId}-${value}` : undefined} onFocus={() => setTooltip(value)} onBlur={() => setTooltip(null)} onKeyDown={event => { if (event.key === 'Escape') setTooltip(null); }} onClick={() => { setDisplayMode(value); setTooltip(value); }} className={`rounded-xl border px-4 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${displayMode === value ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>
+      {tooltip === value && <div className="absolute bottom-full left-0 z-[1000] w-64 max-w-[calc(100vw-3rem)] pb-2"><div id={`${tooltipId}-${value}`} role="tooltip" className="rounded-xl bg-surface-900 px-3 py-2 text-xs leading-5 text-white shadow-lg">{help}</div></div>}
+    </div>)}</div>
     <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-surface-600">Arraste para mover. Use a roda do mouse, os botões +/− ou dois dedos para ajustar o zoom.</p><button type="button" disabled={!ready || !heatItems.length} onClick={fitVisiblePoints} className="rounded-xl border border-brand-100 bg-white px-4 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-40">Enquadrar pontos</button></div>
     {(error || layerError) && <p role="status" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">{error || layerError}</p>}
     <div ref={element} className="kartado-unit-map relative isolate z-0 h-[420px] w-full rounded-xl sm:h-[500px]" aria-label="Mapa interativo dos apontamentos da unidade" />
