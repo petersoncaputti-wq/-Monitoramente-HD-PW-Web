@@ -9,6 +9,11 @@ on:
       - azure-migration
   workflow_dispatch:
 
+# Serialize production deployments without interrupting a deployment in progress.
+concurrency:
+  group: azure-monitoramentohdpwdatabase-production
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
