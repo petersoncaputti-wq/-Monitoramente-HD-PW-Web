@@ -27,7 +27,7 @@ Esta versão trabalha com cadastro manual. Importação de arquivos, anexos, reg
 
 ## Indicadores e finalização
 
-Ao selecionar Encerrado, informe a data e hora real de finalização. O formulário sugere o momento atual e preserva o fechamento ao editar. A API rejeita fechamento futuro ou anterior à abertura. Reabrir remove a finalização. O campo `closed_at` já existe; não é necessária nova migração.
+O campo Fechamento (data e hora) fica sempre visível no formulário e é habilitado ao selecionar Encerrado. Informe a data e hora real de fechamento. O formulário sugere o momento atual e preserva o fechamento ao editar. A API rejeita fechamento futuro ou anterior à abertura. Reabrir remove a finalização. O campo `closed_at` já existe; não é necessária nova migração.
 
 Os filtros definem o recorte pela abertura. Finalizados representam os chamados desse recorte atualmente encerrados, mesmo que o fechamento ocorra fora do período de abertura. Pendências refletem o status atual. Escalados possuem Chamado Kartado preenchido após remover espaços. Os cartões filtram a lista e a exportação sem alterar os gráficos.
 
