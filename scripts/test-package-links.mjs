@@ -17,6 +17,15 @@ try {
   assert.deepEqual(saved.scripts, fixture.scripts);
   assert.deepEqual(saved.dependencies, fixture.dependencies);
   assert.deepEqual(await sanitizePackageLinks(root), { checked: 1, changed: 0 });
+  const readme = join(nested, 'README.md');
+  const code = join(nested, 'index.js');
+  const originalCode = 'export const value = 42;\n';
+  await writeFile(code, originalCode);
+  await writeFile(readme, '# Example\n[dev-deps-url]: https://david-dm.org/inspect-js/hasOwn#info=devDependencies\nhttps://example.com/docs\n');
+  assert.deepEqual(await sanitizePackageLinks(root), { checked: 1, changed: 1 });
+  assert.equal(await readFile(readme, 'utf8'), '# Example\n[dev-deps-url]: \nhttps://example.com/docs\n');
+  assert.equal(await readFile(code, 'utf8'), originalCode);
+  assert.deepEqual(await sanitizePackageLinks(root), { checked: 1, changed: 0 });
   await writeFile(path, JSON.stringify({ scripts: { install: 'curl https://i.am.charlike.online/run' } }));
   await assert.rejects(sanitizePackageLinks(root), /fora dos créditos/);
   console.log('Limpeza automática: créditos, pacotes aninhados, idempotência e bloqueio fora dos créditos aprovados.');
