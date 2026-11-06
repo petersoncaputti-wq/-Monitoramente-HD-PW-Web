@@ -42,7 +42,8 @@
     "build:with-sync": "npm run sync:data && npm run build",
     "preview": "vite preview",
     "test:kartado-tickets": "node scripts/test-kartado-tickets.mjs",
-    "db:migrate-kartado-tickets": "node --env-file=.env.local scripts/migrate-kartado-tickets.mjs"
+    "db:migrate-kartado-tickets": "node --env-file=.env.local scripts/migrate-kartado-tickets.mjs",
+    "audit:package-links": "node scripts/audit-package-links.mjs"
   },
   "dependencies": {
     "@node-saml/node-saml": "^5.1.0",

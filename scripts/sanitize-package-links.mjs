@@ -3,7 +3,13 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Remove somente links dos créditos. Referências fora dos créditos exigem revisão.
-const blocked = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*charlike\.online\b[^\s"<>)]*/gi;
+const policy = JSON.parse(await readFile(new URL('./package-link-policy.json', import.meta.url), 'utf8'));
+if (!Array.isArray(policy.blockedDomains) || !policy.blockedDomains.length || policy.blockedDomains.some(domain => !/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(domain))) {
+  throw new Error('Lista de domínios bloqueados inválida.');
+}
+const domains = policy.blockedDomains.map(domain => domain.replace(/\./g, '\\.')).join('|');
+const blocked = new RegExp(`(?:https?:\\/\\/)?(?:[a-z0-9-]+\\.)*(?:${domains})(?=[\\s/:?#"<>)]|$)[^\\s"<>)]*`, 'gi');
+const documentationLink = blocked;
 const clean = value => {
   if (typeof value === 'string') return value.replace(blocked, '').replace(/\(\s*\)/g, '').trim();
   if (Array.isArray(value)) return value.map(clean);
@@ -21,6 +27,14 @@ export async function sanitizePackageLinks(root) {
       // Não segue links simbólicos para fora da árvore de dependências.
       const path = join(directory, entry.name);
       if (entry.isDirectory()) await walk(path);
+      else if (entry.isFile() && /\.(?:md|markdown|mdown|rst|txt)$/i.test(entry.name)) {
+        const source = await readFile(path, 'utf8');
+        const result = source.replace(documentationLink, '');
+        if (result !== source) {
+          await writeFile(path, result);
+          changed++;
+        }
+      }
       else if (entry.isFile() && entry.name === 'package.json') {
         checked++;
         const source = await readFile(path, 'utf8');
