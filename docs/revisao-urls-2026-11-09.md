@@ -1,5 +1,17 @@
 # Revisão de URLs — 09/11/2026
 
+## Atualização: remoção do mapa híbrido
+
+Após a revisão inicial, foi solicitada a remoção do mapa híbrido. A opção e seu
+carregamento vetorial foram removidos, preservando Mapa e Satélite com Leaflet.
+Foram desinstalados `esri-leaflet`, `esri-leaflet-vector` e `maplibre-gl`, com
+atualização do lockfile e remoção de 43 pacotes da instalação local.
+`npm ls` confirmou ausência de `kind-of`, `global-prefix` e das bibliotecas
+removidas. Não há referências a esses pacotes no código da aplicação ou lockfile.
+Build, testes de inventário/ficha/mapa e testes da política de URLs passaram.
+O relato abaixo registra a situação anterior à remoção. Cópias antigas no
+OneDrive não foram alteradas.
+
 ## Evidências e escopo
 
 Revisados os pontos de URL e chamadas de rede em `src`, `server`, `api`, scripts

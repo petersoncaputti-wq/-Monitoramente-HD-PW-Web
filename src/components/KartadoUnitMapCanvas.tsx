@@ -9,7 +9,7 @@ import './KartadoUnitMapCanvas.css';
 import { heatMapItems, mapStatus, nearbyMapItems, type MapReporting } from '@/services/kartadoMapService';
 
 const colors = { completed: '#15803d', progress: '#2563eb', pending: '#d97706', other: '#64748b' };
-type Basemap = 'map' | 'satellite' | 'hybrid';
+type Basemap = 'map' | 'satellite';
 type DisplayMode = 'heat' | 'pending' | 'points';
 const displayModes = [
   { value: 'heat', label: 'Concentração', help: 'Mostra onde se concentram todos os apontamentos filtrados, incluindo os concluídos. Cores mais quentes indicam maior concentração, sem indicar gravidade ou atraso.' },
@@ -17,7 +17,6 @@ const displayModes = [
   { value: 'points', label: 'Pontos', help: 'Mostra cada localização com cores por status: verde para concluídos, azul para em andamento, laranja para pendentes ou programados e cinza para outros. Clique em um ponto para consultar sua ficha; grupos numerados indicam a quantidade de apontamentos.' },
 ] as const;
 const imageryService = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer';
-const hybridReferenceItem = '89b035a9cb1f4ed8bf638385ab8cebd7';
 export default function KartadoUnitMapCanvas({ items, onOpen, viewKey = '' }: { items: MapReporting[]; onOpen: (uuid: string) => void; viewKey?: string }) {
   const element = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -28,7 +27,6 @@ export default function KartadoUnitMapCanvas({ items, onOpen, viewKey = '' }: { 
   const [error, setError] = useState('');
   const [basemap, setBasemap] = useState<Basemap>('map');
   const [layerError, setLayerError] = useState('');
-  const [labelsLoading, setLabelsLoading] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('heat');
   const [tooltip, setTooltip] = useState<DisplayMode | null>(null);
   const tooltipId = useId();
@@ -59,8 +57,6 @@ export default function KartadoUnitMapCanvas({ items, onOpen, viewKey = '' }: { 
       L.control.scale({ imperial: false, metric: true, maxWidth: 140 }).addTo(map);
       const rememberNavigation = () => { if (!automaticView.current) userNavigated.current = true; };
       map.on('dragstart zoomstart popupopen keydown', rememberNavigation);
-      const pane = map.createPane('hybridLabels');
-      pane.style.zIndex = '350'; pane.style.pointerEvents = 'none';
       resize = new ResizeObserver(() => map.invalidateSize()); resize.observe(element.current);
       setReady(true);
     }).catch(() => { if (!cancelled) setError('Não foi possível iniciar o mapa. Consulte os registros na lista abaixo.'); });
@@ -70,45 +66,15 @@ export default function KartadoUnitMapCanvas({ items, onOpen, viewKey = '' }: { 
     if (!ready || !mapRef.current) return;
     const map = mapRef.current;
     let cancelled = false;
-    let labels: L.Layer | undefined;
-    let labelsReady: (() => void) | undefined;
-    setLayerError(''); setLabelsLoading(basemap === 'hybrid');
+    setLayerError('');
     const background = L.tileLayer(basemap === 'map' ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' : `${imageryService}/tile/{z}/{y}/{x}`, {
       maxZoom: 19, referrerPolicy: 'strict-origin-when-cross-origin',
       attribution: basemap === 'map' ? '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         : 'Imagens: <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9">Esri</a>, Vantor, Earthstar Geographics e GIS User Community',
     }).on('tileerror', () => { if (!cancelled) setLayerError('Não foi possível carregar parte da camada de fundo. Você pode selecionar Mapa ou consultar os registros em lista.'); }).addTo(map);
-    if (basemap === 'hybrid') {
-      // O renderizador vetorial só é baixado quando a visão híbrida é solicitada.
-      void Promise.all([import('esri-leaflet-vector'), import('maplibre-gl/dist/maplibre-gl.css')]).then(([vector]) => {
-        if (cancelled) return;
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (!context) throw new Error('WebGL indisponível');
-        context.getExtension('WEBGL_lose_context')?.loseContext();
-        labels = vector.vectorTileLayer(hybridReferenceItem, { pane: 'hybridLabels' }) as L.Layer;
-        labelsReady = () => {
-          if (cancelled || !labels) return;
-          try { labels.addTo(map); setLabelsLoading(false); }
-          catch { setLabelsLoading(false); setLayerError('Não foi possível exibir as referências híbridas neste navegador. A imagem de satélite continua disponível.'); }
-        };
-        // Aguarda a criação interna antes de adicionar, para permitir cancelamento seguro.
-        labels.once('ready', labelsReady);
-        labels.on('load-error', () => {
-          if (!cancelled) { setLabelsLoading(false); setLayerError('Não foi possível carregar os nomes e referências. A imagem de satélite continua disponível.'); }
-        });
-      }).catch(() => {
-        if (!cancelled) { setLabelsLoading(false); setLayerError('As referências híbridas não estão disponíveis neste navegador. Use Satélite ou Mapa.'); }
-      });
-    }
     return () => {
       cancelled = true;
       background.remove();
-      if (labels) {
-        if (labelsReady) labels.off('ready', labelsReady);
-        labels.off('load-error');
-        if (map.hasLayer(labels)) map.removeLayer(labels);
-      }
     };
   }, [basemap, ready]);
   useEffect(() => {
@@ -192,7 +158,7 @@ export default function KartadoUnitMapCanvas({ items, onOpen, viewKey = '' }: { 
     } finally { automaticView.current = false; }
   }, [heatItems, ready, viewKey, displayMode]);
   return <div className="space-y-2">
-    <div role="group" aria-label="Camada de fundo do mapa" className="flex flex-wrap items-center gap-2">{([['map', 'Mapa'], ['satellite', 'Satélite'], ['hybrid', 'Híbrido']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={basemap === value} onClick={() => setBasemap(value)} className={`rounded-xl border px-4 py-2 text-xs font-semibold ${basemap === value ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>)}{labelsLoading && <span role="status" className="text-xs text-surface-600">Carregando referências…</span>}</div>
+    <div role="group" aria-label="Camada de fundo do mapa" className="flex flex-wrap items-center gap-2">{([['map', 'Mapa'], ['satellite', 'Satélite']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={basemap === value} onClick={() => setBasemap(value)} className={`rounded-xl border px-4 py-2 text-xs font-semibold ${basemap === value ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>)}</div>
     <div role="group" aria-label="Visualização dos apontamentos" className="flex flex-wrap items-center gap-2">{displayModes.map(({ value, label, help }) => <div key={value} className="relative" onMouseEnter={() => setTooltip(value)} onMouseLeave={() => setTooltip(null)}>
       <button type="button" aria-pressed={displayMode === value} aria-describedby={tooltip === value ? `${tooltipId}-${value}` : undefined} onFocus={() => setTooltip(value)} onBlur={() => setTooltip(null)} onKeyDown={event => { if (event.key === 'Escape') setTooltip(null); }} onClick={() => { setDisplayMode(value); setTooltip(value); }} className={`rounded-xl border px-4 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 ${displayMode === value ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-brand-100 bg-white text-brand-700 hover:bg-brand-50'}`}>{label}</button>
       {tooltip === value && <div className="absolute bottom-full left-0 z-[1000] w-64 max-w-[calc(100vw-3rem)] pb-2"><div id={`${tooltipId}-${value}`} role="tooltip" className="rounded-xl bg-surface-900 px-3 py-2 text-xs leading-5 text-white shadow-lg">{help}</div></div>}
