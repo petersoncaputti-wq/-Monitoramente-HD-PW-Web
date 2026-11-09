@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "postinstall": "node scripts/sanitize-package-links.mjs",
-    "prebuild": "node scripts/sanitize-package-links.mjs",
+    "prebuild": "npm run sanitize:package-links && npm run audit:package-links",
+    "postbuild": "npm run audit:package-links",
     "sanitize:package-links": "node scripts/sanitize-package-links.mjs",
     "test:package-links": "node scripts/test-package-links.mjs",
     "test:saml": "node scripts/test-saml.mjs",
