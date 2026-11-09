@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify dependency URL policy
+        run: npm run test:package-links && npm run audit:package-links
+
       - name: Test audit reporting integration
         run: npm run test:kartado-audit
 
