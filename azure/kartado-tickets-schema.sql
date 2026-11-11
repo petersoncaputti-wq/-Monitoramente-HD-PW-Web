@@ -6,7 +6,6 @@ create table if not exists public.kartado_tickets (
   subject text not null,
   description text not null default '',
   status text not null check (status in ('Novo','Em atendimento','Aguardando','Encerrado')),
-  priority text not null check (priority in ('Baixa','Normal','Alta','Crítica')),
   requester text not null default '',
   responsible text not null default '',
   resolution text not null default '',
@@ -24,3 +23,6 @@ create index if not exists kartado_tickets_unit_date_idx on public.kartado_ticke
 alter table public.kartado_tickets
   add column if not exists kartado_case_number text not null default ''
   check (char_length(kartado_case_number) <= 100);
+
+-- Remove priority from existing databases as well.
+alter table public.kartado_tickets drop column if exists priority;
