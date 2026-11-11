@@ -9,7 +9,6 @@ export interface TicketRecord {
   closed_at: string | null;
   id: string;
   opened_at: string;
-  priority: string | null;
   reason: string | null;
   requested_for: string | null;
   requester: string | null;
@@ -29,7 +28,6 @@ export interface TicketInput {
   closedAt?: string;
   id?: string;
   openedAt: string;
-  priority?: string;
   reason?: string;
   requestedFor?: string;
   requester?: string;
@@ -47,7 +45,6 @@ const TICKET_HEADERS = [
   'Abertoem',
   'Atualizado',
   'Fechadoem',
-  'Prioridade',
   'Solicitante',
   'Organizaçãodosolicitante',
   'AgenteAtribuído',
@@ -101,7 +98,7 @@ export function mapTicketRecord(record: TicketRecord): TicketRow {
     'Organiza\u00e7\u00e3odobenefici\u00e1rio': record.beneficiary_organization ?? '',
     'Organiza\u00c3\u00a7\u00c3\u00a3odosolicitante': record.requester_organization ?? '',
     'Organiza\u00e7\u00e3odosolicitante': record.requester_organization ?? '',
-    Prioridade: record.priority ?? '',
+    Prioridade: '', // Shared TOTVS import field; not stored for ProjectWise.
     Solicitadopara: record.requested_for ?? '',
     Solicitante: record.requester ?? '',
     Status: record.status,

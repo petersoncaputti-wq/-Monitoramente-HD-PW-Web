@@ -136,7 +136,6 @@ function mapTicket(row) {
     case_number: text(valueOf(row, 'Cason', 'Caso n.º', 'Caso')),
     closed_at: dateIso(valueOf(row, 'Fechadoem', 'Fechado em')),
     opened_at: openedAt,
-    priority: text(valueOf(row, 'Prioridade')),
     reason: text(valueOf(row, 'Motivo')),
     requested_for: text(valueOf(row, 'Solicitadopara', 'Solicitado para')),
     requester: text(valueOf(row, 'Solicitante')),

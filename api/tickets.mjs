@@ -112,7 +112,6 @@ function mapTicketInput(body, userId) {
     case_number: cleanText(body.caseNumber),
     closed_at: closedAt,
     opened_at: openedAt,
-    priority: cleanText(body.priority),
     reason: cleanText(body.reason),
     requested_for: cleanText(body.requestedFor),
     requester: cleanText(body.requester),

@@ -1023,7 +1023,6 @@ export function DashboardPage() {
       closedAt: toDatetimeLocal(row.__closedAt || row.Fechadoem),
       id,
       openedAt: toDatetimeLocal(row.__openedAt || row.Abertoem),
-      priority: String(row.Prioridade ?? ''),
       reason: String(row.Motivo ?? ''),
       requestedFor: String(row.Solicitadopara ?? ''),
       requester: String(row.Solicitante ?? ''),
@@ -2060,19 +2059,6 @@ export function DashboardPage() {
                     <span className="text-xs font-normal text-surface-500">
                       Use um motivo existente. Se necessário, digite um novo.
                     </span>
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-                    Prioridade
-                    <select
-                      value={ticketForm.priority ?? ''}
-                      onChange={(event) => updateTicketForm('priority', event.target.value)}
-                      className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
-                    >
-                      <option value="">Não informado</option>
-                      <option>Alta</option>
-                      <option>Média</option>
-                      <option>Baixa</option>
-                    </select>
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Solicitante
