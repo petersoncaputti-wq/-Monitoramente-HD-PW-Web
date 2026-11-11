@@ -24,6 +24,8 @@
     "db:migrate-totvs": "node --env-file=.env.local scripts/migrate-totvs.mjs",
     "start": "node server/index.mjs",
     "dev:azure": "node --watch server/index.mjs",
+    "db:remove-pw-priority": "node --env-file=.env.local scripts/migrate-projectwise-ticket-priority.mjs",
+    "test:pw-tickets": "node scripts/test-projectwise-tickets.mjs",
     "db:migrate": "node scripts/azure-db-migrate.mjs",
     "db:migrate-data": "node scripts/migrate-supabase-to-azure.mjs",
     "db:create-app-user": "node scripts/create-azure-app-user.mjs",

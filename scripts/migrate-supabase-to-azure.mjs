@@ -11,7 +11,7 @@ const TABLES = {
     'used_gb', 'free_gb', 'percent_used', 'percent_free', 'created_at', 'updated_at',
   ],
   tickets: [
-    'id', 'case_number', 'status', 'reason', 'opened_at', 'updated_at', 'closed_at', 'priority',
+    'id', 'case_number', 'status', 'reason', 'opened_at', 'updated_at', 'closed_at',
     'requester', 'requester_organization', 'assigned_agent', 'assigned_to', 'assigned_group', 'ticket_type',
     'sla_status', 'beneficiary_organization', 'requested_for', 'created_at', 'updated_at_system',
   ],

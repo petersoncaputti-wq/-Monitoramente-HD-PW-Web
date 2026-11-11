@@ -6,7 +6,6 @@ create table if not exists public.tickets (
   opened_at timestamptz not null,
   updated_at timestamptz,
   closed_at timestamptz,
-  priority text,
   requester text,
   requester_organization text,
   assigned_agent text,
