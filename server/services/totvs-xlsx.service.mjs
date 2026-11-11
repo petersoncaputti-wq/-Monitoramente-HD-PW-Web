@@ -13,7 +13,7 @@ function date(value, date1904) {
   return `${d.y}-${pad(d.m)}-${pad(d.d)}T${pad(d.H)}:${pad(d.M)}:${pad(Math.floor(d.S))}`;
 }
 
-export function parseTotvsXlsx(buffer, scope = 'mentions') {
+export function parseTotvsXlsx(buffer, scope = 'all') {
   if (!['mentions', 'all'].includes(scope)) throw new Error('Recorte inválido.');
   if (!buffer.length || buffer.length > 10 * 1024 * 1024) throw new Error('Selecione um XLSX de até 10 MB.');
   let expanded = 0, entries = 0;
@@ -48,6 +48,7 @@ export function parseTotvsXlsx(buffer, scope = 'mentions') {
       'Caso n.º': id, Status: statuses[clean(get('status'))] ?? clean(get('status')),
       Abertoem: opened, Fechadoem: closed, Atualizado: '',
       Resumo: clean(get('descricao')), Motivo: clean(get('cause')), Tipodeticket: '',
+      Origem: clean(get('origem')),
       Prioridade: clean(get('prioridade')), Solicitante: clean(get('solicitante')),
       Organizaçãodosolicitante: clean(get('organizacao do solicitante')),
       Organizaçãodobeneficiário: clean(get('organizacao do solicitante')),

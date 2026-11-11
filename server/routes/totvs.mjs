@@ -38,7 +38,7 @@ router.post('/', admin, express.raw({ type: ['application/zip', 'application/vnd
   try {
     if (!Buffer.isBuffer(request.body)) throw new Error('Envie um arquivo ZIP.');
     if (request.is('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-      payload = parseTotvsXlsx(request.body, String(request.query.scope || 'mentions'));
+      payload = parseTotvsXlsx(request.body, String(request.query.scope || 'all'));
     } else {
       const parsed = parseTotvsZip(request.body, String(request.query.period || ''), { totvsOnly: true });
       payload = selectTotvsPayload(parsed);
