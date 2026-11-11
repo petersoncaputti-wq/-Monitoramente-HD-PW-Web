@@ -1,3 +1,4 @@
+import { clientIpKeyGenerator } from '../rate-limit-ip.mjs';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import {
@@ -15,6 +16,7 @@ import { query } from '../db.mjs';
 
 const router = Router();
 const loginLimiter = rateLimit({
+  keyGenerator: clientIpKeyGenerator,
   legacyHeaders: false,
   limit: 10,
   message: { error: 'Muitas tentativas de login. Aguarde alguns minutos.' },

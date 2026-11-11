@@ -1,3 +1,4 @@
+import { clientIpKeyGenerator } from '../rate-limit-ip.mjs';
 import express, { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { randomBytes } from 'node:crypto';
@@ -27,7 +28,7 @@ export function createSamlRouter({ configuration = samlConfig, repository = crea
       next();
     } catch { res.status(503).json({ error: 'A configuração do login corporativo precisa ser revisada pelo administrador.' }); }
   });
-  const limiter = throttle || rateLimit({ windowMs: 15 * 60_000, limit: 30, standardHeaders: true, legacyHeaders: false,
+  const limiter = throttle || rateLimit({ keyGenerator: clientIpKeyGenerator, windowMs: 15 * 60_000, limit: 30, standardHeaders: true, legacyHeaders: false,
     message: { error: 'Muitas tentativas de login corporativo. Aguarde alguns minutos.' } });
   router.get('/metadata', (_req, res) => {
     const config = _req.samlConfig;
