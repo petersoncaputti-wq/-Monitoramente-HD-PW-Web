@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "postinstall": "node scripts/sanitize-package-links.mjs",
     "prebuild": "npm run sanitize:package-links && npm run audit:package-links",
