@@ -26,7 +26,7 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v4
         with:
-          node-version: '24.x'
+          node-version: '26.x'
           cache: npm
 
       - name: Install dependencies
@@ -41,8 +41,14 @@ jobs:
       - name: Test inventory integration
         run: npm run test:kartado-inventory
 
+      - name: Test ProjectWise tickets
+        run: npm run test:pw-tickets
+
       - name: Test SAML authentication
         run: npm run test:saml
+
+      - name: Test TOTVS data and accumulation
+        run: node scripts/test-totvs-data.mjs && node scripts/test-totvs-accumulation.mjs
 
       - name: Build application
         run: npm run build
