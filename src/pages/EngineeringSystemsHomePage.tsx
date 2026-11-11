@@ -19,7 +19,7 @@ export function EngineeringSystemsHomePage() {
             <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-700 text-lg font-bold text-white shadow-soft">MGI</div>
             <h3 className="mt-6 text-xl font-semibold text-surface-900">MGI</h3>
             <p className="mt-2 text-sm leading-6 text-surface-700">Indicadores dos chamados MGI com base no relatório completo em Excel.</p>
-            <span className="mt-auto pt-5 text-sm font-semibold text-brand-700">Acessar indicadores · Versão de teste →</span>
+            <span className="mt-auto pt-5 text-sm font-semibold text-brand-700">Acessar indicadores →</span>
           </Link>
           <Link
             to="/projectwise/armazenamento"

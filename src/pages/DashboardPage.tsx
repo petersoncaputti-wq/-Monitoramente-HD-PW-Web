@@ -1435,7 +1435,7 @@ export function DashboardPage() {
               </span>
             </>
           ) : activeTab === 'totvs' ? (
-            <><span aria-hidden="true" className="text-brand-300">/</span><span>TOTVs</span><span aria-hidden="true" className="text-brand-300">/</span><span className="font-semibold text-surface-900" aria-current="page">Chamados</span></>
+            <><span aria-hidden="true" className="text-brand-300">/</span><span>MGI</span><span aria-hidden="true" className="text-brand-300">/</span><span className="font-semibold text-surface-900" aria-current="page">Chamados</span></>
           ) : isKartadoPage ? (
             <>
               <span aria-hidden="true" className="text-brand-300">/</span>
