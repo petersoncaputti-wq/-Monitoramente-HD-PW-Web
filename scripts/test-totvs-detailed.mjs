@@ -11,7 +11,8 @@ import { createTotvsRouter } from '../server/routes/totvs.mjs';
 
 const buffer = await readFile(process.argv[2]);
 const all = parseTotvsXlsx(buffer, 'all');
-const selected = parseTotvsXlsx(buffer);
+const selected = parseTotvsXlsx(buffer, 'mentions');
+assert.equal(parseTotvsXlsx(buffer).tickets.length, 1716);
 assert.equal(all.sourceCount, 1716);
 assert.equal(all.tickets.length, 1716);
 assert.equal(selected.tickets.length, 860);
@@ -52,7 +53,7 @@ try {
   assert.deepEqual(calls, ['DELETE FROM public.totvs_imports']);
   failDelete = true;
   assert.equal((await remove('admin', 'LIMPAR TOTVS')).status, 403);
-  const upload = role => fetch(`${url}?scope=all`, { method: 'POST', headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'x-test-role': role }, body: buffer });
+  const upload = role => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'x-test-role': role }, body: buffer });
   assert.equal((await upload('user')).status, 403);
   const imported = await upload('admin');
   assert.equal(imported.status, 200);
@@ -61,6 +62,19 @@ try {
 
 const vite = await createServer({ configFile: false, envFile: false, plugins: [react()], resolve: { alias: { '@': resolve('src') } }, server: { middlewareMode: true, watch: null, hmr: false }, appType: 'custom' });
 try {
+  const { filterMgiTickets, emptyMgiFilters, mgiFilterFields } = await vite.ssrLoadModule('/src/utils/mgiTicketFilters.ts');
+  assert.equal(filterMgiTickets(all.tickets, emptyMgiFilters()).length, 1716);
+  assert.ok(all.tickets.some(row => row.Origem), 'Import preserves origin');
+  for (const { key } of mgiFilterFields) {
+    const values = [...new Set(all.tickets.map(row => String(row[key] ?? '').trim()))].slice(0, 2);
+    const result = filterMgiTickets(all.tickets, { ...emptyMgiFilters(), values: { [key]: values } });
+    assert.deepEqual(result, all.tickets.filter(row => values.includes(String(row[key] ?? '').trim())), key);
+  }
+  const filters = { values: { Status: ['Fechado', 'Resolvido'], Prioridade: [all.tickets[0].Prioridade] }, resolutionStart: '2026-09-01', resolutionEnd: '2026-09-30' };
+  const filtered = filterMgiTickets(all.tickets, filters, '2026-08-01', '2026-09-30');
+  assert.deepEqual(filtered, all.tickets.filter(row => ['Fechado', 'Resolvido'].includes(row.Status) && row.Prioridade === all.tickets[0].Prioridade && row.Abertoem.slice(0, 10) >= '2026-08-01' && row.Abertoem.slice(0, 10) <= '2026-09-30' && row.Fechadoem.slice(0, 10) >= '2026-09-01' && row.Fechadoem.slice(0, 10) <= '2026-09-30'));
+  assert.equal(filterMgiTickets(all.tickets, { ...emptyMgiFilters(), values: { Status: ['inexistente'] } }).length, 0);
+  assert.ok(filterMgiTickets(all.tickets, { ...emptyMgiFilters(), resolutionStart: '2026-01-01' }).every(row => row.Fechadoem));
   const { getTicketsSummary } = await vite.ssrLoadModule('/src/utils/ticketsKpis.ts');
   const summary = getTicketsSummary(all.tickets, { elapsed: true });
   assert.equal(summary.openedInPeriod, 1716);
@@ -77,9 +91,12 @@ try {
   assert.equal(getTicketsSummary(fixture).averageResolutionHours, 0, 'PW keeps business hours');
   const { TicketsTab } = await vite.ssrLoadModule('/src/components/TicketsTab.tsx');
   const html = renderToStaticMarkup(React.createElement(TicketsTab, { rows: all.tickets, detailedTotvs: true }));
+  for (const text of ['Grupo atribuído', 'Prioridade', 'Organização do solicitante', 'Origem', 'Resolvido por', 'Mais filtros', 'Resolução de', 'Resolução até', 'Limpar todos os filtros', 'type="checkbox"']) assert.ok(html.includes(text), text);
+  const pwHtml = renderToStaticMarkup(React.createElement(TicketsTab, { rows: all.tickets }));
+  assert.ok(!pwHtml.includes('Mais filtros'), 'MGI filters do not change PW');
   for (const text of ['Mediana de solução', 'horas corridas', 'Evolução dos chamados', 'Organizações solicitantes', '>1716<', '>1632<', '>72<']) assert.ok(html.includes(text), text);
   const { TotvsPage } = await vite.ssrLoadModule('/src/pages/TotvsPage.tsx');
-  assert.ok(renderToStaticMarkup(React.createElement(TotvsPage, { canManage: true })).includes('Limpar dados TOTVS'));
-  assert.ok(!renderToStaticMarkup(React.createElement(TotvsPage, { canManage: false })).includes('Limpar dados TOTVS'));
+  assert.ok(renderToStaticMarkup(React.createElement(TotvsPage, { canManage: true })).includes('Limpar dados MGI'));
+  assert.ok(!renderToStaticMarkup(React.createElement(TotvsPage, { canManage: false })).includes('Limpar dados MGI'));
   console.log('OK: XLSX real, recortes, totais, datas, horas corridas, preservação PW, renderização e autorização das rotas (banco simulado).');
 } finally { await vite.close(); }

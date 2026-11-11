@@ -52,7 +52,7 @@ app.post('/api/totvs', express.raw({ type: ['application/zip', 'application/vnd.
   try {
     if (!Buffer.isBuffer(request.body)) throw new Error('Envie um XLSX ou ZIP.');
     payload = request.is('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      ? parseTotvsXlsx(request.body, String(request.query.scope || 'mentions'))
+      ? parseTotvsXlsx(request.body, String(request.query.scope || 'all'))
       : selectTotvsPayload(parseTotvsZip(request.body, String(request.query.period || ''), { totvsOnly: true }));
   }
   catch (error) { return response.status(400).json({ error: error.message }); }
