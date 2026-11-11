@@ -1,3 +1,4 @@
+import { clientIpKeyGenerator } from '../rate-limit-ip.mjs';
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { requireUser } from '../auth.mjs';
@@ -6,7 +7,7 @@ import { createReportingDetailClient, ReportingDetailError } from '../services/k
 export function createReportingDetailRouter({ authenticate = requireUser, client = createReportingDetailClient() } = {}) {
   const router = Router();
   router.use(authenticate);
-  router.use(rateLimit({ windowMs: 60000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }));
+  router.use(rateLimit({ keyGenerator: clientIpKeyGenerator, windowMs: 60000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }));
   router.get('/:uuid', async (req, res, next) => {
     try { res.set('Cache-Control', 'no-store').json(await client.get(req.query.company, req.params.uuid)); } catch (error) { next(error); }
   });

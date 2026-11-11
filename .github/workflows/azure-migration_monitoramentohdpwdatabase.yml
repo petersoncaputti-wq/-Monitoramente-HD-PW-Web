@@ -44,6 +44,9 @@ jobs:
       - name: Test ProjectWise tickets
         run: npm run test:pw-tickets
 
+      - name: Test proxy IP rate limiting
+        run: npm run test:rate-limit
+
       - name: Test SAML authentication
         run: npm run test:saml
 
