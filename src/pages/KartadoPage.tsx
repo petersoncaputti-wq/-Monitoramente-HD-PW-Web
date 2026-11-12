@@ -19,7 +19,7 @@ import {
   type KartadoUser,
 } from '@/services/kartadoService';
 
-type KartadoTab = 'overview' | 'users' | 'reportings' | 'inventory' | 'alerts' | 'tickets';
+type KartadoTab = 'overview' | 'users' | 'reportings' | 'inventory' | 'assets' | 'alerts' | 'tickets';
 type KartadoArea = 'audit' | 'health';
 
 function UnitModal({ title, onClose, header, children }: {
@@ -64,6 +64,7 @@ const tabs: Array<{ id: KartadoTab; label: string }> = [
   { id: 'users', label: 'Usuários' },
   { id: 'reportings', label: 'Apontamentos' },
   { id: 'inventory', label: 'Inventário' },
+  { id: 'assets', label: 'Ativos' },
   { id: 'alerts', label: 'Alertas' },
   { id: 'tickets', label: 'Chamados' },
 ];
@@ -844,7 +845,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             </p>
           ) : null}
 
-          {tab !== 'reportings' && tab !== 'inventory' ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+          {tab !== 'reportings' && tab !== 'inventory' && tab !== 'assets' ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-surface-900">Filtrar apontamentos por data e origem</h3>
               <p className="text-xs text-surface-600">Combine a origem com a data em que o apontamento foi encontrado para atualizar totais, gráficos, lista e alertas da unidade selecionada.</p>
@@ -883,7 +884,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
                 <MetricCard label={appliedFilters ? 'Saúde geral' : 'Saúde'} value={`${Number(selected.summary.saudeScore || 0)}/100`} />
               </div>
-              {!appliedFilters && selected.summary.apontamentosMonitoracao != null ? <p className="text-sm text-surface-600">{formatNumber(Number(selected.summary.apontamentosMonitoracao))} monitorações de inventário · {formatNumber(Number(selected.summary.registrosTotal))} registros no total</p> : null}
+              {!appliedFilters ? <div className="grid gap-4 sm:grid-cols-2"><button type="button" className="text-left" onClick={() => openTab('inventory')}><MetricCard label="Inventário" value={selected.summary.inventarioRegistrosTotal == null ? 'Indisponível' : Number(selected.summary.inventarioRegistrosTotal)} /></button><button type="button" className="text-left" onClick={() => openTab('assets')}><MetricCard label="Ativos cadastrados" value={selected.summary.ativosTotal == null ? 'Indisponível' : Number(selected.summary.ativosTotal)} /></button></div> : null}
               <KartadoUnitMap key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={reportingMapCache} />
               <div className="grid gap-5 xl:grid-cols-2">
                 <ChartCard
@@ -934,7 +935,8 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           ) : null}
 
           {tab === 'reportings' ? <KartadoUnitReportings key={selectedUuid} company={selectedUuid} name={selected.company.name} /> : null}
-          {tab === 'inventory' ? <KartadoInventory key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={inventoryCache} /> : null}
+          {tab === 'inventory' ? <KartadoUnitReportings key={`${selectedUuid}:inventory`} company={selectedUuid} name={selected.company.name} kind="inventory" /> : null}
+          {tab === 'assets' ? <KartadoInventory key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={inventoryCache} /> : null}
 
           {tab === 'alerts' ? (
             <div className="mt-5 grid gap-3">{alerts.length ? alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4"><div className="flex justify-between gap-4"><h3 className="font-semibold text-surface-900">{alert.title}</h3><span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span></div>{alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}{alert.action ? <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p> : null}<AlertDetails alert={alert} users={selected.users.users || []} reportings={selected.reportings.items || []} /></article>) : <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>}</div>

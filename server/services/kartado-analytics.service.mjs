@@ -455,7 +455,9 @@ export function buildConcessaoDashboard(company, usersData, reportingsData, inve
       usuariosRetornados:     users.counts.returned,
       apontamentosTotal:      apontamentosTotal,
       registrosTotal: usageTotal,
-      apontamentosMonitoracao: reportingsData.usageData ? usageTotal - apontamentosTotal : null,
+      apontamentosMonitoracao: reportingsData.usageData ? apontamentosTotal : null,
+      inventarioRegistrosTotal: reportingsData.usageData ? usageTotal - apontamentosTotal : null,
+      ativosTotal: inventoryData?.totalCount ?? null,
       apontamentosRetornados: reportings.counts.returned,
       // Fotos — fonte primária: /Photo/ endpoint (distintos c/ foto / total apontamentos)
       // Fallback: pctFotosNaAmostra — % nos 100 mais recentes

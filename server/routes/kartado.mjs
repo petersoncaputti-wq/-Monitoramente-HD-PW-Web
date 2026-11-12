@@ -277,8 +277,8 @@ async function loadHealthDashboard(company, credentials) {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const fifteenDaysAgo = new Date(now.getTime() - 15 * 86_400_000).toISOString().split('T')[0];
   const [reportingsResult, monthResult, photosResult, jobsResult] = await Promise.allSettled([
-    listReportings(auth.token, company.uuid, { pageSize: 25, excludeOccurrenceKind: '' }),
-    listReportings(auth.token, company.uuid, { foundAtAfter: startOfMonth, pageSize: 100, maxPages: 3, excludeOccurrenceKind: '' }),
+    listReportings(auth.token, company.uuid, { pageSize: 25, includeUsage: true }),
+    listReportings(auth.token, company.uuid, { foundAtAfter: startOfMonth, pageSize: 100, maxPages: 3, includeUsage: true }),
     listPhotosForCompany(auth.token, company.uuid, { foundAtAfter: fifteenDaysAgo, pageSize: 100, maxPages: 5 }),
     listJobProgress(auth.token, company.uuid),
   ]);
@@ -820,8 +820,8 @@ kartadoRouter.post('/validate-programacoes', async (req, res) => {
 kartadoRouter.post('/reportings/page', async (req, res) => {
   const creds = requireCreds(req, res);
   if (!creds) return;
-  const { companyUuid, page = 1 } = req.body;
-  if (typeof companyUuid !== 'string' || !/^[0-9a-f-]{36}$/i.test(companyUuid) || !Number.isSafeInteger(page) || page < 1) {
+  const { companyUuid, page = 1, kind = 'reportings' } = req.body;
+  if (!['reportings', 'inventory'].includes(kind) || typeof companyUuid !== 'string' || !/^[0-9a-f-]{36}$/i.test(companyUuid) || !Number.isSafeInteger(page) || page < 1) {
     return res.status(400).json({ error: 'Unidade ou página inválida.' });
   }
   const started = Date.now();
@@ -829,7 +829,7 @@ kartadoRouter.post('/reportings/page', async (req, res) => {
   try {
     const { token } = await getToken(creds.username, creds.password);
     stage = 'kartado';
-    const data = await listReportingPage(token, companyUuid, page);
+    const data = await listReportingPage(token, companyUuid, page, kind);
     stage = 'normalization';
     const metrics = buildReportingMetrics(data.items, data.totalCount);
     if (data.failedRecords.length) console.warn('[Kartado/reportings/page/partial]', { companyUuid, page, failedRecords: data.failedRecords, elapsedMs: Date.now() - started });

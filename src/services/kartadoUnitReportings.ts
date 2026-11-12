@@ -19,10 +19,10 @@ export function normalizeUnitReporting(row: Row): AuditItem {
 export class ReportingPageError extends Error {
   constructor(message: string, public status: number, public retryAfter = 0) { super(message); }
 }
-export async function loadUnitReportingPage(company: string, page: number, signal: AbortSignal) {
+export async function loadUnitReportingPage(company: string, page: number, signal: AbortSignal, kind: 'reportings' | 'inventory' = 'reportings') {
   const response = await fetch('/api/v1/kartado/reportings/page', {
     method: 'POST', credentials: 'same-origin', signal,
-    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyUuid: company, page }),
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyUuid: company, page, kind }),
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new ReportingPageError(`Página ${page}: ${data?.error || 'Falha ao carregar apontamentos.'} (HTTP ${response.status})`, response.status, Number(response.headers.get('Retry-After')) || 0);
