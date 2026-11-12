@@ -277,8 +277,8 @@ async function loadHealthDashboard(company, credentials) {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const fifteenDaysAgo = new Date(now.getTime() - 15 * 86_400_000).toISOString().split('T')[0];
   const [reportingsResult, monthResult, photosResult, jobsResult] = await Promise.allSettled([
-    listReportings(auth.token, company.uuid, { pageSize: 25 }),
-    listReportings(auth.token, company.uuid, { foundAtAfter: startOfMonth, pageSize: 100, maxPages: 3 }),
+    listReportings(auth.token, company.uuid, { pageSize: 25, excludeOccurrenceKind: '' }),
+    listReportings(auth.token, company.uuid, { foundAtAfter: startOfMonth, pageSize: 100, maxPages: 3, excludeOccurrenceKind: '' }),
     listPhotosForCompany(auth.token, company.uuid, { foundAtAfter: fifteenDaysAgo, pageSize: 100, maxPages: 5 }),
     listJobProgress(auth.token, company.uuid),
   ]);
@@ -448,11 +448,11 @@ kartadoRouter.post('/dashboard', async (req, res) => {
     add('3', 'run', `${summaryOnly ? 'Carga resumida' : 'Carga completa'} — company=${selected.uuid}`);
     const [uR, rR, invR, jobR, firmR, rMesR, photosR] = await Promise.allSettled([
       listUsers(auth.token, selected.uuid, { pageSize: ps, maxPages: summaryOnly ? 1 : 10 }),
-      listReportings(auth.token, selected.uuid, { pageSize: ps }),
+      listReportings(auth.token, selected.uuid, { pageSize: ps, includeUsage: true }),
       summaryOnly ? Promise.resolve({ totalCount: null, withImageCount: null, inventoryItems: [] }) : listInventoryCounts(auth.token, selected.uuid),
       summaryOnly ? Promise.resolve({ totalJobs: null, totalThisMonth: null, avgProgress: null }) : listJobProgress(auth.token, selected.uuid),
       summaryOnly ? Promise.resolve({ total: null, firms: [] }) : listFirmCounts(auth.token, selected.uuid),
-      summaryOnly ? Promise.resolve({ reportings: [], totalCount: 0 }) : listReportings(auth.token, selected.uuid, { foundAtAfter: startOfMonth, pageSize: ps, maxPages: 3 }),
+      summaryOnly ? Promise.resolve({ reportings: [], totalCount: 0 }) : listReportings(auth.token, selected.uuid, { foundAtAfter: startOfMonth, pageSize: ps, maxPages: 3, includeUsage: true }),
       summaryOnly ? Promise.resolve({ photos: [], reportingUuids: [], totalPhotos: null }) : listPhotosForCompany(auth.token, selected.uuid, { foundAtAfter: quinzeDiasAtras, pageSize: 100, maxPages: 5 }),
     ]);
 
@@ -465,7 +465,7 @@ kartadoRouter.post('/dashboard', async (req, res) => {
       rd = rR.value;
     } else {
       try {
-        const fallback = await listReportings(auth.token, selected.uuid, { pageSize: 25 });
+        const fallback = await listReportings(auth.token, selected.uuid, { pageSize: 25, includeUsage: true });
         rd = {
           ...fallback,
           warning: `Consulta reduzida após falha na carga de 100 registros: ${rR.reason?.message}`,

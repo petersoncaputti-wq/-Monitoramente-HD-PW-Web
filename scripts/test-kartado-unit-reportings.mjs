@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
-import { listReportingPage } from '../server/services/kartado.service.mjs';
+import { listReportingPage, listReportings } from '../server/services/kartado.service.mjs';
 import { buildReportingMetrics } from '../server/services/kartado-analytics.service.mjs';
 const compile = async path => {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -19,11 +19,15 @@ try {
   const requests = [];
   globalThis.fetch = async url => {
     const query = new URL(url).searchParams;
+    assert.equal(query.get('exclude_occurrence_kind'), '90');
     assert.equal(query.has('origin'), false);
     assert.equal(query.has('found_at_after'), false);
     const page = Number(query.get('page')); requests.push(page);
     return Response.json({ results: rows.slice((page - 1) * 100, page * 100), count: rows.length });
   };
+  const dashboardRows = await listReportings('test-token', 'test-company');
+  assert.equal(dashboardRows.totalCount, rows.length);
+  requests.length = 0;
   const received = [];
   for (let page = 1; page <= 3; page++) {
     const data = await listReportingPage('test-token', 'test-company', page);

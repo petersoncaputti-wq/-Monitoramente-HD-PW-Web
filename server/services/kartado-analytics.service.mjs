@@ -379,7 +379,11 @@ export function buildConcessaoDashboard(company, usersData, reportingsData, inve
   const alertasCriticos   = allAlerts.filter(a => a.severity === 'danger').length;
 
   // Itens do mês corrente — contagem precisa de dias de uso
-  const mesItems = (reportingsMonthData?.reportings || []).map(normalizeReporting);
+  const usageData = reportingsData.usageData || reportingsData;
+  const usageTotal = usageData.totalCount ?? apontamentosTotal;
+  const usageItems = (usageData.reportings || []).map(normalizeReporting);
+  const monthUsageData = reportingsMonthData?.usageData || reportingsMonthData;
+  const mesItems = (monthUsageData?.reportings || []).map(normalizeReporting);
 
   // Fotos 15d — via /Photo/ endpoint (fonte definitiva)
   // reportingUuids: UUIDs distintos dos apontamentos que têm pelo menos uma foto
@@ -389,7 +393,7 @@ export function buildConcessaoDashboard(company, usersData, reportingsData, inve
   const fotoApiError     = photos15dData?.error          ?? null;
 
   // pctFotosHistorico: apontamentos distintos com foto / total de apontamentos
-  const totalReportings = reportingsData?.totalCount || reportings.counts.returned || 0;
+  const totalReportings = usageTotal;
   const pctFotosHistorico = reportingUuids15d.length > 0 && totalReportings > 0
     ? Math.round((reportingUuids15d.length / totalReportings) * 100)
     : reportingUuids15d.length === 0 && fotoApiError === null && totalPhotos15d !== null
@@ -401,11 +405,11 @@ export function buildConcessaoDashboard(company, usersData, reportingsData, inve
 
   // Score de saúde — mesma fórmula do Painel de Saúde (frontend), agora
   // centralizada aqui para que Copilot Studio e PDF nunca divirjam.
-  const pilaresRecencia = calcularPilaresRecencia(mesItems, reportings.items || [], apontamentosTotal);
+  const pilaresRecencia = calcularPilaresRecencia(mesItems, usageItems, usageTotal);
   const dimProgramacoes = jobData?.dimProgramacoes ?? null;
   const hasProgramac    = dimProgramacoes !== null && (jobData?.totalThisMonth ?? 0) > 0;
   const saudeScore = calcularSaudeScore(
-    apontamentosTotal, pilaresRecencia.dimDiasUso, pilaresRecencia.pct15Dias, pctFotosHistorico, dimProgramacoes, hasProgramac
+    usageTotal, pilaresRecencia.dimDiasUso, pilaresRecencia.pct15Dias, pctFotosHistorico, dimProgramacoes, hasProgramac
   );
 
   return {
@@ -450,6 +454,8 @@ export function buildConcessaoDashboard(company, usersData, reportingsData, inve
       usuariosAtivos:         usersData.totalCount  || users.counts.returned,
       usuariosRetornados:     users.counts.returned,
       apontamentosTotal:      apontamentosTotal,
+      registrosTotal: usageTotal,
+      apontamentosMonitoracao: reportingsData.usageData ? usageTotal - apontamentosTotal : null,
       apontamentosRetornados: reportings.counts.returned,
       // Fotos — fonte primária: /Photo/ endpoint (distintos c/ foto / total apontamentos)
       // Fallback: pctFotosNaAmostra — % nos 100 mais recentes
