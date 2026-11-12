@@ -883,6 +883,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
                 <MetricCard label={appliedFilters ? 'Saúde geral' : 'Saúde'} value={`${Number(selected.summary.saudeScore || 0)}/100`} />
               </div>
+              {!appliedFilters && selected.summary.apontamentosMonitoracao != null ? <p className="text-sm text-surface-600">{formatNumber(Number(selected.summary.apontamentosMonitoracao))} monitorações de inventário · {formatNumber(Number(selected.summary.registrosTotal))} registros no total</p> : null}
               <KartadoUnitMap key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={reportingMapCache} />
               <div className="grid gap-5 xl:grid-cols-2">
                 <ChartCard

@@ -242,13 +242,15 @@ export async function listUsers(token, companyUuid, { pageSize = 100, search = '
 }
 
 // ── Reportings — página 1 no dashboard; filtro de data busca mais páginas ────
-export async function listReportings(token, companyUuid, { pageSize = 100, foundAtAfter = '', foundAtBefore = '', origin = '', maxPages = 0 } = {}) {
+export async function listReportings(token, companyUuid, { pageSize = 100, foundAtAfter = '', foundAtBefore = '', origin = '', maxPages = 0, occurrenceKind = '', excludeOccurrenceKind = '90', includeUsage = false } = {}) {
   if (!companyUuid) throw { step: 'reportings', httpStatus: 400, message: 'company UUID obrigatório.' };
 
   const params = { company: companyUuid, page_size: pageSize };
   if (foundAtAfter)  params.found_at_after  = foundAtAfter;
   if (foundAtBefore) params.found_at_before = foundAtBefore;
   if (origin)        params.origin          = origin;
+  if (occurrenceKind) params.occurrence_kind = occurrenceKind;
+  else if (excludeOccurrenceKind) params.exclude_occurrence_kind = excludeOccurrenceKind;
 
   const hasDateFilter = !!(foundAtAfter || foundAtBefore);
   const hasFilter     = !!(hasDateFilter || origin);
@@ -260,9 +262,13 @@ export async function listReportings(token, companyUuid, { pageSize = 100, found
     ? await fetchPages(token, '/Reporting/Spreadsheet/', params, maxPages)
     : await fetchPages(token, '/Reporting/Spreadsheet/', params, 1);
 
+  const usageData = includeUsage
+    ? await listReportings(token, companyUuid, { pageSize, foundAtAfter, foundAtBefore, origin, maxPages, excludeOccurrenceKind: '' })
+    : null;
   const label = [foundAtAfter && 'data', origin && `origem:${origin}`].filter(Boolean).join('+') || 'pg1';
   console.log(`[Reporting] ${companyUuid.slice(0,8)}… → ${result.items.length}/${result.totalCount} (${label}) ${result.latencyMs}ms`);
   return {
+    usageData,
     reportings:  result.items,
     totalCount:  result.totalCount,
     page1Count:  result.totalCount,
@@ -548,11 +554,11 @@ export async function loadAllCompanies(token, companies, opts = {}) {
       // reportings do mês (dias de uso), fotos 15d via /Photo/ (fonte primária)
       const [u, r, inv, job, firm, rMes, photos] = await Promise.allSettled([
         listUsers(token, company.uuid, opts),
-        listReportings(token, company.uuid, opts),
+        listReportings(token, company.uuid, { ...opts, includeUsage: true }),
         listInventoryCounts(token, company.uuid),
         listJobProgress(token, company.uuid),
         listFirmCounts(token, company.uuid),
-        listReportings(token, company.uuid, { foundAtAfter: startOfMonth,    pageSize: opts.pageSize || 100, maxPages: 3 }),
+        listReportings(token, company.uuid, { foundAtAfter: startOfMonth,    pageSize: opts.pageSize || 100, maxPages: 3, includeUsage: true }),
         listPhotosForCompany(token, company.uuid, { foundAtAfter: quinzeDiasAtras, pageSize: 100, maxPages: 5 }),
       ]);
       return {
@@ -854,7 +860,7 @@ export async function listReportingPage(token, companyUuid, page = 1) {
     let payload;
     try {
       payload = await apiFetch(token, '/Reporting/Spreadsheet/', {
-        company: companyUuid, page_size: size, page: offset / size + 1, ordering: 'uuid',
+        company: companyUuid, page_size: size, page: offset / size + 1, ordering: 'uuid', exclude_occurrence_kind: '90',
       });
     } catch (error) {
       if (error.httpStatus !== 500) throw error;
