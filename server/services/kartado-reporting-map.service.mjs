@@ -57,7 +57,7 @@ export function createReportingMapClient({ read = apiFetchBasic } = {}) {
       const [classes, statuses] = await catalog(params.company);
       const classIds = [...classes.names].filter(([, name]) => name === params.classe).map(([id]) => id);
       if (params.classe && !classIds.length) throw new ReportingDetailError('Classe não localizada no catálogo da unidade. Atualize o mapa e selecione novamente.', 400);
-      const payload = await read('/Reporting/', { company: params.company, page: String(params.page), page_size: '200', exclude_occurrence_kind: '90',
+      const payload = await read('/Reporting/', { company: params.company, page: String(params.page), page_size: '200', occurrence_kind: '90',
           ...(params.classe ? { occurrence_type: classIds.join(',') } : {}),
           ...(params.allHistory ? {} : { found_at_after: params.from, found_at_before: params.to }), ordering: 'uuid',
           'fields[Reporting]': 'uuid,number,point,road_name,km,found_at,status,occurrence_type,company' });

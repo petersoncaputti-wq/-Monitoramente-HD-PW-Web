@@ -1,0 +1,84 @@
+<div id="capixaba-preview">
+  <div class="viz-row"><h2>Ecovias Capixaba</h2><span class="viz-badge">Prévia para revisão</span></div>
+  <p class="text-small text-muted">Referência das consultas de 12/11/2026 · Histórico completo</p>
+  <div class="nav nav-pills" role="tablist" aria-label="Telas do painel">
+    <button class="nav-link active" id="cp-tab-overview" type="button" role="tab" aria-selected="true" aria-controls="cp-overview">Visão geral</button>
+    <button class="nav-link" id="cp-tab-users" type="button" role="tab" aria-selected="false" aria-controls="cp-users">Usuários</button>
+    <button class="nav-link" id="cp-tab-reports" type="button" role="tab" aria-selected="false" aria-controls="cp-reports">Apontamentos</button>
+    <button class="nav-link" id="cp-tab-inventory" type="button" role="tab" aria-selected="false" aria-controls="cp-inventory">Inventário</button>
+    <button class="nav-link" id="cp-tab-assets" type="button" role="tab" aria-selected="false" aria-controls="cp-assets">Ativos</button>
+    <button class="nav-link" id="cp-tab-alerts" type="button" role="tab" aria-selected="false" aria-controls="cp-alerts">Alertas</button>
+    <button class="nav-link" id="cp-tab-tickets" type="button" role="tab" aria-selected="false" aria-controls="cp-tickets">Chamados</button>
+  </div>
+
+  <section id="cp-overview" role="tabpanel" aria-labelledby="cp-tab-overview">
+    <div class="viz-grid">
+      <div class="card viz-stat"><span>Apontamentos</span><div class="viz-stat-value">59.971</div><span class="text-small">Monitorações · natureza 90</span><button class="btn" type="button" data-go="cp-tab-reports">Ver apontamentos</button></div>
+      <div class="card viz-stat"><span>Inventário</span><div class="viz-stat-value">21.573</div><span class="text-small">Ocorrências e serviços · demais naturezas</span><button class="btn" type="button" data-go="cp-tab-inventory">Ver inventário</button></div>
+      <div class="card viz-stat"><span>Ativos cadastrados</span><div class="viz-stat-value">52.074</div><span class="text-small">36.578 ativos com foto · 70,2%</span><button class="btn" type="button" data-go="cp-tab-assets">Ver ativos</button></div>
+    </div>
+    <h3>Registros por período</h3>
+    <div class="table-responsive"><table class="table"><thead><tr><th>Período</th><th class="text-end">Apontamentos</th><th class="text-end">Inventário</th><th class="text-end">Total de registros</th></tr></thead><tbody><tr><td>Histórico completo</td><td class="text-end">59.971</td><td class="text-end">21.573</td><td class="text-end">81.544</td></tr><tr><td>Novembro até a consulta inicial</td><td class="text-end">6.541</td><td class="text-end">380</td><td class="text-end">6.921</td></tr></tbody></table></div>
+    <p class="text-small text-muted">As consultas históricas e mensais ocorreram em horários diferentes. Os totais serão atualizados pela API no painel.</p>
+  </section>
+
+  <section id="cp-reports" role="tabpanel" aria-labelledby="cp-tab-reports" hidden>
+    <div class="viz-row"><h3>Apontamentos</h3><span class="viz-badge">Monitorações de inventário</span></div>
+    <div class="viz-grid"><div class="card viz-stat"><span>Total no histórico</span><div class="viz-stat-value">59.971</div></div><div class="card viz-stat"><span>Em novembro</span><div class="viz-stat-value">6.541</div></div></div>
+    <div class="viz-controls"><label class="form-label">Classe<select class="form-select"><option>Todas as classes</option><option>Monitoração de Sinalização Vertical</option><option>Monitoração de Drenagem Superficial</option></select></label><label class="form-label">Rodovia<select class="form-select"><option>Todas as rodovias</option><option>BR-101/ES</option></select></label><label class="form-label">Período<select class="form-select" data-period="reports"><option value="all">Histórico completo</option><option value="month">Novembro de 2026</option></select></label></div>
+    <p class="text-small text-muted">Estrutura ilustrativa da listagem e da ficha. Classes citadas no guia.</p>
+    <div class="table-responsive"><table class="table"><thead><tr><th>Classe</th><th>Ativo vinculado</th><th>Data da inspeção</th><th>Ficha</th></tr></thead><tbody><tr data-class="Monitoração de Sinalização Vertical"><td>Monitoração de Sinalização Vertical</td><td>Placa de sinalização</td><td>A consultar</td><td><button class="btn" type="button" data-detail="monitoring">Ver detalhes</button></td></tr><tr data-class="Monitoração de Drenagem Superficial"><td>Monitoração de Drenagem Superficial</td><td>Dispositivo de drenagem</td><td>A consultar</td><td><button class="btn" type="button" data-detail="monitoring">Ver detalhes</button></td></tr></tbody></table></div>
+  </section>
+
+  <section id="cp-inventory" role="tabpanel" aria-labelledby="cp-tab-inventory" hidden>
+    <div class="viz-row"><h3>Inventário</h3><span class="viz-badge">Ocorrências e serviços</span></div>
+    <div class="viz-grid"><div class="card viz-stat"><span>Total no histórico</span><div class="viz-stat-value">21.573</div></div><div class="card viz-stat"><span>Em novembro na consulta inicial</span><div class="viz-stat-value">380</div></div></div>
+    <div class="viz-controls"><label class="form-label">Classe<select class="form-select"><option>Todas as classes</option><option>Sem classe cadastrada</option></select></label><label class="form-label">Status<select class="form-select"><option>Todos os status</option><option>Executado</option></select></label><label class="form-label">Período<select class="form-select" data-period="inventory"><option value="all">Histórico completo</option><option value="month">Novembro de 2026</option></select></label></div>
+    <div class="table-responsive"><table class="table"><thead><tr><th>Registro</th><th>Classe</th><th>Rodovia / km</th><th>Status</th><th>Ficha</th></tr></thead><tbody><tr data-historical><td>ECC-SINH-2026.01848</td><td>Sem classe cadastrada</td><td>BR-101/ES · 229,2</td><td>Executado</td><td><button class="btn" type="button" data-detail="service">Ver detalhes</button></td></tr></tbody></table></div>
+    <p class="text-small text-muted">Registro real consultado para validar a recuperação da página 197.</p>
+  </section>
+
+  <section id="cp-assets" role="tabpanel" aria-labelledby="cp-tab-assets" hidden>
+    <div class="nav nav-pills" role="tablist" aria-label="Visões de ativos"><button class="nav-link active" id="cp-assets-summary-tab" type="button" role="tab" aria-selected="true" aria-controls="cp-assets-summary">Resumo dos ativos</button><button class="nav-link" id="cp-assets-cross-tab" type="button" role="tab" aria-selected="false" aria-controls="cp-assets-cross">Histórico vinculado</button></div>
+    <div id="cp-assets-summary" role="tabpanel" aria-labelledby="cp-assets-summary-tab">
+      <div class="viz-row"><h3>Ativos · Coleta completa</h3><span class="text-small">52.074 de 52.074 recebidos</span></div>
+      <div class="viz-controls"><label class="form-label">Classe do ativo<select class="form-select"><option>Todas as classes</option><option>Sinalização Vertical</option><option>Drenagem Superficial</option></select></label><label class="form-label">Rodovia<select class="form-select"><option>Todas as rodovias</option><option>BR-101/ES</option></select></label></div>
+      <div class="viz-grid"><div class="card viz-stat"><span>Ativos no recorte</span><div class="viz-stat-value">52.074</div></div><div class="card viz-stat"><span>Ativos com foto</span><div class="viz-stat-value">36.578</div><span class="text-small">Cobertura de 70,2%</span></div><div class="card viz-stat"><span>Classes no recorte</span><div class="viz-stat-value">27</div><span class="text-small">Em 5 rodovias</span></div></div>
+      <button class="btn" type="button" data-detail="asset">Prévia da ficha do ativo</button>
+    </div>
+    <div id="cp-assets-cross" role="tabpanel" aria-labelledby="cp-assets-cross-tab" hidden><h3>Histórico por ativo</h3><div class="table-responsive"><table class="table"><thead><tr><th>Ativo</th><th>Apontamentos / monitorações</th><th>Inventário / ocorrências e serviços</th></tr></thead><tbody><tr><td>Ativo selecionado</td><td>A consultar</td><td>A consultar</td></tr></tbody></table></div><button class="btn" type="button" data-detail="asset">Ver vínculo e histórico</button></div>
+  </section>
+
+  <section id="cp-users" role="tabpanel" aria-labelledby="cp-tab-users" hidden><h3>Usuários</h3><div class="viz-controls"><label class="form-label">Buscar usuário<input class="form-control" placeholder="Nome, e-mail ou usuário" /></label></div><div class="table-responsive"><table class="table"><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Situação</th></tr></thead><tbody><tr><td colspan="4">Dados de usuários a carregar no painel</td></tr></tbody></table></div></section>
+  <section id="cp-alerts" role="tabpanel" aria-labelledby="cp-tab-alerts" hidden><h3>Alertas</h3><div class="viz-controls"><label class="form-label">Categoria<select class="form-select"><option>Todas as categorias</option><option>Apontamentos / inspeções</option><option>Inventário / serviços</option><option>Ativos</option><option>Usuários</option></select></label></div><div class="table-responsive"><table class="table"><thead><tr><th>Categoria</th><th>Alerta</th><th>Quantidade</th><th>Ação</th></tr></thead><tbody><tr><td>Qualidade cadastral</td><td>Ocorrência sem classe e natureza</td><td>1 exemplo identificado</td><td><button class="btn" type="button" data-detail="service">Ver registro</button></td></tr></tbody></table></div><p class="text-small text-muted">Exemplo para revisão da apresentação. Demais alertas e totais serão apurados no painel.</p></section>
+  <section id="cp-tickets" role="tabpanel" aria-labelledby="cp-tab-tickets" hidden><h3>Chamados</h3><div class="viz-controls"><label class="form-label">Buscar chamado<input class="form-control" placeholder="Número ou assunto" /></label><label class="form-label">Status<select class="form-select"><option>Todos os status</option><option>Em aberto</option><option>Concluído</option></select></label></div><div class="table-responsive"><table class="table"><thead><tr><th>Número</th><th>Assunto</th><th>Responsável</th><th>Status</th></tr></thead><tbody><tr><td colspan="4">Dados de chamados a carregar no painel</td></tr></tbody></table></div></section>
+
+  <section class="card" id="cp-detail" hidden aria-live="polite"><div class="viz-row"><h3 id="cp-detail-title"></h3><button class="btn" type="button" id="cp-close">Fechar detalhes</button></div><div id="cp-detail-content"></div></section>
+</div>
+<style>
+#capixaba-preview {display:flex;flex-direction:column;gap:calc(var(--font-size-base) * 1.2);color:var(--foreground)}
+#capixaba-preview section:not([hidden]),#capixaba-preview [role="tabpanel"]:not([hidden]) {display:flex;flex-direction:column;gap:calc(var(--font-size-base) * 1)}
+#capixaba-preview [hidden] {display:none!important}
+#capixaba-preview .viz-stat {display:flex;flex-direction:column;gap:calc(var(--font-size-base) * .5)}
+#capixaba-preview .cp-photo {display:flex;align-items:center;gap:calc(var(--font-size-base) * .5);padding:calc(var(--font-size-base) * 2);background:var(--muted);color:var(--muted-foreground)}
+</style>
+<script>
+(() => {
+ const root=document.getElementById('capixaba-preview');
+ const detail=root.querySelector('#cp-detail');
+ const content=root.querySelector('#cp-detail-content');
+ const title=root.querySelector('#cp-detail-title');
+ const details={
+ monitoring:{title:'Ficha do apontamento · Inspeção',html:'<p class="text-small text-muted">Estrutura ilustrativa · Valores individuais a consultar</p><table class="table"><tbody><tr><th>Classe</th><td>Monitoração do ativo selecionado</td></tr><tr><th>Natureza</th><td>90 · Monitoração</td></tr><tr><th>Ativo vinculado</th><td>Identificação e acesso à ficha do ativo</td></tr><tr><th>Inspeção</th><td>Data, responsável e status da campanha</td></tr><tr><th>Condição</th><td>Campos do formulário da classe</td></tr></tbody></table><div class="cp-photo"><i data-lucide="image" aria-hidden="true"></i><span>Fotos e arquivos da inspeção · Prévia sem fotografias carregadas</span></div>'},
+ service:{title:'ECC-SINH-2026.01848',html:'<table class="table"><tbody><tr><th>Rodovia / km</th><td>BR-101/ES · 229,2</td></tr><tr><th>Status</th><td>Executado</td></tr><tr><th>Classe e natureza</th><td>Sem cadastro</td></tr><tr><th>Identificação</th><td>NS127-26</td></tr><tr><th>Encontrado em</th><td>22/05/2026</td></tr><tr><th>Executado em</th><td>21/06/2026</td></tr><tr><th>Imagem vinculada</th><td>1</td></tr></tbody></table><div class="cp-photo"><i data-lucide="image" aria-hidden="true"></i><span>Área da imagem · Fotografia a carregar no painel</span></div>'},
+ asset:{title:'Ficha do ativo',html:'<p class="text-small text-muted">Estrutura ilustrativa · Ativo individual a selecionar no painel</p><table class="table"><tbody><tr><th>Identificação</th><td>Número e classe do ativo</td></tr><tr><th>Localização</th><td>Rodovia, km, sentido e coordenadas</td></tr><tr><th>Dados cadastrais</th><td>Campos específicos da classe</td></tr><tr><th>Histórico</th><td>Apontamentos de inspeção e registros de inventário vinculados</td></tr></tbody></table><div class="cp-photo"><i data-lucide="image" aria-hidden="true"></i><span>Fotos e arquivos do ativo · Prévia sem fotografias carregadas</span></div>'}
+ };
+ root.querySelectorAll('[data-go]').forEach(button=>button.addEventListener('click',()=>root.querySelector('#'+button.dataset.go).click()));
+ root.querySelectorAll('[data-detail]').forEach(button=>button.addEventListener('click',()=>{const record=details[button.dataset.detail];title.textContent=record.title;content.innerHTML=record.html;detail.hidden=false;if(typeof lucide!=='undefined')lucide.createIcons();detail.scrollIntoView({behavior:'smooth',block:'nearest'});}));
+ root.querySelector('#cp-close').addEventListener('click',()=>{detail.hidden=true;});
+ root.querySelectorAll('[role="tab"]').forEach(button=>button.addEventListener('click',()=>{detail.hidden=true;window.openai?.setWidgetState?.({modelContent:{tela:button.textContent},privateContent:{tab:button.id}}).catch(()=>{});}));
+ root.querySelectorAll('[data-period]').forEach(select=>select.addEventListener('change',()=>{const section=select.closest('section');const monthly=select.value==='month';section.querySelector('.viz-stat-value').textContent=select.dataset.period==='reports'?(monthly?'6.541':'59.971'):(monthly?'380':'21.573');section.querySelectorAll('[data-historical]').forEach(row=>{row.hidden=monthly;});}));
+ const classFilter=root.querySelector('#cp-reports select');classFilter.addEventListener('change',()=>root.querySelectorAll('#cp-reports [data-class]').forEach(row=>{row.hidden=classFilter.selectedIndex>0&&row.dataset.class!==classFilter.value;}));
+ const saved=window.openai?.widgetState?.privateContent?.tab;if(saved&&root.querySelector('#'+saved))root.querySelector('#'+saved).click();
+})();
+</script>

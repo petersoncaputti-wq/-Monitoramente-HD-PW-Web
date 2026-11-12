@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { listReportingPage, listReportings } from '../server/services/kartado.service.mjs';
-import { buildReportingMetrics } from '../server/services/kartado-analytics.service.mjs';
+import { buildReportingMetrics, buildConcessaoDashboard } from '../server/services/kartado-analytics.service.mjs';
 const compile = async path => {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -19,7 +19,8 @@ try {
   const requests = [];
   globalThis.fetch = async url => {
     const query = new URL(url).searchParams;
-    assert.equal(query.get('exclude_occurrence_kind'), '90');
+    assert.equal(query.get('occurrence_kind'), '90');
+    assert.equal(query.has('exclude_occurrence_kind'), false);
     assert.equal(query.has('origin'), false);
     assert.equal(query.has('found_at_after'), false);
     const page = Number(query.get('page')); requests.push(page);
@@ -54,6 +55,24 @@ try {
   assert.equal(normalizeUnitReporting({ sentido: 'sul' }).trecho, 'Sul');
   assert.equal(normalizeUnitReporting({ natureza: 'Natureza explícita', occurrenceKind: 'Outra' }).natureza, 'Natureza explícita');
 
+  globalThis.fetch = async url => {
+    const query = new URL(url).searchParams;
+    const monitors = query.get('occurrence_kind') === '90';
+    const services = query.get('exclude_occurrence_kind') === '90';
+    assert.equal(monitors && services, false);
+    const count = monitors ? 59971 : services ? 21573 : 81544;
+    return Response.json({ count, results: [{ id: monitors ? 'monitor' : 'service', attributes: { number: 'test' } }] });
+  };
+  const overview = await listReportings('token', 'company', { includeUsage: true });
+  assert.equal(overview.totalCount, 59971);
+  assert.equal(overview.usageData.totalCount, 81544);
+  const dashboard = buildConcessaoDashboard({ uuid: 'company' }, { users: [], totalCount: 0 }, overview, { totalCount: 52074 });
+  assert.equal(dashboard.summary.apontamentosTotal, 59971);
+  assert.equal(dashboard.summary.inventarioRegistrosTotal, 21573);
+  assert.equal(dashboard.summary.ativosTotal, 52074);
+  assert.equal((await listReportingPage('token', 'company')).totalCount, 59971);
+  assert.equal((await listReportingPage('token', 'company', 1, 'inventory')).totalCount, 21573);
+  await assert.rejects(listReportingPage('token', 'company', 1, 'invalid'), error => error.httpStatus === 400);
   globalThis.fetch = async () => Response.json({ unexpected: [] });
   await assert.rejects(listReportingPage('token', 'company'), error => error.httpStatus === 502);
   globalThis.fetch = async () => Response.json({ detail: 'denied' }, { status: 401 });
@@ -108,7 +127,7 @@ try {
     if (start === 0) return Response.json({}, { status: 500 });
     return Response.json({ count: 100, results: Array.from({ length: size }, (_, i) => ({ uuid: `item-${start + i}` })) });
   };
-  const completePage = await listReportingPage('token', 'company', 1);
+  const completePage = await listReportingPage('token', 'company', 1, 'inventory');
   assert.equal(completePage.items.length, 100);
   assert.deepEqual(completePage.failedRecords, []);
   const recoveredItem = buildReportingMetrics(completePage.items, 100).items.find(item => item.id === 'recovered-id');

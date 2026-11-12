@@ -31,7 +31,7 @@ async function request<T>(url: string, signal: AbortSignal): Promise<T> {
   if (!response.ok || data?.success !== true) throw new Error(data?.error || 'Não foi possível consultar a ficha.');
   return data as T;
 }
-export function KartadoReportingDetails({ company, uuid, onBack }: { company: string; uuid: string; onBack: () => void }) {
+export function KartadoReportingDetails({ company, uuid, onBack, recordLabel = 'apontamento' }: { company: string; uuid: string; onBack: () => void; recordLabel?: string }) {
   const panel = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<Detail | null>(null);
   const [files, setFiles] = useState<Files | null>(null);
@@ -63,12 +63,12 @@ export function KartadoReportingDetails({ company, uuid, onBack }: { company: st
       .finally(() => { if (!controller.signal.aborted) setFilesLoading(false); });
     return () => controller.abort();
   }, [base, query, tab, page, revision]);
-  return <div ref={panel} tabIndex={-1} className="space-y-5 py-5 outline-none" aria-label="Ficha do apontamento">
-    <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" className={button} onClick={onBack}>← Voltar aos apontamentos</button><button type="button" className={button} onClick={() => setRevision(value => value + 1)}>Atualizar ficha</button></div>
-    <div><p className="text-xs text-brand-700">Apontamento · somente leitura</p><h3 className="mt-2 break-words text-xl font-semibold">{data?.numero || 'Ficha do apontamento'}</h3>{data?.classe && <p className="mt-1 text-sm text-surface-600">{data.classe} · {data.status || 'Status não informado'}</p>}</div>
-    <nav aria-label="Seções do apontamento" className="flex gap-2 border-b border-brand-100 pb-3">{([['info', 'Informações'], ['files', 'Arquivos e imagens']] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={tab === id} onClick={() => setTab(id)} className={`${button} ${tab === id ? 'bg-brand-50 ring-1 ring-brand-700' : ''}`}>{label}</button>)}</nav>
+  return <div ref={panel} tabIndex={-1} className="space-y-5 py-5 outline-none" aria-label={`Ficha do ${recordLabel}`}>
+    <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" className={button} onClick={onBack}>← Voltar à listagem</button><button type="button" className={button} onClick={() => setRevision(value => value + 1)}>Atualizar ficha</button></div>
+    <div><p className="text-xs text-brand-700">{recordLabel} · somente leitura</p><h3 className="mt-2 break-words text-xl font-semibold">{data?.numero || `Ficha do ${recordLabel}`}</h3>{data?.classe && <p className="mt-1 text-sm text-surface-600">{data.classe} · {data.status || 'Status não informado'}</p>}</div>
+    <nav aria-label={`Seções do ${recordLabel}`} className="flex gap-2 border-b border-brand-100 pb-3">{([['info', 'Informações'], ['files', 'Arquivos e imagens']] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={tab === id} onClick={() => setTab(id)} className={`${button} ${tab === id ? 'bg-brand-50 ring-1 ring-brand-700' : ''}`}>{label}</button>)}</nav>
     {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
-    {!data && !error && <p role="status" className="rounded-xl bg-brand-50 p-5 text-sm">Consultando a ficha do apontamento…</p>}
+    {!data && !error && <p role="status" className="rounded-xl bg-brand-50 p-5 text-sm">Consultando a ficha…</p>}
     {data && tab === 'info' && <>
       {data.avisos.length > 0 && <div role="status" className="rounded-xl bg-amber-50 p-4 text-xs text-amber-800">{data.avisos.map(warning => <p key={warning}>{warning}</p>)}</div>}
       <Section title="Identificação"><Fields fields={[
@@ -76,17 +76,17 @@ export function KartadoReportingDetails({ company, uuid, onBack }: { company: st
         ['Prazo', date(data.prazo)], ['Executado em', date(data.executadoEm)], ['Natureza', data.natureza], ['Classe', data.classe],
         ['Status', data.status], ['Aprovação', data.aprovacao], ['Criado em', date(data.criadoEm)], ['Atualizado em', date(data.atualizadoEm)],
       ]} /></Section>
-      <Section title="Inventário vinculado">{data.inventario ? <Fields fields={[
+      <Section title="Ativo vinculado">{data.inventario ? <Fields fields={[
         ['Número do ativo', data.inventario.numero], ['Classe do ativo', data.inventario.classe], ['Rodovia', data.inventario.rodovia],
         ['Km inicial', data.inventario.km], ['Km final', data.inventario.kmFinal], ['Sentido', data.inventario.sentido],
         ['Faixa', data.inventario.faixa], ['Encontrado em', date(data.inventario.encontradoEm)],
-      ]} /> : <p className="text-sm text-surface-600">Nenhum inventário disponível nesta ficha.</p>}</Section>
-      <Section title="Localização do apontamento"><Fields fields={[
+      ]} /> : <p className="text-sm text-surface-600">Nenhum ativo vinculado disponível nesta ficha.</p>}</Section>
+      <Section title="Localização"><Fields fields={[
         ['Rodovia', data.localizacao.rodovia], ['Km inicial', data.localizacao.km], ['Km final', data.localizacao.kmFinal],
         ['Lote', data.localizacao.lote], ['Sentido', data.localizacao.sentido], ['Faixa', data.localizacao.faixa], ['Município', data.localizacao.municipio],
         ['Latitude', data.localizacao.coordinates?.[1]], ['Longitude', data.localizacao.coordinates?.[0]],
       ]} /></Section>
-      <Section title="Mapa do apontamento"><KartadoReportingMap coordinates={data.localizacao.coordinates} numero={data.numero} /></Section>
+      <Section title="Mapa"><KartadoReportingMap coordinates={data.localizacao.coordinates} numero={data.numero} /></Section>
       <Section title="Dados do formulário">{data.campos.length ? <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">{data.campos.map(field => <div key={field.key} className="min-w-0"><p className="text-xs text-surface-600">{field.label}</p><p className="mt-1 whitespace-pre-wrap break-words text-sm font-medium">{/date|time/i.test(field.type) ? date(field.value) : field.value ?? 'Não informado'}</p>{field.manual && <p className="mt-1 text-[11px] text-surface-500">Especificado manualmente</p>}</div>)}</div> : <p className="text-sm text-surface-600">Nenhum campo preenchido foi disponibilizado.</p>}</Section>
     </>}
     {tab === 'files' && <>

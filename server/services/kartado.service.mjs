@@ -242,7 +242,7 @@ export async function listUsers(token, companyUuid, { pageSize = 100, search = '
 }
 
 // ── Reportings — página 1 no dashboard; filtro de data busca mais páginas ────
-export async function listReportings(token, companyUuid, { pageSize = 100, foundAtAfter = '', foundAtBefore = '', origin = '', maxPages = 0, occurrenceKind = '', excludeOccurrenceKind = '90', includeUsage = false } = {}) {
+export async function listReportings(token, companyUuid, { pageSize = 100, foundAtAfter = '', foundAtBefore = '', origin = '', maxPages = 0, occurrenceKind = '90', excludeOccurrenceKind = '', includeUsage = false } = {}) {
   if (!companyUuid) throw { step: 'reportings', httpStatus: 400, message: 'company UUID obrigatório.' };
 
   const params = { company: companyUuid, page_size: pageSize };
@@ -263,7 +263,7 @@ export async function listReportings(token, companyUuid, { pageSize = 100, found
     : await fetchPages(token, '/Reporting/Spreadsheet/', params, 1);
 
   const usageData = includeUsage
-    ? await listReportings(token, companyUuid, { pageSize, foundAtAfter, foundAtBefore, origin, maxPages, excludeOccurrenceKind: '' })
+    ? await listReportings(token, companyUuid, { pageSize, foundAtAfter, foundAtBefore, origin, maxPages, occurrenceKind: '', excludeOccurrenceKind: '' })
     : null;
   const label = [foundAtAfter && 'data', origin && `origem:${origin}`].filter(Boolean).join('+') || 'pg1';
   console.log(`[Reporting] ${companyUuid.slice(0,8)}… → ${result.items.length}/${result.totalCount} (${label}) ${result.latencyMs}ms`);
@@ -848,7 +848,9 @@ export async function runDiagnostics(token, sampleCompanyUuid = null) {
 }
 
 // Mantém a página lógica de 100 registros; isola HTTP 500 em blocos menores.
-export async function listReportingPage(token, companyUuid, page = 1) {
+export async function listReportingPage(token, companyUuid, page = 1, kind = 'reportings') {
+  if (!['reportings', 'inventory'].includes(kind)) throw { httpStatus: 400, message: 'Tipo de registro invalido.' };
+  const natureFilter = kind === 'inventory' ? { exclude_occurrence_kind: '90' } : { occurrence_kind: '90' };
   let totalCount = null;
   let requests = 0;
   let consecutiveFailures = 0;
@@ -856,7 +858,7 @@ export async function listReportingPage(token, companyUuid, page = 1) {
   async function recoverRecord(offset) {
     const payload = await apiFetch(token, '/Reporting/', {
       company: companyUuid, page_size: 1, page: offset + 1,
-      ordering: 'uuid', exclude_occurrence_kind: '90',
+      ordering: 'uuid', ...natureFilter,
     });
     const data = extractPage(payload, 1);
     if (data.items.length !== 1 || !data.items[0].id || (totalCount !== null && data.totalCount !== totalCount)) {
@@ -894,7 +896,7 @@ export async function listReportingPage(token, companyUuid, page = 1) {
     let payload;
     try {
       payload = await apiFetch(token, '/Reporting/Spreadsheet/', {
-        company: companyUuid, page_size: size, page: offset / size + 1, ordering: 'uuid', exclude_occurrence_kind: '90',
+        company: companyUuid, page_size: size, page: offset / size + 1, ordering: 'uuid', ...natureFilter,
       });
     } catch (error) {
       if (error.httpStatus !== 500) throw error;
