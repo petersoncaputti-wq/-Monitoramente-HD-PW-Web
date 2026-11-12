@@ -853,6 +853,40 @@ export async function listReportingPage(token, companyUuid, page = 1) {
   let requests = 0;
   let consecutiveFailures = 0;
   const failedRecords = [];
+  async function recoverRecord(offset) {
+    const payload = await apiFetch(token, '/Reporting/', {
+      company: companyUuid, page_size: 1, page: offset + 1,
+      ordering: 'uuid', exclude_occurrence_kind: '90',
+    });
+    const data = extractPage(payload, 1);
+    if (data.items.length !== 1 || !data.items[0].id || (totalCount !== null && data.totalCount !== totalCount)) {
+      throw { httpStatus: 502, message: 'Resposta inconsistente ao recuperar o apontamento.' };
+    }
+    totalCount = data.totalCount;
+    const record = data.items[0];
+    const attributes = record.attributes || {};
+    const lookup = async key => {
+      const relation = record.relationships?.[key]?.data;
+      if (!relation?.id) return null;
+      const result = await apiFetch(token, `/${relation.type}/`, { company: companyUuid, uuid: relation.id, page_size: 1 });
+      return extractPage(result, 1).items.find(item => item.id === relation.id)?.attributes || null;
+    };
+    const [company, status, occurrenceType, firm] = await Promise.all([
+      lookup('company'), lookup('status'), lookup('occurrenceType'), lookup('firm'),
+    ]);
+    const fields = company?.customOptions?.reporting?.fields || {};
+    const display = (key, value) => fields[key]?.selectOptions?.options?.find(option => String(option.value) === String(value))?.name ?? value;
+    return [{ ...record, attributes: {
+      ...attributes,
+      direction: display('direction', attributes.direction),
+      lane: display('lane', attributes.lane),
+      origin: display('origin', attributes.formData?.origem ?? attributes.origin),
+      occurrenceKind: display('occurrenceKind', attributes.occurrenceKind),
+      occurrenceType: occurrenceType?.name ?? null,
+      status: status?.name ?? null,
+      equipe: firm?.name ?? null,
+    } }];
+  }
   async function read(offset, size) {
     // Limita a recuperação quando o serviço inteiro está indisponível.
     // A árvore completa tem 125 chamadas (1 + 4 + 20 + 100).
@@ -865,7 +899,14 @@ export async function listReportingPage(token, companyUuid, page = 1) {
     } catch (error) {
       if (error.httpStatus !== 500) throw error;
       consecutiveFailures++;
-      if (size === 1) { failedRecords.push(offset + 1); return []; }
+      if (size === 1) {
+        try { return await recoverRecord(offset); }
+        catch (recoveryError) {
+          if ([401, 403].includes(recoveryError.httpStatus)) throw recoveryError;
+          failedRecords.push(offset + 1);
+          return [];
+        }
+      }
       const smaller = size === 100 ? 25 : size === 25 ? 5 : 1;
       const items = [];
       for (let start = offset; start < offset + size; start += smaller) {

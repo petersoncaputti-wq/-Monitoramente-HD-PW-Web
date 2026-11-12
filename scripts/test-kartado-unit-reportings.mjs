@@ -77,7 +77,7 @@ try {
   assert.equal(new Set(recovered.items.map(item => item.uuid)).size, 99);
   assert.equal(recovered.totalPages, 342);
   assert.deepEqual(recovered.failedRecords, [31117]);
-  assert.equal(recoveryCalls, 15);
+  assert.equal(recoveryCalls, 16);
   const partialPage = await loadUnitReportings('company', new AbortController().signal, () => {}, async () => ({ items: recovered.items.map(normalizeUnitReporting), total: 100, pages: 1, failedRecords: recovered.failedRecords }));
   assert.deepEqual(partialPage.failedPages, [1]);
   assert.match(partialPage.issue, /31117/);
@@ -97,10 +97,28 @@ try {
   assert.equal(multipleRecovered.items.length, 97);
   assert.equal(new Set(multipleRecovered.items.map(item => item.uuid)).size, 97);
   assert.deepEqual(multipleRecovered.failedRecords, badOffsets.map(offset => offset + 1));
+  globalThis.fetch = async url => {
+    const request = new URL(url);
+    const size = Number(request.searchParams.get('page_size'));
+    const start = (Number(request.searchParams.get('page')) - 1) * size;
+    assert.equal(request.searchParams.get('exclude_occurrence_kind'), '90');
+    if (request.pathname === '/Reporting/') {
+      return Response.json({ data: [{ id: 'recovered-id', attributes: { number: 'ECC-SINH-2026.01848', occurrenceKind: null, imageCount: 1 }, relationships: {} }], meta: { pagination: { count: 100 } } });
+    }
+    if (start === 0) return Response.json({}, { status: 500 });
+    return Response.json({ count: 100, results: Array.from({ length: size }, (_, i) => ({ uuid: `item-${start + i}` })) });
+  };
+  const completePage = await listReportingPage('token', 'company', 1);
+  assert.equal(completePage.items.length, 100);
+  assert.deepEqual(completePage.failedRecords, []);
+  const recoveredItem = buildReportingMetrics(completePage.items, 100).items.find(item => item.id === 'recovered-id');
+  assert.equal(recoveredItem.number, 'ECC-SINH-2026.01848');
+  assert.equal(recoveredItem.imageCount, 1);
+  assert.equal(recoveredItem.occurrenceKind, null);
   let unavailableCalls = 0;
   globalThis.fetch = async () => { unavailableCalls++; return Response.json({}, { status: 500 }); };
   await assert.rejects(listReportingPage('token', 'company', 312), error => error.httpStatus === 500);
-  assert.equal(unavailableCalls, 20);
+  assert.equal(unavailableCalls, 35);
 } finally { globalThis.fetch = realFetch; }
 console.log('Apontamentos por unidade: paginação sem filtros, normalização, cards, filtros, resposta inválida e falha de autenticação OK.');
 
