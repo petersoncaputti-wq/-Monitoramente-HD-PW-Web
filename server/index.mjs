@@ -1,16 +1,26 @@
+import kartadoTicketsRouter from './routes/kartado-tickets.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import express from 'express';
 import helmet from 'helmet';
 import { query } from './db.mjs';
 import authRouter from './routes/auth.mjs';
+import samlRouter from './routes/saml.mjs';
 import adminUsersRouter from './routes/admin-users.mjs';
 import dataRouter from './routes/data.mjs';
 import ticketsRouter from './routes/tickets.mjs';
 import importsRouter from './routes/imports.mjs';
+import storageReadingsRouter from './routes/storage-readings.mjs';
 import { kartadoRouter } from './routes/kartado.mjs';
 import { requireUser } from './auth.mjs';
 import totvsRouter from './routes/totvs.mjs';
+import ecoRouter from './routes/kartado-eco.mjs';
+import auditRouter from './routes/kartado-audit.mjs';
+import inventoryRouter from './routes/kartado-inventory.mjs';
+import reportingDetailsRouter from './routes/kartado-reporting-details.mjs';
+import reportingMapRouter from './routes/kartado-reporting-map.mjs';
+import { auditWorker } from './services/kartado-audit-jobs.mjs';
+import { persistentInventory } from './services/kartado-inventory-snapshots.mjs';
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -49,10 +59,14 @@ app.get('/api/health', async (_request, response) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/auth/saml', samlRouter);
 app.use('/api/admin-users', adminUsersRouter);
 app.use('/api/data', dataRouter);
+app.use('/api/storage-readings', storageReadingsRouter);
 app.use('/api/totvs', totvsRouter);
+app.use('/api/kartado-eco', ecoRouter);
 app.use('/api/tickets', ticketsRouter);
+app.use('/api/kartado-tickets', kartadoTicketsRouter);
 app.use('/api/storage-import', (request, response, next) => {
   request.url = '/storage';
   importsRouter(request, response, next);
@@ -66,6 +80,12 @@ app.use('/api/e365-import', (request, response, next) => {
   importsRouter(request, response, next);
 });
 app.use('/api/v1/kartado', requireUser, kartadoRouter);
+app.use('/api/kartado-audit', auditRouter);
+app.use('/api/kartado-inventory', inventoryRouter);
+app.use('/api/kartado-reporting-details', reportingDetailsRouter);
+app.use('/api/kartado-reporting-map', reportingMapRouter);
+auditWorker.start();
+persistentInventory.start();
 
 if (existsSync(distPath)) {
   app.use(express.static(distPath, { index: false }));

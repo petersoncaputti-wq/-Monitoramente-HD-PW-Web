@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { KartadoTicketsPage } from '@/pages/KartadoTicketsPage';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
+import { KartadoInventory } from '@/components/KartadoInventory';
+import { KartadoUnitMap } from '@/components/KartadoUnitMap';
+import type { MapCache } from '@/services/kartadoMapService';
+import { InventoryCache, prefetchUnitInventory } from '@/services/kartadoInventoryService';
 import {
   loadKartadoCompanies,
   loadKartadoConcession,
@@ -12,18 +19,61 @@ import {
   type KartadoUser,
 } from '@/services/kartadoService';
 
-type KartadoTab = 'overview' | 'users' | 'reportings' | 'alerts';
+type KartadoTab = 'overview' | 'users' | 'reportings' | 'inventory' | 'alerts' | 'tickets';
 type KartadoArea = 'audit' | 'health';
+
+function UnitModal({ title, onClose, header, children }: {
+  title: string;
+  onClose: () => void;
+  header: ReactNode;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    dialog?.showModal();
+    document.body.style.overflow = 'hidden';
+    return () => {
+      dialog?.close();
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement) previousFocus.focus({ preventScroll: true });
+    };
+  }, []);
+
+  return createPortal(
+    <dialog ref={dialogRef} aria-labelledby="kartado-unit-title" onCancel={(event) => { event.preventDefault(); onClose(); }}
+      className="m-auto h-[100dvh] max-h-none w-full max-w-none overflow-hidden border-0 bg-white p-0 text-surface-900 shadow-2xl backdrop:bg-surface-900/60 sm:h-[92dvh] sm:max-h-[92dvh] sm:w-[94vw] sm:rounded-3xl">
+      <div className="flex h-full min-h-0 flex-col">
+        <header className="shrink-0 border-b border-brand-100 bg-white p-4 sm:px-6">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wider text-brand-700">Detalhes da unidade</p><h2 id="kartado-unit-title" className="mt-1 break-words text-lg font-semibold sm:text-2xl">{title}</h2></div>
+            <button autoFocus type="button" onClick={onClose} aria-label="Fechar detalhes da unidade" className="shrink-0 rounded-xl border border-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">Fechar <span aria-hidden="true">×</span></button>
+          </div>
+          {header}
+        </header>
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4 sm:p-6">{children}</div>
+      </div>
+    </dialog>, document.body,
+  );
+}
 
 const tabs: Array<{ id: KartadoTab; label: string }> = [
   { id: 'overview', label: 'Visão geral' },
   { id: 'users', label: 'Usuários' },
   { id: 'reportings', label: 'Apontamentos' },
+  { id: 'inventory', label: 'Inventário' },
   { id: 'alerts', label: 'Alertas' },
+  { id: 'tickets', label: 'Chamados' },
 ];
 
 const numberFormatter = new Intl.NumberFormat('pt-BR');
 const PAGE_SIZE_OPTIONS = [20, 40, 80, 160, 200] as const;
+const INACTIVE_UNITS = [
+  'Sisobras Ecovias Noroeste Paulista',
+  'Sisobras Ecovias Raposo Castello',
+] as const;
 
 function formatNumber(value: number) {
   return numberFormatter.format(Number.isFinite(value) ? value : 0);
@@ -368,6 +418,9 @@ function riskLabel(user: KartadoUser) {
 }
 
 export function KartadoPage({ area }: { area: KartadoArea }) {
+  const reportingMapCache = useMemo<MapCache>(() => new Map(), []);
+  const inventoryCache = useMemo(() => new InventoryCache(), []);
+  const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
   const [concessions, setConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
   const [failedCompanies, setFailedCompanies] = useState<Record<string, string>>({});
@@ -377,7 +430,8 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   const [filteredConcession, setFilteredConcession] = useState<KartadoConcessionDashboard | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [appliedPeriod, setAppliedPeriod] = useState<{ from: string; to: string } | null>(null);
+  const [origin, setOrigin] = useState('');
+  const [appliedFilters, setAppliedFilters] = useState<{ from: string; to: string; origin: string } | null>(null);
   const [tab, setTab] = useState<KartadoTab>('overview');
   const [search, setSearch] = useState('');
   const [remoteUsers, setRemoteUsers] = useState<KartadoUser[] | null>(null);
@@ -387,9 +441,6 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   const [reportingsError, setReportingsError] = useState('');
   const [usersPage, setUsersPage] = useState(1);
   const [usersPageSize, setUsersPageSize] = useState(20);
-  const [reportingsPage, setReportingsPage] = useState(1);
-  const [reportingsPageSize, setReportingsPageSize] = useState(20);
-  const [reportingsLoaded, setReportingsLoaded] = useState<Set<string>>(() => new Set());
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthCompleted, setHealthCompleted] = useState(0);
   const [healthConcessions, setHealthConcessions] = useState<Record<string, KartadoConcessionDashboard>>({});
@@ -402,11 +453,11 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     setFilteredConcession(null);
     setDateFrom('');
     setDateTo('');
-    setAppliedPeriod(null);
+    setOrigin('');
+    setAppliedFilters(null);
     setConcessions({});
     setFailedCompanies({});
     setDetailedCompanies(new Set());
-    setReportingsLoaded(new Set());
     setHealthConcessions({});
     setCompletedCount(0);
     try {
@@ -446,6 +497,16 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     [concessions, filteredConcession, selectedUuid],
   );
 
+  useEffect(() => {
+    if (area !== 'audit' || !unitModalOpen || !selectedUuid) return;
+    const controller = new AbortController();
+    // Apenas a unidade aberta; a aba compartilha esta coleta se for acessada.
+    void prefetchUnitInventory(inventoryCache, selectedUuid, controller.signal).catch(() => {
+      // A antecipação é opcional; falhas serão apresentadas na consulta da aba.
+    });
+    return () => controller.abort();
+  }, [area, unitModalOpen, selectedUuid, inventoryCache]);
+
   const totals = useMemo(
     () =>
       Object.values(concessions).reduce(
@@ -478,12 +539,14 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   }));
 
   async function selectCompany(company: KartadoCompany) {
+    setUnitModalOpen(true);
     const uuid = company.uuid || company.id || '';
     setSelectedUuid(uuid);
     setFilteredConcession(null);
     setDateFrom('');
     setDateTo('');
-    setAppliedPeriod(null);
+    setOrigin('');
+    setAppliedFilters(null);
     setReportingsError('');
     setRemoteUsers(null);
     if (detailedCompanies.has(uuid)) return;
@@ -556,19 +619,15 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     ...(selected?.reportings.alerts || []),
   ];
   const paginatedUsers = users.slice((usersPage - 1) * usersPageSize, usersPage * usersPageSize);
-  const reportingItems = selected?.reportings.items || [];
-  const paginatedReportings = reportingItems.slice(
-    (reportingsPage - 1) * reportingsPageSize,
-    reportingsPage * reportingsPageSize,
-  );
+  const originOptions = [...new Set([
+    ...(concessions[selectedUuid]?.reportings.items || []),
+    ...(selected?.reportings.items || []),
+  ].map(item => item.origin).filter((value): value is string => typeof value === 'string' && !!value.trim()))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
   useEffect(() => {
     setUsersPage(1);
   }, [search, selectedUuid, usersPageSize]);
 
-  useEffect(() => {
-    setReportingsPage(1);
-  }, [selectedUuid, reportingsPageSize]);
 
   async function searchRemote() {
     if (!selected || !search.trim()) return;
@@ -583,33 +642,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     }
   }
 
-  async function openTab(nextTab: KartadoTab) {
-    setTab(nextTab);
-    if (nextTab !== 'reportings' || !selected) return;
-    if (appliedPeriod) return;
-    if (reportingsLoaded.has(selected.company.uuid)) return;
-
-    setReportingsLoading(true);
-    setReportingsError('');
-    try {
-      const reportings = await loadKartadoReportings(selected.company.uuid);
-      setConcessions((current) => ({
-        ...current,
-        [selected.company.uuid]: {
-          ...selected,
-          reportings,
-          alerts: [...(selected.users.alertas || []), ...(reportings.alerts || [])],
-        },
-      }));
-      setReportingsLoaded((current) => new Set(current).add(selected.company.uuid));
-    } catch (reason) {
-      setReportingsError(
-        reason instanceof Error ? reason.message : 'Não foi possível carregar os apontamentos.',
-      );
-    } finally {
-      setReportingsLoading(false);
-    }
-  }
+  function openTab(nextTab: KartadoTab) { setTab(nextTab); }
 
   function withReportings(
     concession: KartadoConcessionDashboard,
@@ -629,13 +662,12 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     };
   }
 
-  async function applyDateFilter() {
+  async function applyReportingFilters() {
     if (!selected) return;
-    if (!dateFrom && !dateTo) {
+    if (!dateFrom && !dateTo && !origin.trim()) {
       setFilteredConcession(null);
-      setAppliedPeriod(null);
+      setAppliedFilters(null);
       setReportingsError('');
-      setReportingsPage(1);
       return;
     }
     if (dateFrom && dateTo && dateFrom > dateTo) {
@@ -649,50 +681,26 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
       const reportings = await loadKartadoReportings(selected.company.uuid, {
         foundAtAfter: dateFrom,
         foundAtBefore: dateTo,
+        origin: origin.trim(),
       });
       setFilteredConcession(withReportings(concessions[selected.company.uuid] || selected, reportings));
-      setAppliedPeriod({ from: dateFrom, to: dateTo });
-      setReportingsPage(1);
+      setAppliedFilters({ from: dateFrom, to: dateTo, origin: origin.trim() });
     } catch (reason) {
-      setReportingsError(reason instanceof Error ? reason.message : 'Não foi possível aplicar o período.');
+      setReportingsError(reason instanceof Error ? reason.message : 'Não foi possível aplicar os filtros.');
     } finally {
       setReportingsLoading(false);
     }
   }
 
-  function clearDateFilter() {
+  function clearReportingFilters() {
     setDateFrom('');
     setDateTo('');
-    setAppliedPeriod(null);
+    setOrigin('');
+    setAppliedFilters(null);
     setFilteredConcession(null);
     setReportingsError('');
-    setReportingsPage(1);
   }
 
-  async function refreshReportings() {
-    if (!selected) return;
-    setReportingsLoading(true);
-    setReportingsError('');
-    try {
-      const reportings = await loadKartadoReportings(selected.company.uuid, {
-        foundAtAfter: appliedPeriod?.from,
-        foundAtBefore: appliedPeriod?.to,
-      });
-      if (appliedPeriod) {
-        setFilteredConcession(withReportings(concessions[selected.company.uuid] || selected, reportings));
-      } else {
-        setConcessions((current) => ({
-          ...current,
-          [selected.company.uuid]: withReportings(selected, reportings),
-        }));
-      }
-      setReportingsPage(1);
-    } catch (reason) {
-      setReportingsError(reason instanceof Error ? reason.message : 'Falha ao atualizar apontamentos.');
-    } finally {
-      setReportingsLoading(false);
-    }
-  }
 
   return (
     <section className="mt-6 space-y-5">
@@ -701,7 +709,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Sistema Kartado</p>
             <h2 className="mt-3 text-2xl font-semibold text-surface-900 md:text-3xl">Painel de auditoria</h2>
-            <p className="mt-2 text-sm text-surface-700">Dados em tempo real da API Kartado.</p>
+            <p className="mt-2 text-sm text-surface-700">Dados do Kartado por unidade. A consulta de apontamentos informa seu período e atualização.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
@@ -791,29 +799,55 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 </button>
               );
             })}
+            {INACTIVE_UNITS.map((name) => (
+              <button
+                key={name}
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded-2xl border border-surface-200 bg-surface-50 p-4 text-left"
+              >
+                <span className="block font-semibold text-surface-600">{name}</span>
+                <span className="mt-2 inline-block rounded-full bg-surface-200 px-2 py-1 text-xs font-semibold text-surface-600">Desativado</span>
+                <span className="mt-2 block text-xs text-surface-600">Obs.: Desativado devido à nova ferramenta Kartado - Obras.</span>
+              </button>
+            ))}
           </div>
         </div>
       ) : null}
 
-      {area === 'audit' && selected ? (
-        <div className="rounded-[28px] border border-brand-100 bg-white p-3 shadow-soft sm:p-5">
-          {loading && !detailedCompanies.has(selectedUuid) ? (
-            <p className="mb-4 rounded-2xl bg-brand-50 p-4 text-sm font-medium text-brand-700">
-              Carregando dados completos de {selected.company.name}...
-            </p>
-          ) : null}
-          <nav className="flex flex-wrap gap-2" aria-label="Navegação Kartado">
+      {area === 'audit' && selected && unitModalOpen ? (
+        <UnitModal title={selected.company.name} onClose={() => setUnitModalOpen(false)} header={<>
+          <label className="mb-3 flex flex-col gap-1 text-xs font-medium text-surface-700 sm:max-w-md">
+            Trocar unidade
+            <select value={selectedUuid} disabled={loading || reportingsLoading || searching} onChange={(event) => {
+              const company = companies.find((item) => (item.uuid || item.id || '') === event.target.value);
+              if (company) void selectCompany(company);
+            }} className="min-w-0 rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm disabled:opacity-50">
+              {companies.map((company) => {
+                const uuid = company.uuid || company.id || '';
+                return <option key={uuid} value={uuid} disabled={!concessions[uuid]}>{company.name}</option>;
+              })}
+            </select>
+          </label>
+          <nav className="flex gap-2 overflow-x-auto" aria-label="Navegação Kartado">
             {tabs.map((item) => (
-              <button key={item.id} type="button" onClick={() => void openTab(item.id)} className={`rounded-2xl px-4 py-3 text-sm font-semibold ${tab === item.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>
+              <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined} onClick={() => void openTab(item.id)} className={`shrink-0 rounded-2xl px-4 py-3 text-sm font-semibold ${tab === item.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>
                 {item.label}
               </button>
             ))}
           </nav>
+        </>}>
+          {error ? <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
+          {loading && !detailedCompanies.has(selectedUuid) ? (
+            <p role="status" className="mb-4 rounded-2xl bg-brand-50 p-4 text-sm font-medium text-brand-700">
+              Carregando dados completos de {selected.company.name}...
+            </p>
+          ) : null}
 
-          <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+          {tab !== 'reportings' && tab !== 'inventory' ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
             <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-semibold text-surface-900">Filtrar apontamentos por data</h3>
-              <p className="text-xs text-surface-600">O período usa a data em que o apontamento foi encontrado e atualiza totais, gráficos, lista e alertas da unidade selecionada.</p>
+              <h3 className="text-sm font-semibold text-surface-900">Filtrar apontamentos por data e origem</h3>
+              <p className="text-xs text-surface-600">Combine a origem com a data em que o apontamento foi encontrado para atualizar totais, gráficos, lista e alertas da unidade selecionada.</p>
             </div>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
               <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
@@ -824,23 +858,33 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 Até
                 <input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900" />
               </label>
-              <button type="button" onClick={() => void applyDateFilter()} disabled={reportingsLoading || (!dateFrom && !dateTo)} className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                {reportingsLoading ? 'Consultando...' : 'Aplicar período'}
+              <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
+                Origem
+                <input list="kartado-origins" value={origin} onChange={(event) => setOrigin(event.target.value)} placeholder="Todas as origens" aria-describedby="kartado-origin-help" className="min-w-0 rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900" />
+                <datalist id="kartado-origins">{originOptions.map(value => <option key={value} value={value} />)}</datalist>
+              </label>
+              <button type="button" onClick={() => void applyReportingFilters()} disabled={reportingsLoading || (!dateFrom && !dateTo && !origin.trim())} className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                {reportingsLoading ? 'Consultando...' : 'Aplicar filtros'}
               </button>
-              {appliedPeriod ? <button type="button" onClick={clearDateFilter} disabled={reportingsLoading} className="rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 disabled:opacity-50">Limpar</button> : null}
+              {appliedFilters ? <button type="button" onClick={clearReportingFilters} disabled={reportingsLoading} className="rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 disabled:opacity-50">Limpar</button> : null}
             </div>
-            {appliedPeriod ? <p className="mt-3 text-xs font-medium text-brand-700">Período aplicado: {appliedPeriod.from || 'início da base'} até {appliedPeriod.to || 'hoje'}.</p> : null}
+            <p id="kartado-origin-help" className="mt-3 text-xs text-surface-600">Selecione uma sugestão ou informe a origem como registrada no Kartado. As sugestões vêm dos registros carregados; deixe vazio para consultar todas.</p>
+            {appliedFilters ? <p className="mt-3 text-xs font-medium text-brand-700">Filtros aplicados: {appliedFilters.from || 'início da base'} até {appliedFilters.to || 'sem data final'} · Origem: {appliedFilters.origin || 'Todas'}.</p> : null}
+            {selected.reportings.items.length < Number(selected.reportings.counts.totalApi || 0) ? <p className="mt-3 text-xs text-surface-600">Consulta parcial: {formatNumber(selected.reportings.items.length)} de {formatNumber(Number(selected.reportings.counts.totalApi))} apontamentos. Gráficos e alertas de apontamentos consideram apenas os registros carregados. Refine o período e a origem para reduzir o resultado.</p> : null}
             {reportingsError ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reportingsError}</p> : null}
-          </div>
+          </div> : null}
 
+          {tab === 'tickets' ? <KartadoTicketsPage key={selected.company.uuid} unit={selected.company} /> : null}
           {tab === 'overview' ? (
             <div className="mt-5 space-y-5">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard label="Concessão" value={selected.company.name} />
                 <MetricCard label="Usuários" value={Number(selected.summary.usuariosAtivos || 0)} />
                 <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
-                <MetricCard label={appliedPeriod ? 'Saúde geral' : 'Saúde'} value={`${Number(selected.summary.saudeScore || 0)}/100`} />
+                <MetricCard label={appliedFilters ? 'Saúde geral' : 'Saúde'} value={`${Number(selected.summary.saudeScore || 0)}/100`} />
               </div>
+              {!appliedFilters && selected.summary.apontamentosMonitoracao != null ? <p className="text-sm text-surface-600">{formatNumber(Number(selected.summary.apontamentosMonitoracao))} monitorações de inventário · {formatNumber(Number(selected.summary.registrosTotal))} registros no total</p> : null}
+              <KartadoUnitMap key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={reportingMapCache} />
               <div className="grid gap-5 xl:grid-cols-2">
                 <ChartCard
                   title="Perfil dos usuários"
@@ -889,27 +933,13 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
             </div>
           ) : null}
 
-          {tab === 'reportings' ? (
-            <div className="mt-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-surface-700">
-                <span>
-                  Exibindo {formatNumber(selected.reportings.items?.length || 0)} de{' '}
-                  {formatNumber(Number(selected.summary.apontamentosTotal || 0))} apontamentos.
-                </span>
-                <button type="button" onClick={() => void refreshReportings()} disabled={reportingsLoading} className="rounded-xl border border-brand-100 px-3 py-2 text-xs font-semibold text-brand-700 disabled:opacity-50">
-                  Atualizar apontamentos
-                </button>
-              </div>
-              {reportingsLoading ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-700">Carregando apontamentos da unidade...</p> : null}
-              {!reportingsLoading && !reportingsError && !selected.reportings.items?.length ? <p className="rounded-2xl bg-brand-50 p-4 text-sm text-surface-700">A API informou apontamentos para esta unidade, mas não retornou registros para exibição.</p> : null}
-              {reportingItems.length ? <><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600"><tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th></tr></thead><tbody>{paginatedReportings.map((item, index) => <tr key={item.id || index} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td></tr>)}</tbody></table></div><Pagination page={reportingsPage} pageSize={reportingsPageSize} total={reportingItems.length} onPageChange={setReportingsPage} onPageSizeChange={setReportingsPageSize} /></> : null}
-            </div>
-          ) : null}
+          {tab === 'reportings' ? <KartadoUnitReportings key={selectedUuid} company={selectedUuid} name={selected.company.name} /> : null}
+          {tab === 'inventory' ? <KartadoInventory key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={inventoryCache} /> : null}
 
           {tab === 'alerts' ? (
             <div className="mt-5 grid gap-3">{alerts.length ? alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4"><div className="flex justify-between gap-4"><h3 className="font-semibold text-surface-900">{alert.title}</h3><span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span></div>{alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}{alert.action ? <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p> : null}<AlertDetails alert={alert} users={selected.users.users || []} reportings={selected.reportings.items || []} /></article>) : <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>}</div>
           ) : null}
-        </div>
+        </UnitModal>
       ) : null}
     </section>
   );

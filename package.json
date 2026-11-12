@@ -3,12 +3,33 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "26.x"
+  },
   "scripts": {
+    "postinstall": "node scripts/sanitize-package-links.mjs",
+    "prebuild": "npm run sanitize:package-links && npm run audit:package-links",
+    "postbuild": "npm run audit:package-links",
+    "sanitize:package-links": "node scripts/sanitize-package-links.mjs",
+    "test:package-links": "node scripts/test-package-links.mjs",
+    "test:rate-limit": "node scripts/test-rate-limit-ip.mjs",
+    "test:saml": "node scripts/test-saml.mjs",
+    "db:migrate-saml": "node --env-file=.env.local scripts/migrate-saml.mjs",
+    "auth:link-saml-user": "node --env-file=.env.local scripts/link-saml-user.mjs",
+    "test:kartado-audit": "node scripts/test-kartado-audit.mjs",
+    "test:kartado-inventory": "node scripts/test-kartado-inventory.mjs && node scripts/test-kartado-reporting-details.mjs && node scripts/test-kartado-reporting-map.mjs",
+    "db:migrate-kartado-inventory": "node --env-file=.env.local scripts/migrate-kartado-inventory.mjs",
+    "db:migrate-kartado-audit": "node --env-file=.env.local scripts/migrate-kartado-audit.mjs",
+    "test:kartado-eco": "node scripts/test-kartado-eco.mjs",
+    "db:migrate-kartado-eco": "node --env-file=.env.local scripts/migrate-kartado-eco.mjs",
     "preview:totvs": "node scripts/preview-totvs.mjs",
+    "preview:inventario": "node scripts/preview-inventory.mjs",
     "test:totvs": "node scripts/test-totvs.mjs",
     "db:migrate-totvs": "node --env-file=.env.local scripts/migrate-totvs.mjs",
     "start": "node server/index.mjs",
     "dev:azure": "node --watch server/index.mjs",
+    "db:remove-pw-priority": "node --env-file=.env.local scripts/migrate-projectwise-ticket-priority.mjs",
+    "test:pw-tickets": "node scripts/test-projectwise-tickets.mjs",
     "db:migrate": "node scripts/azure-db-migrate.mjs",
     "db:migrate-data": "node scripts/migrate-supabase-to-azure.mjs",
     "db:create-app-user": "node scripts/create-azure-app-user.mjs",
@@ -26,14 +47,22 @@
     "dev:with-sync": "npm run sync:data && npm run dev",
     "build": "tsc -b && vite build",
     "build:with-sync": "npm run sync:data && npm run build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:kartado-tickets": "node scripts/test-kartado-tickets.mjs",
+    "db:migrate-kartado-tickets": "node --env-file=.env.local scripts/migrate-kartado-tickets.mjs",
+    "audit:package-links": "node scripts/audit-package-links.mjs"
   },
   "dependencies": {
+    "@node-saml/node-saml": "^5.1.0",
+    "@xmldom/xmldom": "^0.8.15",
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
     "fflate": "^0.8.3",
     "helmet": "^8.3.0",
+    "leaflet": "^1.9.4",
+    "leaflet.heat": "^0.2.0",
+    "leaflet.markercluster": "^1.5.3",
     "pg": "^8.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -41,6 +70,10 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/leaflet": "^1.9.21",
+    "@types/leaflet.heat": "^0.2.5",
+    "@types/leaflet.markercluster": "^1.5.6",
     "@types/node": "^25.5.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
@@ -49,6 +82,7 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "xml-crypto": "^6.3.2"
   }
 }

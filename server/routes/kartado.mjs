@@ -7,7 +7,7 @@
 
 import { Router } from 'express';
 import {
-  getToken, listCompanies, listUsers, listReportings,
+  getToken, listCompanies, listUsers, listReportings, listReportingPage,
   listInventoryCounts, listJobProgress, listMDRDays, listFirmCounts,
   loadAllCompanies, runDiagnostics, validateProgramacoes, getReportingPhotos,
   listPhotosForCompany, extractPage,
@@ -249,7 +249,7 @@ kartadoRouter.post('/reportings', async (req, res) => {
       success: true, ...SOURCE,
       auth:        { latencyMs: authMs },
       companyUuid,
-      filter:      { foundAtAfter, foundAtBefore },
+      filter:      { foundAtAfter, foundAtBefore, origin },
       pagination:  { returned: data.reportings.length, totalApi: data.totalCount, totalPages: data.totalPages, isFirstPage: data.isFirstPage },
       reportings:  data.reportings,
       metrics,
@@ -277,8 +277,8 @@ async function loadHealthDashboard(company, credentials) {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const fifteenDaysAgo = new Date(now.getTime() - 15 * 86_400_000).toISOString().split('T')[0];
   const [reportingsResult, monthResult, photosResult, jobsResult] = await Promise.allSettled([
-    listReportings(auth.token, company.uuid, { pageSize: 25 }),
-    listReportings(auth.token, company.uuid, { foundAtAfter: startOfMonth, pageSize: 100, maxPages: 3 }),
+    listReportings(auth.token, company.uuid, { pageSize: 25, excludeOccurrenceKind: '' }),
+    listReportings(auth.token, company.uuid, { foundAtAfter: startOfMonth, pageSize: 100, maxPages: 3, excludeOccurrenceKind: '' }),
     listPhotosForCompany(auth.token, company.uuid, { foundAtAfter: fifteenDaysAgo, pageSize: 100, maxPages: 5 }),
     listJobProgress(auth.token, company.uuid),
   ]);
@@ -448,11 +448,11 @@ kartadoRouter.post('/dashboard', async (req, res) => {
     add('3', 'run', `${summaryOnly ? 'Carga resumida' : 'Carga completa'} — company=${selected.uuid}`);
     const [uR, rR, invR, jobR, firmR, rMesR, photosR] = await Promise.allSettled([
       listUsers(auth.token, selected.uuid, { pageSize: ps, maxPages: summaryOnly ? 1 : 10 }),
-      listReportings(auth.token, selected.uuid, { pageSize: ps }),
+      listReportings(auth.token, selected.uuid, { pageSize: ps, includeUsage: true }),
       summaryOnly ? Promise.resolve({ totalCount: null, withImageCount: null, inventoryItems: [] }) : listInventoryCounts(auth.token, selected.uuid),
       summaryOnly ? Promise.resolve({ totalJobs: null, totalThisMonth: null, avgProgress: null }) : listJobProgress(auth.token, selected.uuid),
       summaryOnly ? Promise.resolve({ total: null, firms: [] }) : listFirmCounts(auth.token, selected.uuid),
-      summaryOnly ? Promise.resolve({ reportings: [], totalCount: 0 }) : listReportings(auth.token, selected.uuid, { foundAtAfter: startOfMonth, pageSize: ps, maxPages: 3 }),
+      summaryOnly ? Promise.resolve({ reportings: [], totalCount: 0 }) : listReportings(auth.token, selected.uuid, { foundAtAfter: startOfMonth, pageSize: ps, maxPages: 3, includeUsage: true }),
       summaryOnly ? Promise.resolve({ photos: [], reportingUuids: [], totalPhotos: null }) : listPhotosForCompany(auth.token, selected.uuid, { foundAtAfter: quinzeDiasAtras, pageSize: 100, maxPages: 5 }),
     ]);
 
@@ -465,7 +465,7 @@ kartadoRouter.post('/dashboard', async (req, res) => {
       rd = rR.value;
     } else {
       try {
-        const fallback = await listReportings(auth.token, selected.uuid, { pageSize: 25 });
+        const fallback = await listReportings(auth.token, selected.uuid, { pageSize: 25, includeUsage: true });
         rd = {
           ...fallback,
           warning: `Consulta reduzida após falha na carga de 100 registros: ${rR.reason?.message}`,
@@ -813,5 +813,34 @@ kartadoRouter.post('/validate-programacoes', async (req, res) => {
     });
   } catch (err) {
     return res.status((err.httpStatus || 500) < 500 ? 400 : 500).json({ success: false, error: err.message, ...SOURCE });
+  }
+});
+
+// Páginas curtas evitam manter uma requisição HTTP aberta durante todo o histórico.
+kartadoRouter.post('/reportings/page', async (req, res) => {
+  const creds = requireCreds(req, res);
+  if (!creds) return;
+  const { companyUuid, page = 1 } = req.body;
+  if (typeof companyUuid !== 'string' || !/^[0-9a-f-]{36}$/i.test(companyUuid) || !Number.isSafeInteger(page) || page < 1) {
+    return res.status(400).json({ error: 'Unidade ou página inválida.' });
+  }
+  const started = Date.now();
+  let stage = 'authentication';
+  try {
+    const { token } = await getToken(creds.username, creds.password);
+    stage = 'kartado';
+    const data = await listReportingPage(token, companyUuid, page);
+    stage = 'normalization';
+    const metrics = buildReportingMetrics(data.items, data.totalCount);
+    if (data.failedRecords.length) console.warn('[Kartado/reportings/page/partial]', { companyUuid, page, failedRecords: data.failedRecords, elapsedMs: Date.now() - started });
+    res.set('Cache-Control', 'no-store').json({ items: metrics.items, total: data.totalCount, pages: data.totalPages, failedRecords: data.failedRecords });
+  } catch (err) {
+    const status = Number.isInteger(err.httpStatus) && err.httpStatus >= 400 && err.httpStatus <= 599 ? err.httpStatus : 502;
+    // Não registra tokens, credenciais ou corpos retornados pela API externa.
+    console.error('[Kartado/reportings/page]', { companyUuid, page, stage, status, elapsedMs: Date.now() - started, kind: err.name || 'UpstreamError' });
+    const retry = Number(err.retryAfter);
+    if (Number.isFinite(retry) && retry > 0) res.set('Retry-After', String(Math.ceil(retry)));
+    const reason = stage === 'normalization' ? 'Falha ao processar os registros recebidos.' : stage === 'authentication' ? 'Falha na autenticação com o Kartado.' : 'Falha ao consultar o Kartado.';
+    res.status(status).json({ error: reason, page, stage });
   }
 });

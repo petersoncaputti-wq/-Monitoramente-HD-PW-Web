@@ -45,7 +45,7 @@ create table if not exists storage_readings (
 create table if not exists tickets (
   id uuid primary key default gen_random_uuid(), case_number text unique, status text not null default 'Novo',
   reason text, opened_at timestamptz not null, updated_at timestamptz, closed_at timestamptz,
-  priority text, requester text, requester_organization text, assigned_agent text, assigned_to text,
+  requester text, requester_organization text, assigned_agent text, assigned_to text,
   assigned_group text, ticket_type text, sla_status text, beneficiary_organization text,
   requested_for text, created_by uuid references app_users(id) on delete set null,
   updated_by uuid references app_users(id) on delete set null,

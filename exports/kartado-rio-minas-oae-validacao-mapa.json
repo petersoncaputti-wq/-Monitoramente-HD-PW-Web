@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-10-26T13:28:07.251Z",
+  "query": {
+    "company": "b9e4cd95-cb76-4dae-88e2-fd76c9a08110",
+    "from": "",
+    "to": "",
+    "period": "all",
+    "classe": "Monitoração de OAE"
+  },
+  "total": 1594,
+  "pages": 8,
+  "received": 1594,
+  "unique": 1594,
+  "withCoordinates": 1594,
+  "missingFromPreviousExport": 0,
+  "statuses": [
+    "Executado"
+  ]
+}

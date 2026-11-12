@@ -41,9 +41,11 @@ export function clearSessionCookie(response) {
   });
 }
 
-export async function createSession(userId) {
+export async function createSession(userId, options = {}) {
   const token = randomBytes(32).toString('base64url');
-  const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
+  const defaultExpiry = Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000;
+  const expiresAt = new Date(Math.min(defaultExpiry, options.expiresAt ?? defaultExpiry));
+  if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) throw new Error('Expiração de sessão inválida.');
 
   await query(
     `insert into app_sessions (token_hash, user_id, expires_at)

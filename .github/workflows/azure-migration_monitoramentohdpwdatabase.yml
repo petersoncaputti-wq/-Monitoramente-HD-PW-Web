@@ -9,6 +9,11 @@ on:
       - azure-migration
   workflow_dispatch:
 
+# Serialize production deployments without interrupting a deployment in progress.
+concurrency:
+  group: azure-monitoramentohdpwdatabase-production
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,34 +26,38 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '26.x'
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Verify dependency URL policy
+        run: npm run test:package-links && npm run audit:package-links
+
+      - name: Test audit reporting integration
+        run: npm run test:kartado-audit
+
+      - name: Test inventory integration
+        run: npm run test:kartado-inventory
+
+      - name: Test ProjectWise tickets
+        run: npm run test:pw-tickets
+
+      - name: Test proxy IP rate limiting
+        run: npm run test:rate-limit
+
+      - name: Test SAML authentication
+        run: npm run test:saml
+
+      - name: Test TOTVS data and accumulation
+        run: node scripts/test-totvs-data.mjs && node scripts/test-totvs-accumulation.mjs
 
       - name: Build application
         run: npm run build
         env:
           VITE_TEAMS_AGENT_URL: "https://teams.microsoft.com/l/app/?source=agent-details-page&sharedAppResource=TaosSharedApp&titleId=T_2a558888-08cb-4cfa-dc1d-4089d17e6e39"
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-app
-          path: .
-          retention-days: 3
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-      
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3

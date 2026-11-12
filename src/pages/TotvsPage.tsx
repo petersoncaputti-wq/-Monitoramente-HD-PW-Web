@@ -11,7 +11,7 @@ interface TotvsData {
   lists: Record<string, { label: string; count: number }[]>;
   kind?: string; scope?: string; sourceCount?: number; tickets?: TicketRow[];
 }
-interface Snapshot { id: string; report_period: string; source_updated_at: string; imported_at: string; categories?: ChartItem[] }
+interface Snapshot { id: string; report_period: string; source_updated_at: string; imported_at: string; kind?: string; categories?: ChartItem[] }
 const format = (value?: number) => value === undefined ? 'Não disponível' : value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 const periodLabel = (period: string) => new Date(`${period}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
 const sourceLabel = (value: string) => `${value.slice(8,10)}/${value.slice(5,7)}/${value.slice(0,4)} ${value.slice(11)}`;
@@ -19,7 +19,7 @@ const inputClass = 'h-11 rounded-2xl border border-brand-100 bg-white px-3 text-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/totvs${path}`, { ...init, credentials: 'same-origin' });
   const body = await response.json().catch(() => null);
-  if (!response.ok || !body) throw new Error(body?.error || 'Não foi possível acessar os dados de TOTVs.');
+  if (!response.ok || !body) throw new Error(body?.error || 'Não foi possível acessar os dados do MGI.');
   return body;
 }
 const chartColors = ['#28734c', '#438bcc', '#d4a21b', '#7c65b5', '#38999b'];
@@ -77,12 +77,12 @@ export function TotvsPage({ canManage }: { canManage: boolean }) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [snapshotId, setSnapshotId] = useState('');
   const [data, setData] = useState<TotvsData | null>(null);
+  const [hasDetailed, setHasDetailed] = useState(false);
   const [reportPeriod, setReportPeriod] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [scope, setScope] = useState('mentions');
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const isXlsx = file?.name.toLowerCase().endsWith('.xlsx');
@@ -94,8 +94,9 @@ export function TotvsPage({ canManage }: { canManage: boolean }) {
         if (cancelled) return;
         setSnapshots(list);
         if (list[0]) {
-          const result = await request<{ id: string; payload: TotvsData }>(`/${list[0].id}`);
-          if (!cancelled) { setData(result.payload); setSnapshotId(result.id); }
+          const consolidated = await request<{ id: string; payload: TotvsData | null }>('/consolidated');
+          const result = consolidated.payload ? consolidated : await request<{ id: string; payload: TotvsData }>(`/${list[0].id}`);
+          if (!cancelled) { setData(result.payload); setSnapshotId(result.id); setHasDetailed(Boolean(consolidated.payload)); }
         }
       } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : 'Falha ao carregar.'); }
       finally { if (!cancelled) setBusy(false); }
@@ -116,9 +117,11 @@ export function TotvsPage({ canManage }: { canManage: boolean }) {
     setError(''); setMessage(''); setBusy(true);
     try {
       if ((!isXlsx && !file.name.toLowerCase().endsWith('.zip')) || file.size > 10 * 1024 * 1024) throw new Error('Selecione um XLSX ou ZIP de até 10 MB.');
-      const result = await request<{ id: string; payload: TotvsData }>(`?period=${encodeURIComponent(reportPeriod)}&scope=${scope}`, { method: 'POST', headers: { 'Content-Type': isXlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/zip' }, body: file });
-      setData(result.payload); setSnapshotId(result.id);
-      setMessage(isXlsx ? 'Relatório importado. A versão salva para o mês da última abertura foi substituída. Os indicadores usam apenas este relatório, sem somar versões anteriores.' : 'Mês atualizado. O acumulado anterior deste mês foi substituído; somente categorias identificadas como TOTVS são salvas.');
+      const result = await request<{ id: string; payload: TotvsData }>(`?period=${encodeURIComponent(reportPeriod)}&scope=all`, { method: 'POST', headers: { 'Content-Type': isXlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/zip' }, body: file });
+      const displayed = isXlsx ? await request<{ id: string; payload: TotvsData }>('/consolidated') : result;
+      setData(displayed.payload); setSnapshotId(displayed.id);
+      if (isXlsx) setHasDetailed(true);
+      setMessage(isXlsx ? 'Relatório adicionado ao histórico. Novos chamados foram incluídos e IDs repetidos foram atualizados sem duplicação.' : 'Mês atualizado. O acumulado anterior deste mês foi substituído; somente categorias identificadas como TOTVS são salvas.');
       setSnapshots(await request<Snapshot[]>(''));
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Falha na importação.'); }
     finally { setBusy(false); }
@@ -127,22 +130,22 @@ export function TotvsPage({ canManage }: { canManage: boolean }) {
     setBusy(true); setError(''); setMessage('');
     try {
       const result = await request<{ deleted: number }>('', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmation }) });
-      setData(null); setSnapshots([]); setSnapshotId(''); setConfirmClear(false); setConfirmation('');
+      setData(null); setHasDetailed(false); setSnapshots([]); setSnapshotId(''); setConfirmClear(false); setConfirmation('');
       setMessage(`${result.deleted} importações removidas. A tabela foi preservada. Importe o novo relatório para preencher o painel.`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Falha ao limpar os dados.'); }
     finally { setBusy(false); }
   }
   return <div className="mt-6 space-y-6" aria-busy={busy}>
-    <PanelShell title="TOTVS · Chamados" description="Relatórios detalhados de atendimento e histórico de importações.">
+    <PanelShell title="MGI · Chamados" description="Relatórios detalhados de atendimento e histórico de importações.">
       {import.meta.env.DEV && import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true' && <p className="mb-5 rounded-2xl bg-yellow-50 p-4 text-sm text-yellow-800">Prévia local: os arquivos importados ficam salvos apenas neste computador. A conexão com o banco do portal não está ativa neste teste.</p>}
       {canManage && <details open={!data} className="text-sm"><summary className="cursor-pointer font-semibold text-brand-700">Importar relatório</summary><form onSubmit={event => void importZip(event)} className="mt-4 grid items-end gap-4 md:grid-cols-2">
         <label className="flex min-w-0 flex-col gap-2 text-sm font-medium text-surface-700">Arquivo XLSX ou ZIP<input required type="file" accept=".xlsx,.zip" disabled={busy} className="block w-full min-w-0 text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-brand-50 file:p-3 file:text-brand-700" onChange={event => setFile(event.target.files?.[0] ?? null)} /></label>
-        {isXlsx ? <label className="flex flex-col gap-2">Recorte do Excel<select className={inputClass} value={scope} disabled={busy} onChange={event => setScope(event.target.value)}><option value="mentions">Menções a TOTVS ou TCOP nos textos</option><option value="all">Relatório completo (inclui outros sistemas)</option></select></label> : <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Período da exportação ZIP<input required type="month" className={inputClass} value={reportPeriod} onChange={event => setReportPeriod(event.target.value)} disabled={busy} /></label>}
+        {!isXlsx && <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">Período da exportação ZIP<input required type="month" className={inputClass} value={reportPeriod} onChange={event => setReportPeriod(event.target.value)} disabled={busy} /></label>}
         <button disabled={busy || !file || (!isXlsx && !reportPeriod)} className="rounded-2xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? 'Aguarde…' : 'Importar relatório'}</button>
-      </form><p className="mt-3 text-sm leading-6 text-surface-700">XLSX: envie a exportação completa atualizada. Reimportar substitui a versão do mês da última abertura, inclusive seu recorte. O filtro por menções não garante classificação exclusiva por sistema. ZIP: informe o mês selecionado na origem.</p></details>}
+      </form></details>}
       {canManage && <div className="mt-5 border-t border-brand-100 pt-4">
-        {!confirmClear ? <button type="button" disabled={busy || snapshots.length === 0} onClick={() => { setConfirmClear(true); setConfirmation(''); }} className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50">Limpar dados TOTVS</button> : <form onSubmit={event => { event.preventDefault(); void clearImports(); }} className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-          <p className="text-sm text-rose-900">Isso exclui todas as importações TOTVS, de todos os meses, para todos os usuários. A ação não pode ser desfeita pelo painel. A tabela e os dados do PW serão preservados.</p>
+        {!confirmClear ? <button type="button" disabled={busy || snapshots.length === 0} onClick={() => { setConfirmClear(true); setConfirmation(''); }} className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50">Limpar dados MGI</button> : <form onSubmit={event => { event.preventDefault(); void clearImports(); }} className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+          <p className="text-sm text-rose-900">Isso exclui todas as importações do painel MGI, de todos os meses, para todos os usuários. A ação não pode ser desfeita pelo painel. A tabela e os dados do PW serão preservados.</p>
           <label className="flex max-w-sm flex-col gap-2 text-sm font-medium">Digite LIMPAR TOTVS<input value={confirmation} onChange={event => setConfirmation(event.target.value)} disabled={busy} className={inputClass} autoComplete="off" /></label>
           <div className="flex gap-3"><button disabled={busy || confirmation !== 'LIMPAR TOTVS'} className="rounded-xl bg-rose-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Confirmar limpeza</button><button type="button" disabled={busy} onClick={() => setConfirmClear(false)} className="rounded-xl border border-rose-200 px-4 py-2 text-sm">Cancelar</button></div>
         </form>}
@@ -151,17 +154,17 @@ export function TotvsPage({ canManage }: { canManage: boolean }) {
       {error && <p role="alert" className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}
       {message && <p role="status" className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800">{message}</p>}
       {busy && <p role="status" className="mt-4 text-sm text-surface-700">Carregando dados…</p>}
-      {snapshots.length > 0 && <label className="mt-5 flex max-w-xl flex-col gap-2 text-sm font-medium text-surface-700">Mês de análise<select className={inputClass} value={snapshotId} disabled={busy} onChange={event => void selectSnapshot(event.target.value)}>{snapshots.map(row => <option key={row.id} value={row.id}>{periodLabel(row.report_period)} · atualizado em {sourceLabel(row.source_updated_at)}</option>)}</select></label>}
+      {snapshots.length > 0 && <label className="mt-5 flex max-w-xl flex-col gap-2 text-sm font-medium text-surface-700">Base de análise<select className={inputClass} value={snapshotId} disabled={busy} onChange={event => void selectSnapshot(event.target.value)}>{hasDetailed && <option value="consolidated">Todos os chamados importados (XLSX)</option>}{snapshots.map(row => <option key={row.id} value={row.id}>{row.kind === 'detailed' ? 'Arquivo XLSX' : 'Resumo ZIP'} · {periodLabel(row.report_period)} · atualizado em {sourceLabel(row.source_updated_at)}</option>)}</select></label>}
       {!data && !busy && <p className="mt-5 rounded-2xl border border-dashed border-brand-100 p-8 text-center text-surface-700">Nenhuma importação disponível. Importe um relatório para visualizar os indicadores.</p>}
     </PanelShell>
     {data?.kind === 'detailed' && data.tickets ? <>
-      <PanelShell title={data.scope === 'all' ? 'Relatório completo · múltiplos sistemas' : 'Recorte por menções a TOTVS/TCOP'} description={`${data.tickets.length} chamados de ${data.sourceCount} registros no arquivo. Importado em ${new Date(data.sourceUpdatedAt).toLocaleString('pt-BR')}.`}>
-        <p className="text-sm text-surface-700">{data.scope === 'all' ? 'Inclui outros sistemas presentes no arquivo.' : 'Selecionados por menções nos textos de descrição, detalhes, causa ou resolução. Pode incluir integrações e omitir chamados sem menção explícita.'} Os indicadores usam exclusivamente a versão selecionada; o backlog completo depende da cobertura da exportação.</p>
+      <PanelShell title={data.scope === 'all' ? 'Relatório completo · múltiplos sistemas' : 'Recorte por menções a TOTVS/TCOP'} description={`${data.tickets.length} chamados${snapshotId === 'consolidated' ? ' na base consolidada' : ` de ${data.sourceCount} registros no arquivo`}. Última importação em ${new Date(data.sourceUpdatedAt).toLocaleString('pt-BR')}.`}>
+        <p className="text-sm text-surface-700">{data.scope === 'all' ? 'Inclui todos os chamados presentes nos arquivos XLSX, sem filtro por sistema.' : 'Selecionados por menções nos textos de descrição, detalhes, causa ou resolução. Pode incluir integrações e omitir chamados sem menção explícita.'} {snapshotId === 'consolidated' ? 'Os indicadores reúnem todas as importações, sem duplicar IDs. O backlog depende da cobertura dos arquivos importados.' : 'Exibindo apenas o arquivo selecionado. Selecione todos os chamados importados para consultar a base consolidada.'}</p>
         <p className="mt-3 text-sm text-amber-800">{data.tickets.filter(row => ['Fechado', 'Resolvido'].includes(row.Status) && !row.Fechadoem).length} encerrados sem data de resolução: excluídos dos encerramentos por período e do tempo médio. {data.tickets.filter(row => !['Fechado', 'Resolvido'].includes(row.Status) && row.Fechadoem).length} não finalizados com data de resolução: mantidos no status informado.</p>
       </PanelShell>
       <TicketsTab key={snapshotId} rows={data.tickets} detailedTotvs />
-    </> : data && <TotvsIndicators data={data} snapshots={snapshots} disabled={busy} onSelectPeriod={period => {
-      const selected = snapshots.find(row => row.report_period === period);
+    </> : data && <TotvsIndicators data={data} snapshots={snapshots.filter(row => row.kind !== 'detailed')} disabled={busy} onSelectPeriod={period => {
+      const selected = snapshots.find(row => row.kind !== 'detailed' && row.report_period === period);
       if (selected && selected.id !== snapshotId) void selectSnapshot(selected.id);
     }} />}
   </div>;

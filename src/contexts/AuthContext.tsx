@@ -78,17 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function restoreSession() {
       const storedSession = getStoredSession();
 
-      if (!storedSession) {
-        if (isMounted) {
-          setStatus('unauthenticated');
-        }
-        return;
-      }
-
       try {
         const validSession =
-          storedSession.expiresAt - Date.now() < 60_000
-            ? await refreshSession(storedSession.refreshToken)
+          !storedSession || storedSession.expiresAt - Date.now() < 60_000
+            ? await refreshSession(storedSession?.refreshToken ?? 'cookie-session')
             : storedSession;
         const user = await getCurrentUser(validSession.accessToken);
         const nextSession = { ...validSession, user };

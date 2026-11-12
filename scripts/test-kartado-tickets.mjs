@@ -1,0 +1,55 @@
+﻿import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import express from 'express';
+import { PGlite } from '@electric-sql/pglite';
+import { createKartadoTicketsRouter } from '../server/routes/kartado-tickets.mjs';
+const db = new PGlite();
+await db.exec(await readFile(new URL('../azure/kartado-tickets-schema.sql', import.meta.url), 'utf8'));
+// Reexecutar a migração sobre uma base anterior preserva os registros.
+await db.exec("alter table kartado_tickets drop column kartado_case_number; alter table kartado_tickets add column priority text not null default 'Normal'; insert into kartado_tickets (id,case_number,unit_id,unit_name,subject,status,priority,opened_at,created_by,updated_by) values ('33333333-3333-4333-8333-333333333333','LEGADO','legacy','Legado','Legado','Novo','Normal',now(),'11111111-1111-4111-8111-111111111111','11111111-1111-4111-8111-111111111111')");
+const schema = await readFile(new URL('../azure/kartado-tickets-schema.sql', import.meta.url), 'utf8');
+await db.exec(schema); await db.exec(schema);
+assert.equal((await db.query("select column_name from information_schema.columns where table_name='kartado_tickets' and column_name='priority'")).rows.length, 0);
+assert.equal((await db.query("select kartado_case_number from kartado_tickets where case_number='LEGADO'")).rows[0].kartado_case_number, '');
+await db.exec("delete from kartado_tickets where case_number='LEGADO'");
+const app = express(); app.use(express.json());
+app.use('/tickets', createKartadoTicketsRouter({ execute: (sql, args) => db.query(sql, args), authenticate: (req,res,next) => { if (!req.headers.authorization) return res.sendStatus(401); req.user = { id: '11111111-1111-4111-8111-111111111111', role: req.headers.authorization }; next(); }, admin: (req,res,next) => req.user.role === 'admin' ? next() : res.sendStatus(403) }));
+const server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r));
+const url = `http://127.0.0.1:${server.address().port}/tickets`;
+const body = { kartado_case_number:'  KART-001  ', case_number:'K-001', unit_id:'unit-a', unit_name:'Unidade A', subject:'Falha de acesso', status:'Novo', opened_at:'2026-01-01T12:00:00Z' };
+const send = (role, data, id='') => fetch(url+id, { method:id?'PATCH':'POST',headers:{Authorization:role,'Content-Type':'application/json'},body:JSON.stringify(data) });
+try {
+ assert.equal((await fetch(url)).status,401);
+ assert.equal((await send('user',body)).status,403);
+ assert.equal((await send('admin',{...body,unit_id:''})).status,400);
+ assert.equal((await send('admin',{...body,status:'invalid'})).status,400);
+ assert.equal((await send('admin',{...body,kartado_case_number:'x'.repeat(101)})).status,400);
+ const created=await send('admin',body); assert.equal(created.status,201); const row=await created.json(); assert.equal(row.kartado_case_number,'KART-001'); assert.equal('priority' in row, false);
+ assert.equal((await send('admin',body)).status,409);
+ assert.equal((await send('admin',{...body,kartado_case_number:undefined,case_number:'K-002',unit_id:'unit-b',unit_name:'Unidade B'})).status,201);
+ const read = async unit => (await fetch(url+unit,{headers:{Authorization:'user'}})).json();
+ assert.equal((await read('?unit=unit-a'))[0].kartado_case_number,'KART-001');
+ assert.equal((await read('?unit=unit-b'))[0].kartado_case_number,'');
+ assert.equal((await read('')).length,2); assert.equal((await read('?unit=unit-a')).length,1); assert.equal((await read('?unit=missing')).length,0);
+ assert.equal((await send('user',body,'/'+row.id)).status,403);
+ assert.equal((await send('admin',{...body,status:'Encerrado',closed_at:'2025-01-01'},'/'+row.id)).status,400);
+ const explicitClose = '2026-01-03T15:30:00.000Z';
+ const finalized = await send('admin',{...body,status:'Encerrado',closed_at:explicitClose},'/'+row.id);
+ assert.equal(finalized.status,200);
+ assert.equal((await finalized.json()).closed_at,explicitClose);
+ assert.equal((await send('admin',{...body,status:'Encerrado',closed_at:'invalid'},'/'+row.id)).status,400);
+ assert.equal((await send('admin',{...body,status:'Encerrado',closed_at:'2099-01-01T00:00:00Z'},'/'+row.id)).status,400);
+ let updated=await (await send('admin',{...body,status:'Encerrado',resolution:'Resolvido',kartado_case_number:'KART-002'},'/'+row.id)).json(); assert.ok(updated.closed_at); assert.equal(updated.resolution,'Resolvido'); assert.equal(updated.kartado_case_number,'KART-002');
+ updated=await (await send('admin',{...body,status:'Em atendimento',closed_at:updated.closed_at,kartado_case_number:''},'/'+row.id)).json(); assert.equal(updated.closed_at,null); assert.equal(updated.kartado_case_number,'');
+ assert.equal((await send('admin',body,'/22222222-2222-4222-8222-222222222222')).status,404);
+ // Uma base desatualizada deve informar a necessidade de migração.
+ await db.exec('alter table kartado_tickets drop column kartado_case_number');
+ const outdated = await send('admin',body,'/'+row.id);
+ assert.equal(outdated.status,503);
+ assert.match((await outdated.json()).error, /precisa ser atualizada/);
+ await db.exec(schema);
+ const migrated = await send('admin',{...body,kartado_case_number:'KART-003'},'/'+row.id);
+ assert.equal(migrated.status,200);
+ assert.equal((await migrated.json()).kartado_case_number,'KART-003');
+ console.log('Chamados Kartado: persistência, filtro por unidade, duplicidade, autenticação, permissões e encerramento/reabertura aprovados.');
+} finally { await new Promise(r=>server.close(r)); await db.close(); }

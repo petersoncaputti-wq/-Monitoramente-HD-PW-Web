@@ -5,7 +5,7 @@ try {
   await pool.query(await readFile(new URL('../azure/totvs-schema.sql', import.meta.url), 'utf8'));
   const result = await pool.query(`select indexdef from pg_indexes
     where schemaname = 'public' and tablename = 'totvs_imports'
-      and indexname = 'totvs_imports_report_period_uidx'`);
+      and indexname = 'totvs_imports_zip_period_uidx'`);
   if (!result.rows[0]?.indexdef.includes('UNIQUE')) throw new Error('Não foi possível confirmar a unicidade mensal.');
   const appRole = process.env.DB_APP_USER?.trim() || process.env.DB_USER?.trim();
   if (appRole) {
@@ -16,5 +16,5 @@ try {
   } else {
     console.log('Configure DB_APP_USER para conceder as permissões de importação e limpeza da tabela TOTVS.');
   }
-  console.log('Tabela public.totvs_imports criada/verificada com um único registro por mês.');
+  console.log('Tabela public.totvs_imports verificada: XLSX cumulativo e ZIP único por mês.');
 } finally { await pool.end(); }

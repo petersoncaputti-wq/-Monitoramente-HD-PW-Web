@@ -1,8 +1,11 @@
+import { MgiTicketFilters } from '@/components/MgiTicketFilters';
+import { emptyMgiFilters, filterMgiTickets } from '@/utils/mgiTicketFilters';
 import { useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { PanelShell } from '@/components/PanelShell';
 import { TicketKpiCard } from '@/components/TicketKpiCard';
 import type { TicketRow } from '@/types/monitoring';
-import { formatTicketDate, getTicketDateRange, getTicketsSummary } from '@/utils/ticketsKpis';
+import { formatTicketDate, getTicketDateRange, getTicketsSummary, isClosedStatus } from '@/utils/ticketsKpis';
 import {
   getDatePeriodPreset,
   getDefaultDatePeriod,
@@ -207,13 +210,27 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
   const [periodStartDate, setPeriodStartDate] = useState('');
   const [periodEndDate, setPeriodEndDate] = useState('');
   const [search, setSearch] = useState('');
+  const [mgiFilters, setMgiFilters] = useState(emptyMgiFilters);
+  const [situationFilter, setSituationFilter] = useState('');
+  const [requesterFilter, setRequesterFilter] = useState('');
   const [page, setPage] = useState(1);
-  const detailedRows = useMemo(() => detailedTotvs ? rows.filter(row => {
+  const normalizeSearch = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+  const filterOptions = useMemo(() => {
+    const values = (key: keyof TicketRow) => Array.from(new Set(rows.map(row => String(row[key] ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    return { requesters: values('Solicitante') };
+  }, [rows]);
+  const filteredRows = useMemo(() => detailedTotvs ? filterMgiTickets(rows, mgiFilters, periodStartDate, periodEndDate) : rows, [rows, mgiFilters, detailedTotvs, periodStartDate, periodEndDate]);
+  const detailedRows = useMemo(() => detailedTotvs ? filteredRows.filter(row => {
     const opened = row.Abertoem.slice(0, 10);
-    return (!periodStartDate || opened >= periodStartDate) && (!periodEndDate || opened <= periodEndDate)
-      && [row['Caso n.º'], row.Resumo, row.Status, row.Organizaçãodosolicitante, row.Solicitante].some(value => String(value ?? '').toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')));
-  }).sort((a, b) => b.Abertoem.localeCompare(a.Abertoem)) : [], [rows, detailedTotvs, periodStartDate, periodEndDate, search]);
-  useEffect(() => setPage(1), [periodStartDate, periodEndDate, search, rows]);
+    const inPeriod = (!periodStartDate || opened >= periodStartDate) && (!periodEndDate || opened <= periodEndDate);
+    const closed = isClosedStatus(row.Status);
+    const matchesSituation = !situationFilter || (situationFilter === 'pending' ? !closed : closed);
+    const searchable = normalizeSearch([row['Caso n.º'], row.Resumo, row.Status, row.Organizaçãodosolicitante, row.Solicitante].join(' '));
+    return inPeriod && matchesSituation
+      && (!requesterFilter || String(row.Solicitante ?? '').trim() === requesterFilter)
+      && normalizeSearch(search).split(/\s+/).filter(Boolean).every(term => searchable.includes(term));
+  }).sort((a, b) => b.Abertoem.localeCompare(a.Abertoem)) : [], [rows, detailedTotvs, periodStartDate, periodEndDate, search, situationFilter, requesterFilter, filteredRows]);
+  useEffect(() => setPage(1), [detailedRows]);
   const pages = Math.max(1, Math.ceil(detailedRows.length / 50));
   const visiblePage = Math.min(page, pages);
 
@@ -225,12 +242,12 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
 
   const summary = useMemo(
     () =>
-      getTicketsSummary(rows, {
-        endDate: periodEndDate,
-        startDate: periodStartDate,
+      getTicketsSummary(filteredRows, {
+        endDate: detailedTotvs ? '' : periodEndDate,
+        startDate: detailedTotvs ? '' : periodStartDate,
         elapsed: detailedTotvs,
       }),
-    [periodEndDate, periodStartDate, rows, detailedTotvs],
+    [periodEndDate, periodStartDate, filteredRows, detailedTotvs],
   );
   const defaultTicketPeriod = useMemo(
     () => getDefaultDatePeriod(dateRange?.maxDate),
@@ -266,6 +283,21 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
     setPeriodEndDate(period.endDate);
   }
 
+  function exportFilteredTickets() {
+    const sheet = XLSX.utils.json_to_sheet(detailedRows.map(row => ({
+      Chamado: row['Caso n.º'], Descrição: row.Resumo || '', Status: row.Status,
+      Criação: formatTicketDate(row.Abertoem), Resolução: row.Fechadoem ? formatTicketDate(row.Fechadoem) : '',
+      Organização: row.Organizaçãodosolicitante || '', Solicitante: row.Solicitante || '',
+      Grupo: row.Grupoatribuído || '', Prioridade: row.Prioridade || '',
+      Origem: row.Origem || '', 'Resolvido por': row.AgenteAtribuído || '',
+    })));
+    sheet['!cols'] = [18, 80, 20, 22, 22, 40, 35, 35, 20, 25, 35].map(wch => ({ wch }));
+    sheet['!autofilter'] = { ref: sheet['!ref'] || 'A1:K1' };
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Chamados filtrados');
+    XLSX.writeFile(workbook, 'mgi-chamados-filtrados.xlsx');
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PanelShell
@@ -274,7 +306,7 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
       >
         <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)] sm:items-end">
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-            Data inicial
+            {detailedTotvs ? 'Cria\u00e7\u00e3o de' : 'Data inicial'}
             <input
               type="date"
               value={periodStartDate}
@@ -286,7 +318,7 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
           </label>
 
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-            Data final
+            {detailedTotvs ? 'Cria\u00e7\u00e3o at\u00e9' : 'Data final'}
             <input
               type="date"
               value={periodEndDate}
@@ -323,6 +355,7 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
           </p>
         ) : null}
 
+        {detailedTotvs && <MgiTicketFilters rows={rows} filters={mgiFilters} onChange={setMgiFilters} onClear={() => { setMgiFilters(emptyMgiFilters()); setPeriodStartDate(''); setPeriodEndDate(''); setSearch(''); setSituationFilter(''); setRequesterFilter(''); }} />}
         <div className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <TicketKpiCard
             title="Chamados abertos"
@@ -332,16 +365,16 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
           <TicketKpiCard
             title="Chamados encerrados"
             value={String(summary.closedInPeriod)}
-            helperText="Fechados ou resolvidos dentro do período"
+            helperText={detailedTotvs ? 'Fechados ou resolvidos entre os chamados filtrados' : 'Fechados ou resolvidos dentro do período'}
             tone="good"
           />
           <TicketKpiCard
-            title="Chamados pendentes"
+            title="Chamados não finalizados"
             value={String(summary.pendingTickets)}
-            helperText={detailedTotvs ? 'Criados no período e ainda pendentes na exportação' : 'Status ainda não finalizados'}
+            helperText={detailedTotvs ? 'Criados no período e não finalizados na última importação.' : 'Status ainda não finalizados'}
             tone="attention"
           />
-          {detailedTotvs ? <TicketKpiCard title="Mediana de solução" value={summary.medianResolutionTime} helperText="Metade dos chamados foi resolvida em até esse tempo. Horas corridas dos encerrados no período, com datas válidas." /> : <GaugeCard
+          {detailedTotvs ? <TicketKpiCard title="Mediana de solução" value={summary.medianResolutionTime} helperText="Metade dos chamados filtrados foi resolvida em até esse tempo. Horas corridas, com datas válidas." /> : <GaugeCard
             title="SLA"
             value={summary.slaComplianceValue}
             valueLabel={summary.slaCompliancePercentage}
@@ -358,7 +391,7 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
         <div className="xl:col-span-2">
           <PanelShell
             title="Evolução dos chamados"
-            description="Aberturas e encerramentos por mês no período selecionado (até os últimos 12 meses)."
+            description={detailedTotvs ? 'Aberturas e resoluções dos chamados filtrados por mês (até os últimos 12 meses).' : 'Aberturas e encerramentos por mês no período selecionado (até os últimos 12 meses).'}
           >
             <MonthlyVolumeChart items={summary.monthlyVolume} />
           </PanelShell>
@@ -409,8 +442,19 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
         </PanelShell>
       </div>
 
-      {detailedTotvs && <PanelShell title="Lista de chamados" description="Chamados criados no período selecionado. A busca abaixo filtra somente esta lista.">
-        <label className="flex max-w-lg flex-col gap-2 text-sm font-medium text-surface-700">Buscar por número, descrição, status, organização ou solicitante<input className="h-11 rounded-2xl border border-brand-100 px-3 text-sm" value={search} onChange={event => setSearch(event.target.value)} type="search" /></label>
+      {detailedTotvs && <PanelShell title="Lista de chamados" description="Chamados criados no período selecionado. Os filtros abaixo afetam somente esta lista.">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+          <label className="min-w-0 sm:col-span-2 lg:col-span-6 flex flex-col gap-2 text-sm font-medium text-surface-700">Buscar chamado<input className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300" value={search} onChange={event => setSearch(event.target.value)} placeholder="Número, descrição ou solicitante" type="search" /></label>
+          <label className="min-w-0 lg:col-span-3 flex flex-col gap-2 text-sm font-medium text-surface-700">Situação<select className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={situationFilter} onChange={event => { setSituationFilter(event.target.value); }}><option value="">Todas as situações</option><option value="pending">Não finalizados</option><option value="closed">Finalizados</option></select></label>
+          <label className="min-w-0 lg:col-span-6 flex flex-col gap-2 text-sm font-medium text-surface-700">Solicitante<select className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={requesterFilter} onChange={event => setRequesterFilter(event.target.value)}><option value="">Todos os solicitantes</option>{filterOptions.requesters.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+        </div>
+        <div className="mt-4 flex flex-col gap-4 border-t border-brand-100 pt-4 xl:flex-row xl:items-center xl:justify-between">
+        <p className="min-w-0 flex-1 text-sm text-surface-600" role="status">{detailedRows.length} chamado(s) encontrado(s). Pendentes: status diferente de Fechado e Resolvido na exportação.</p>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+          <button type="button" onClick={() => { setSearch(''); setSituationFilter(''); setRequesterFilter(''); }} className="min-h-11 w-full rounded-xl border border-brand-100 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:w-auto">Limpar filtros da lista</button>
+        <button type="button" onClick={exportFilteredTickets} disabled={!detailedRows.length} className="min-h-11 w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 sm:w-auto disabled:cursor-not-allowed disabled:opacity-50">Exportar filtrados em Excel ({detailedRows.length})</button>
+          </div>
+        </div>
         <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm">
           <thead><tr className="border-b border-brand-100">{['Chamado', 'Descrição', 'Status', 'Criação', 'Resolução', 'Organização'].map(label => <th key={label} scope="col" className="p-3">{label}</th>)}</tr></thead>
           <tbody>{detailedRows.slice((visiblePage - 1) * 50, visiblePage * 50).map(row => <tr key={row['Caso n.º']} className="border-b border-brand-100">

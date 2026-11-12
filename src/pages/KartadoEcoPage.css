@@ -1,0 +1,26 @@
+﻿.eco-print-only { display: none; }
+
+@media print {
+  body:has(#eco-acompanhamento) *:has(#eco-acompanhamento) > :not(:has(#eco-acompanhamento)):not(#eco-acompanhamento) {
+    display: none !important;
+  }
+  body:has(#eco-acompanhamento), body:has(#eco-acompanhamento) *:has(#eco-acompanhamento) {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: auto !important;
+    display: block !important;
+  }
+  #eco-acompanhamento { color: black; font-size: 10pt; }
+  #eco-acompanhamento .eco-no-print { display: none !important; }
+  #eco-acompanhamento .eco-print-only { display: block; margin: 12px 0; }
+  #eco-acompanhamento .eco-table { overflow: visible; }
+  #eco-acompanhamento table { width: 100%; table-layout: fixed; }
+  #eco-acompanhamento th, #eco-acompanhamento td { overflow-wrap: anywhere; padding: 6px; font-size: 9pt; }
+  #eco-acompanhamento .shadow-soft { box-shadow: none; }
+  #eco-acompanhamento .grid { display: block; }
+  #eco-acompanhamento .grid > * { margin-bottom: 16px; }
+  #eco-acompanhamento tr { break-inside: avoid; }
+  #eco-acompanhamento h3, #eco-acompanhamento h4, #eco-acompanhamento summary { break-after: avoid; }
+}

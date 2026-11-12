@@ -1,0 +1,985 @@
+{
+  "Unidades": [
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Orgao": "ANTT",
+      "Produto": "Gestao de Ativos",
+      "Etapa": "Adaptacao",
+      "DataReferencia": "2026-09-21",
+      "EntradaNaEtapa": "2026-07-28",
+      "DataVirada": "2026-10-31",
+      "DiasDecorridos": null,
+      "DiasDaEtapa": null,
+      "PrazoConsumido": null,
+      "ObjetivosCumpridos": 0.54,
+      "PresencaMedia": 0.63,
+      "ItensInventario": 56189,
+      "Cadencia": "Quinzenal",
+      "RiscoRegulatorio": "Sem exposicao"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Orgao": "ARTESP",
+      "Produto": "Gestao de Ativos",
+      "Etapa": "Adaptacao",
+      "DataReferencia": "2026-09-21",
+      "EntradaNaEtapa": "2026-06-17",
+      "DataVirada": "2026-09-30",
+      "DiasDecorridos": null,
+      "DiasDaEtapa": null,
+      "PrazoConsumido": null,
+      "ObjetivosCumpridos": 0.6,
+      "PresencaMedia": 0.35,
+      "ItensInventario": 17286,
+      "Cadencia": "Quinzenal",
+      "RiscoRegulatorio": "Atencao"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Orgao": "ARTESP",
+      "Produto": "Kartado Ativos",
+      "Etapa": "Adaptacao",
+      "DataReferencia": "2026-09-21",
+      "EntradaNaEtapa": "2026-06-17",
+      "DataVirada": "2026-09-30",
+      "DiasDecorridos": null,
+      "DiasDaEtapa": null,
+      "PrazoConsumido": null,
+      "ObjetivosCumpridos": 0.39,
+      "PresencaMedia": 0.33,
+      "ItensInventario": 44151,
+      "Cadencia": "Semanal ate a migracao",
+      "RiscoRegulatorio": "Prazo definido"
+    }
+  ],
+  "Reunioes": [
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-07-27",
+      "Tipo": "Passagem de bastao",
+      "Status": "Realizada",
+      "Convocados": 5,
+      "Presentes": 8,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Ata"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-08-10",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 9,
+      "Presentes": 6,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Ata"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-08-24",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 9,
+      "Presentes": 4,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Ata"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-09-11",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 9,
+      "Presentes": 7,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Ata"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-09-15",
+      "Tipo": "Alinhamento tecnico",
+      "Status": "Realizada",
+      "Convocados": 2,
+      "Presentes": 2,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Ata"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-09-22",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-09-25",
+      "Tipo": "Marco",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-10-05",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-10-19",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-10-31",
+      "Tipo": "Marco",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-11-02",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-11-16",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-11-30",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Data": "2026-12-14",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-06-17",
+      "Tipo": "Passagem de bastao",
+      "Status": "Realizada",
+      "Convocados": 10,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-06-24",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-07-01",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-07-27",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-08-11",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": 6,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Ata"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-08-25",
+      "Tipo": "Visita",
+      "Status": "Realizada",
+      "Convocados": 12,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-09-11",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 15,
+      "Presentes": 4,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Ata"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-09-21",
+      "Tipo": "Treinamento",
+      "Status": "Realizada",
+      "Convocados": 22,
+      "Presentes": 11,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Transcricao do Teams"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-09-24",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-09-30",
+      "Tipo": "Marco",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Data": "2026-10-01",
+      "Tipo": "Marco",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-06-03",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-06-16",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-06-24",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-07-15",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-07-22",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-07-29",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-08-05",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-08-12",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-08-20",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-08-26",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-09-02",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Presenca nao apurada"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-09-10",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 14,
+      "Presentes": 7,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Ata"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-09-16",
+      "Tipo": "Acompanhamento",
+      "Status": "Realizada",
+      "Convocados": 13,
+      "Presentes": 2,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Transcricao do Teams"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-09-22",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-09-25",
+      "Tipo": "Marco",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Confirmado pela unidade"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-09-28",
+      "Tipo": "Marco",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Confirmado pela unidade"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-09-30",
+      "Tipo": "Acompanhamento",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Sim",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-09-30",
+      "Tipo": "Marco",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Outlook"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Data": "2026-10-01",
+      "Tipo": "Marco",
+      "Status": "Agendada",
+      "Convocados": null,
+      "Presentes": null,
+      "Participacao": null,
+      "EntraNaMediaDePresenca": "Nao",
+      "Fonte": "Outlook"
+    }
+  ],
+  "Pessoas": [
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Nome": "Matheus Moro Zamprogno",
+      "Vinculo": "Eco",
+      "Frente": "",
+      "Presencas": 4,
+      "Convocacoes": 4,
+      "Frequencia": "Constante",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Nome": "Gabriel Lucas do Vale",
+      "Vinculo": "Eco",
+      "Frente": "",
+      "Presencas": 3,
+      "Convocacoes": 4,
+      "Frequencia": "Constante",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Nome": "Ghanech Luiz Stivalli Cazzolato",
+      "Vinculo": "Terceira",
+      "Frente": "TI EcoRodovias",
+      "Presencas": 3,
+      "Convocacoes": 4,
+      "Frequencia": "Constante",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Nome": "Renan Ferreira Cabral",
+      "Vinculo": "Terceira",
+      "Frente": "Pavimento",
+      "Presencas": 3,
+      "Convocacoes": 4,
+      "Frequencia": "Constante",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Nome": "Deivid Jaime do Amaral",
+      "Vinculo": "Eco",
+      "Frente": "",
+      "Presencas": 2,
+      "Convocacoes": 4,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Nome": "Amanda Aparecida Navarro Pereira",
+      "Vinculo": "Eco",
+      "Frente": "Corporativo",
+      "Presencas": 2,
+      "Convocacoes": 4,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Nome": "Rebeca Meira Ardisson Brozeghini",
+      "Vinculo": "Eco",
+      "Frente": "Pavimento",
+      "Presencas": 1,
+      "Convocacoes": 4,
+      "Frequencia": "Entrou em 11/09",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Nome": "Diego Ebersol de Carvalho",
+      "Vinculo": "Eco",
+      "Frente": "Faixa de Dominio",
+      "Presencas": 1,
+      "Convocacoes": 4,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Matheus Fonseca de Oliveira",
+      "Vinculo": "Eco",
+      "Frente": "",
+      "Presencas": 2,
+      "Convocacoes": 2,
+      "Frequencia": "Constante",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Taynara Ribeiro da Silva",
+      "Vinculo": "Eco",
+      "Frente": "",
+      "Presencas": 2,
+      "Convocacoes": 2,
+      "Frequencia": "Constante",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Diego Ferreira de Brito",
+      "Vinculo": "Eco",
+      "Frente": "Acompanha desde a implantacao",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": "Nao"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Maycon Ferreira",
+      "Vinculo": "Eco",
+      "Frente": "",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": "Nao"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Camila Carvalho dos Santos",
+      "Vinculo": "Terceira",
+      "Frente": "Corporativo",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Stephany Lisboa Duarte",
+      "Vinculo": "Eco",
+      "Frente": "Nao conformidade",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Franklin Emannuell Cavalcante",
+      "Vinculo": "Eco",
+      "Frente": "Bate-estaca",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Entrou em 11/09",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Ester Soares Foganholi",
+      "Vinculo": "Eco",
+      "Frente": "Corporativo",
+      "Presencas": 0,
+      "Convocacoes": 2,
+      "Frequencia": "So no treinamento",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Amanda Aparecida Navarro Pereira",
+      "Vinculo": "Eco",
+      "Frente": "Corporativo",
+      "Presencas": 0,
+      "Convocacoes": 2,
+      "Frequencia": "So no treinamento",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Amanda Silva Barbosa",
+      "Vinculo": "Terceira",
+      "Frente": "Corporativo",
+      "Presencas": 0,
+      "Convocacoes": 2,
+      "Frequencia": "So no treinamento",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Anderson Nunes",
+      "Vinculo": "Eco",
+      "Frente": "",
+      "Presencas": 0,
+      "Convocacoes": 0,
+      "Frequencia": "Nao convocado aos acompanhamentos",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Marcos Santos Oliveira",
+      "Vinculo": "Terceira",
+      "Frente": "Concremat",
+      "Presencas": 0,
+      "Convocacoes": 0,
+      "Frequencia": "Nao convocado aos acompanhamentos",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Nome": "Silmara Silva",
+      "Vinculo": "Terceira",
+      "Frente": "Terra Fertil",
+      "Presencas": 0,
+      "Convocacoes": 0,
+      "Frequencia": "Nao convocado aos acompanhamentos",
+      "NoTreinamento21_09": "Sim"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Nome": "Samuel Magalhaes Ribeiro",
+      "Vinculo": "Terceira",
+      "Frente": "Conduz o acompanhamento",
+      "Presencas": 2,
+      "Convocacoes": 2,
+      "Frequencia": "Constante",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Nome": "Gabriel Acorci de Lima",
+      "Vinculo": "Eco",
+      "Frente": "Cadastros e acessos",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Nome": "Ana Beatriz de Souza Durante",
+      "Vinculo": "Terceira",
+      "Frente": "Validacao do cadastro de ativos",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Nome": "Leire Maria Garcia de Souza",
+      "Vinculo": "Terceira",
+      "Frente": "Monitoracao de OAE",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Nome": "Ghanech Luiz Stivalli Cazzolato",
+      "Vinculo": "Terceira",
+      "Frente": "TI EcoRodovias",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Nome": "Amanda Aparecida Navarro Pereira",
+      "Vinculo": "Eco",
+      "Frente": "Corporativo",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Alternada",
+      "NoTreinamento21_09": ""
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Nome": "Isabela Cristina Rodrigues",
+      "Vinculo": "n/d",
+      "Frente": "Conserva",
+      "Presencas": 1,
+      "Convocacoes": 2,
+      "Frequencia": "Entrou em 16/09",
+      "NoTreinamento21_09": ""
+    }
+  ],
+  "Objetivos": [
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Categoria": "FASE 2",
+      "Objetivo": "Inventario e evidencia fotografica - Fase 2 do SIGACO",
+      "Prazo": "26/08",
+      "Cumprimento": 0.95,
+      "Situacao": "Cumprido no prazo"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Categoria": "FASE 3",
+      "Objetivo": "Operacao plena da Conserva",
+      "Prazo": "01/09",
+      "Cumprimento": 0.85,
+      "Situacao": "Parcial"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Categoria": "FASE 5",
+      "Objetivo": "Relatorios e Faixa de Dominio",
+      "Prazo": "set a out/2026",
+      "Cumprimento": 0.55,
+      "Situacao": "Em andamento"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Categoria": "FASE 6",
+      "Objetivo": "Implantacao do RDO",
+      "Prazo": "a partir de 01/09",
+      "Cumprimento": 0.25,
+      "Situacao": "Replanejado"
+    },
+    {
+      "Unidade": "Ecovias Capixaba",
+      "Categoria": "6 MESES",
+      "Objetivo": "Contrato ADM em Recursos",
+      "Prazo": "objetivo de 24/08",
+      "Cumprimento": 0.1,
+      "Situacao": "Nao iniciado"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Categoria": "OPERACIONAL",
+      "Objetivo": "Fluxo de aprovacao e adesao das terceirizadas",
+      "Prazo": "na virada",
+      "Cumprimento": 0.4,
+      "Situacao": "Piloto iniciado"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Categoria": "QUALIDADE",
+      "Objetivo": "Higienizacao e rastreabilidade, com foco na Terra Fertil",
+      "Prazo": "na virada",
+      "Cumprimento": 0.55,
+      "Situacao": "Parcial"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Categoria": "CAPACITACAO",
+      "Objetivo": "Treinamentos com lideres, sala tecnica e fiscais",
+      "Prazo": "realizado em 21/09",
+      "Cumprimento": 1,
+      "Situacao": "Concluido"
+    },
+    {
+      "Unidade": "Ecovias Raposo Castello",
+      "Categoria": "GOVERNANCA",
+      "Objetivo": "Fluxo de monitoracao e nao conformidade com vinculo ao inventario",
+      "Prazo": "set a out/2026",
+      "Cumprimento": 0.45,
+      "Situacao": "Em curso"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "OPERACIONAL",
+      "Objetivo": "Piloto de migracao com a Vexel e ampliacao as demais empresas",
+      "Prazo": "30/08",
+      "Cumprimento": 0.5,
+      "Situacao": "Prazo vencido"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "OPERACIONAL",
+      "Objetivo": "Concluir a subida de pavimento e definir responsavel formal",
+      "Prazo": "na virada",
+      "Cumprimento": 0.6,
+      "Situacao": "Em curso"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "OPERACIONAL",
+      "Objetivo": "Importacao dos itens de prioridade 1",
+      "Prazo": "na virada",
+      "Cumprimento": 0.7,
+      "Situacao": "Reta final"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "OPERACIONAL",
+      "Objetivo": "Verificar dados duplicados entre a unidade antiga e a nova",
+      "Prazo": "antes da desativacao",
+      "Cumprimento": 0.25,
+      "Situacao": "A confirmar"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "QUALIDADE",
+      "Objetivo": "Monitoracoes de OAE, faixa de dominio e deposito de fresa",
+      "Prazo": "em curso",
+      "Cumprimento": 0.55,
+      "Situacao": "Parcial"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "QUALIDADE",
+      "Objetivo": "Divergencia de fotos com a empresa de monitoracao",
+      "Prazo": "em curso",
+      "Cumprimento": 0.2,
+      "Situacao": "Parado"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "GOVERNANCA",
+      "Objetivo": "Mapeamento de usuarios por empresa e inativacao em massa",
+      "Prazo": "em curso",
+      "Cumprimento": 0.45,
+      "Situacao": "Parcial"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "GOVERNANCA",
+      "Objetivo": "Padrao de codificacao de ativos junto a ARTESP",
+      "Prazo": "em curso",
+      "Cumprimento": 0.15,
+      "Situacao": "Parado"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "ADOCAO",
+      "Objetivo": "Ampliar o uso para a frente de meio ambiente",
+      "Prazo": "em curso",
+      "Cumprimento": 0.15,
+      "Situacao": "Parado"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "ADOCAO",
+      "Objetivo": "Vinculo automatico de apontamentos aos ativos",
+      "Prazo": "quando disponivel",
+      "Cumprimento": 0.1,
+      "Situacao": "Aguardando"
+    },
+    {
+      "Unidade": "Ecovias Noroeste Paulista",
+      "Categoria": "COMERCIAL",
+      "Objetivo": "Uso planejado das horas de cortesia e de servicos profissionais",
+      "Prazo": "em curso",
+      "Cumprimento": 0.6,
+      "Situacao": "Em curso"
+    }
+  ]
+}

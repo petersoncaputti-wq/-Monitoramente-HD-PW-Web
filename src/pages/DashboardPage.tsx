@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getTicketReasonOptions, resolveTicketReason } from '@/utils/ticketReasons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AverageGrowthRateCard } from '@/components/AverageGrowthRateCard';
 import { FreeSpaceCard } from '@/components/FreeSpaceCard';
@@ -16,6 +17,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserSettingsPage } from '@/pages/UserSettingsPage';
 import { EngineeringSystemsHomePage } from '@/pages/EngineeringSystemsHomePage';
 import { KartadoPage } from '@/pages/KartadoPage';
+import { KartadoTicketsPage } from '@/pages/KartadoTicketsPage';
+import { KartadoEcoPage } from '@/pages/KartadoEcoPage';
 import { TotvsPage } from '@/pages/TotvsPage';
 import {
   getDatePeriodPreset,
@@ -143,7 +146,7 @@ function filterRowsByPeriod(
   });
 }
 
-type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartadoAudit' | 'kartadoHealth' | 'totvs' | 'settings';
+type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartadoAudit' | 'kartadoHealth' | 'kartadoEco' | 'kartadoTickets' | 'totvs' | 'settings';
 
 const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
   totvs: '/totvs/chamados',
@@ -152,6 +155,8 @@ const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
   tickets: '/projectwise/chamados',
   kartadoAudit: '/kartado/auditoria',
   kartadoHealth: '/kartado/saude',
+  kartadoEco: '/kartado/acompanhamento-eco',
+  kartadoTickets: '/kartado/chamados',
   settings: '/configuracoes',
 };
 
@@ -162,6 +167,8 @@ const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
   tickets: 'Chamados',
   kartadoAudit: 'Auditoria',
   kartadoHealth: 'Saúde',
+  kartadoEco: 'Acompanhamento',
+  kartadoTickets: 'Chamados',
   settings: 'Configurações',
 };
 
@@ -436,7 +443,7 @@ export function DashboardPage() {
   const isHomePage = normalizedPath === '/';
   const isProjectWisePage =
     activeTab === 'storage' || activeTab === 'projectWiseUsers' || activeTab === 'tickets';
-  const isKartadoPage = activeTab === 'kartadoAudit' || activeTab === 'kartadoHealth';
+  const isKartadoPage = activeTab === 'kartadoAudit' || activeTab === 'kartadoHealth' || activeTab === 'kartadoEco' || activeTab === 'kartadoTickets';
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
@@ -484,6 +491,10 @@ export function DashboardPage() {
   const ticketRows = useMemo(
     () => (ticketsData?.rows.filter(isTicketRow) ?? []),
     [ticketsData],
+  );
+  const ticketReasonOptions = useMemo(
+    () => getTicketReasonOptions(ticketRows.map((row) => String(row.Motivo ?? ''))),
+    [ticketRows],
   );
   const getTicketValue = (row: TicketRow, targetKey: string) => {
     const normalizeKey = (value: string) =>
@@ -1012,7 +1023,6 @@ export function DashboardPage() {
       closedAt: toDatetimeLocal(row.__closedAt || row.Fechadoem),
       id,
       openedAt: toDatetimeLocal(row.__openedAt || row.Abertoem),
-      priority: String(row.Prioridade ?? ''),
       reason: String(row.Motivo ?? ''),
       requestedFor: String(row.Solicitadopara ?? ''),
       requester: String(row.Solicitante ?? ''),
@@ -1048,10 +1058,14 @@ export function DashboardPage() {
     setTicketFormStatus({ state: 'saving' });
 
     try {
+      const input = {
+        ...ticketForm,
+        reason: resolveTicketReason(ticketForm.reason ?? '', ticketReasonOptions),
+      };
       if (ticketForm.id) {
-        await updateTicket(validAccessToken, ticketForm);
+        await updateTicket(validAccessToken, input);
       } else {
-        await createTicket(validAccessToken, ticketForm);
+        await createTicket(validAccessToken, input);
       }
 
       setTicketFormStatus({
@@ -1420,7 +1434,7 @@ export function DashboardPage() {
               </span>
             </>
           ) : activeTab === 'totvs' ? (
-            <><span aria-hidden="true" className="text-brand-300">/</span><span>TOTVs</span><span aria-hidden="true" className="text-brand-300">/</span><span className="font-semibold text-surface-900" aria-current="page">Chamados</span></>
+            <><span aria-hidden="true" className="text-brand-300">/</span><span>MGI</span><span aria-hidden="true" className="text-brand-300">/</span><span className="font-semibold text-surface-900" aria-current="page">Chamados</span></>
           ) : isKartadoPage ? (
             <>
               <span aria-hidden="true" className="text-brand-300">/</span>
@@ -1483,6 +1497,8 @@ export function DashboardPage() {
           <nav aria-label="Navegação do Kartado" className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
             <NavLink to={DASHBOARD_ROUTES.kartadoAudit} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Auditoria</NavLink>
             <NavLink to={DASHBOARD_ROUTES.kartadoHealth} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Saúde</NavLink>
+            <NavLink to={DASHBOARD_ROUTES.kartadoEco} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Acompanhamento</NavLink>
+            <NavLink to={DASHBOARD_ROUTES.kartadoTickets} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Chamados</NavLink>
           </nav>
         ) : null}
 
@@ -1491,6 +1507,8 @@ export function DashboardPage() {
 
         {activeTab === 'kartadoAudit' ? <KartadoPage area="audit" /> : null}
         {activeTab === 'kartadoHealth' ? <KartadoPage area="health" /> : null}
+        {activeTab === 'kartadoEco' ? <KartadoEcoPage /> : null}
+        {activeTab === 'kartadoTickets' ? <KartadoTicketsPage /> : null}
 
         {activeTab === 'storage' ? (
           <>
@@ -2026,23 +2044,21 @@ export function DashboardPage() {
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Motivo
                     <input
+                      list="ticket-reason-options"
+                      placeholder="Selecione ou digite um motivo"
+                      autoComplete="off"
                       value={ticketForm.reason ?? ''}
                       onChange={(event) => updateTicketForm('reason', event.target.value)}
                       className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
                     />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-                    Prioridade
-                    <select
-                      value={ticketForm.priority ?? ''}
-                      onChange={(event) => updateTicketForm('priority', event.target.value)}
-                      className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
-                    >
-                      <option value="">Não informado</option>
-                      <option>Alta</option>
-                      <option>Média</option>
-                      <option>Baixa</option>
-                    </select>
+                    <datalist id="ticket-reason-options">
+                      {ticketReasonOptions.map((reason) => (
+                        <option key={reason} value={reason} />
+                      ))}
+                    </datalist>
+                    <span className="text-xs font-normal text-surface-500">
+                      Use um motivo existente. Se necessário, digite um novo.
+                    </span>
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
                     Solicitante

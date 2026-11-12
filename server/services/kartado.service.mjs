@@ -45,7 +45,7 @@ async function safeFetch(url, options = {}) {
   try {
     const res  = await fetch(url, { ...options, signal: ctrl.signal });
     const body = await res.text();
-    return { ok: res.ok, status: res.status, body };
+    return { ok: res.ok, status: res.status, body, retryAfter: res.headers.get('Retry-After') };
   } catch (e) {
     if (e.name === 'AbortError') throw { httpStatus: 504, message: `Timeout (${TIMEOUT_MS}ms): ${url}` };
     throw e;
@@ -61,7 +61,7 @@ async function apiFetch(token, path, params = {}) {
   const qs    = Object.keys(clean).length ? '?' + new URLSearchParams(clean) : '';
   const url   = `${BASE}${path}${qs}`;
 
-  const { ok, status, body } = await safeFetch(url, {
+  const { ok, status, body, retryAfter } = await safeFetch(url, {
     headers: { 'Accept': ACCEPT, 'Authorization': `JWT ${token}` },
   });
 
@@ -70,11 +70,11 @@ async function apiFetch(token, path, params = {}) {
     // Evita incluir HTML completo na mensagem de erro (respostas 404/500 em HTML)
     const rawDetail = p?.errors?.[0]?.detail || p?.detail || (body.startsWith('<') ? null : body.slice(0, 200));
     const detail = rawDetail || `HTTP ${status}`;
-    const err = { httpStatus: status, message: `[${status}] ${path}: ${detail}` };
+    const err = { httpStatus: status, message: `[${status}] ${path}: ${detail}`, retryAfter };
     if (status === 403 || status === 401) {
       // Token rejeitado — invalida cache para forçar nova autenticação
       for (const [u, v] of _tokenCache.entries()) {
-        if (v.token === options?.headers?.Authorization?.replace('JWT ', '')) {
+        if (v.token === token) {
           _tokenCache.delete(u);
           break;
         }
@@ -89,6 +89,20 @@ async function apiFetch(token, path, params = {}) {
 }
 
 // ── Extrai items + paginação — todos os formatos Kartado ─────────────────────
+// A API pública de fichas usa Basic; mantém o mesmo limite global de conexões.
+export async function apiFetchBasic(path, params = {}, env = process.env) {
+  if (!env.KARTADO_USERNAME || !env.KARTADO_PASSWORD) throw { httpStatus: 503 };
+  const base = (env.KARTADO_API_URL || 'https://api.kartado.com.br').replace(/\/$/, '');
+  if (new URL(base).protocol !== 'https:') throw { httpStatus: 503 };
+  const url = `${base}${path}?${new URLSearchParams(params)}`;
+  const result = await safeFetch(url, {
+    redirect: 'error',
+    headers: { Accept: ACCEPT, Authorization: `Basic ${Buffer.from(`${env.KARTADO_USERNAME}:${env.KARTADO_PASSWORD}`).toString('base64')}` },
+  });
+  if (!result.ok) throw { httpStatus: result.status };
+  try { return JSON.parse(result.body); } catch { throw { httpStatus: 502 }; }
+}
+
 export function extractPage(payload, pageSize) {
   // Formato A — Reporting: { data: { results:[], meta:{pagination} } }
   if (payload?.data && Array.isArray(payload.data?.results)) {
@@ -228,13 +242,15 @@ export async function listUsers(token, companyUuid, { pageSize = 100, search = '
 }
 
 // ── Reportings — página 1 no dashboard; filtro de data busca mais páginas ────
-export async function listReportings(token, companyUuid, { pageSize = 100, foundAtAfter = '', foundAtBefore = '', origin = '', maxPages = 0 } = {}) {
+export async function listReportings(token, companyUuid, { pageSize = 100, foundAtAfter = '', foundAtBefore = '', origin = '', maxPages = 0, occurrenceKind = '', excludeOccurrenceKind = '90', includeUsage = false } = {}) {
   if (!companyUuid) throw { step: 'reportings', httpStatus: 400, message: 'company UUID obrigatório.' };
 
   const params = { company: companyUuid, page_size: pageSize };
   if (foundAtAfter)  params.found_at_after  = foundAtAfter;
   if (foundAtBefore) params.found_at_before = foundAtBefore;
   if (origin)        params.origin          = origin;
+  if (occurrenceKind) params.occurrence_kind = occurrenceKind;
+  else if (excludeOccurrenceKind) params.exclude_occurrence_kind = excludeOccurrenceKind;
 
   const hasDateFilter = !!(foundAtAfter || foundAtBefore);
   const hasFilter     = !!(hasDateFilter || origin);
@@ -246,9 +262,13 @@ export async function listReportings(token, companyUuid, { pageSize = 100, found
     ? await fetchPages(token, '/Reporting/Spreadsheet/', params, maxPages)
     : await fetchPages(token, '/Reporting/Spreadsheet/', params, 1);
 
+  const usageData = includeUsage
+    ? await listReportings(token, companyUuid, { pageSize, foundAtAfter, foundAtBefore, origin, maxPages, excludeOccurrenceKind: '' })
+    : null;
   const label = [foundAtAfter && 'data', origin && `origem:${origin}`].filter(Boolean).join('+') || 'pg1';
   console.log(`[Reporting] ${companyUuid.slice(0,8)}… → ${result.items.length}/${result.totalCount} (${label}) ${result.latencyMs}ms`);
   return {
+    usageData,
     reportings:  result.items,
     totalCount:  result.totalCount,
     page1Count:  result.totalCount,
@@ -534,11 +554,11 @@ export async function loadAllCompanies(token, companies, opts = {}) {
       // reportings do mês (dias de uso), fotos 15d via /Photo/ (fonte primária)
       const [u, r, inv, job, firm, rMes, photos] = await Promise.allSettled([
         listUsers(token, company.uuid, opts),
-        listReportings(token, company.uuid, opts),
+        listReportings(token, company.uuid, { ...opts, includeUsage: true }),
         listInventoryCounts(token, company.uuid),
         listJobProgress(token, company.uuid),
         listFirmCounts(token, company.uuid),
-        listReportings(token, company.uuid, { foundAtAfter: startOfMonth,    pageSize: opts.pageSize || 100, maxPages: 3 }),
+        listReportings(token, company.uuid, { foundAtAfter: startOfMonth,    pageSize: opts.pageSize || 100, maxPages: 3, includeUsage: true }),
         listPhotosForCompany(token, company.uuid, { foundAtAfter: quinzeDiasAtras, pageSize: 100, maxPages: 5 }),
       ]);
       return {
@@ -825,4 +845,45 @@ export async function runDiagnostics(token, sampleCompanyUuid = null) {
   );
 
   return Object.fromEntries(results);
+}
+
+// Mantém a página lógica de 100 registros; isola HTTP 500 em blocos menores.
+export async function listReportingPage(token, companyUuid, page = 1) {
+  let totalCount = null;
+  let requests = 0;
+  let consecutiveFailures = 0;
+  const failedRecords = [];
+  async function read(offset, size) {
+    // Limita a recuperação quando o serviço inteiro está indisponível.
+    // A árvore completa tem 125 chamadas (1 + 4 + 20 + 100).
+    if (++requests > 125 || consecutiveFailures >= 20) throw { httpStatus: 500, message: 'Limite de recuperação da página atingido.' };
+    let payload;
+    try {
+      payload = await apiFetch(token, '/Reporting/Spreadsheet/', {
+        company: companyUuid, page_size: size, page: offset / size + 1, ordering: 'uuid', exclude_occurrence_kind: '90',
+      });
+    } catch (error) {
+      if (error.httpStatus !== 500) throw error;
+      consecutiveFailures++;
+      if (size === 1) { failedRecords.push(offset + 1); return []; }
+      const smaller = size === 100 ? 25 : size === 25 ? 5 : 1;
+      const items = [];
+      for (let start = offset; start < offset + size; start += smaller) {
+        if (totalCount !== null && start >= totalCount) break;
+        items.push(...await read(start, smaller));
+      }
+      return items;
+    }
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data) && !Array.isArray(payload?.data?.results) && !Array.isArray(payload?.results)) {
+      throw { httpStatus: 502, message: 'Formato de apontamentos não reconhecido.' };
+    }
+    consecutiveFailures = 0;
+    const data = extractPage(payload, size);
+    if (totalCount !== null && totalCount !== data.totalCount) throw { httpStatus: 502, message: 'O total mudou durante a recuperação da página.' };
+    totalCount = data.totalCount;
+    return data.items;
+  }
+  const items = await read((page - 1) * 100, 100);
+  if (totalCount === null) throw { httpStatus: 500, message: 'Nenhum registro da página pôde ser recuperado.' };
+  return { items, totalCount, totalPages: Math.max(1, Math.ceil(totalCount / 100)), failedRecords };
 }

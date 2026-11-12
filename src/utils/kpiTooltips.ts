@@ -20,9 +20,9 @@ const KPI_TOOLTIPS: Record<KpiTooltipKey, { meaning: string; calculation: string
   },
   totalCapacity: {
     meaning:
-      'Mostra a capacidade total do disco monitorado em GB, usando o valor que melhor representa o conjunto importado.',
+      'Mostra a capacidade total do disco monitorado no registro mais recente do período selecionado.',
     calculation:
-      'Lemos todos os valores válidos da coluna TotalGB e escolhemos o valor que mais se repete na planilha, reduzindo o impacto de inconsistências pontuais.',
+      'Localizamos o último registro válido por data e hora no período selecionado e exibimos o valor da coluna TotalGB dessa leitura.',
   },
   usedSpace: {
     meaning:

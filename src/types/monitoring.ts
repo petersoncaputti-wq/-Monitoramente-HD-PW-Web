@@ -73,6 +73,7 @@ export interface E365UsageRow {
 }
 
 export interface TicketRow {
+  Origem?: string;
   'Caso n.º': string;
   Status: string;
   Motivo: string;
