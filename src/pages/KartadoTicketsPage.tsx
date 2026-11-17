@@ -69,6 +69,8 @@ export function KartadoTicketsPage({ unit }: { unit?: KartadoCompany }) {
   const [page, setPage] = useState(1);
   const [indicator, setIndicator] = useState('');
   const unitKey = unit?.uuid || unit?.id || '';
+  // Booleano estável: o objeto `unit` pode ser recriado a cada renderização do pai.
+  const hasUnit = Boolean(unit);
   async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`/api/kartado-tickets${path}`, {
       credentials: 'same-origin',
@@ -93,7 +95,7 @@ export function KartadoTicketsPage({ unit }: { unit?: KartadoCompany }) {
       .finally(() => {
         if (active) setLoading(false);
       });
-    if (!unit)
+    if (!hasUnit)
       loadKartadoCompanies()
         .then((data) => {
           if (active) setCompanies(data);
@@ -104,7 +106,7 @@ export function KartadoTicketsPage({ unit }: { unit?: KartadoCompany }) {
     return () => {
       active = false;
     };
-  }, [unitKey]);
+  }, [unitKey, hasUnit]);
   useEffect(() => setPage(1), [search, unitId, status, from, to, indicator]);
   const scoped = rows.filter(
     (row) =>

@@ -215,9 +215,14 @@ export function KartadoAuditReportings({ initialCompany }: { initialCompany: str
         });
     return () => {
       controller.abort();
+      // `sequence` é um contador (não um elemento da tela): incrementar ao sair
+      // invalida respostas de consultas em andamento.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       sequence.current++;
       requestRef.current?.abort();
     };
+    // Só na montagem: retoma uma consulta em andamento (sessionStorage ou servidor).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const visible = useMemo(() => filterAuditItems(result?.items || [], filters), [result, filters]);

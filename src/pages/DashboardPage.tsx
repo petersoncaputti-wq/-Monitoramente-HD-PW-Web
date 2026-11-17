@@ -416,6 +416,24 @@ function isProjectWiseWebUserRow(row: ImportedWorkbookData['rows'][number]): row
   return 'Email' in row && 'LastLoginDate' in row && 'Locked' in row;
 }
 
+// Funções puras de leitura de chamados: fora do componente para não serem
+// recriadas a cada renderização (e poderem ser usadas em useMemo sem dependência).
+function getTicketValue(row: TicketRow, targetKey: string) {
+  const normalizeKey = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]/gi, '')
+      .toLowerCase();
+  const normalizedTarget = normalizeKey(targetKey);
+  const entry = Object.entries(row).find(([key]) => normalizeKey(key) === normalizedTarget);
+  return String(entry?.[1] ?? '');
+}
+
+function getTicketCaseNumber(row: TicketRow) {
+  return getTicketValue(row, 'Caso n') || getTicketValue(row, 'Cason');
+}
+
 export function DashboardPage() {
   const { accessToken, getValidAccessToken, logout, profile } = useAuth();
   const location = useLocation();
@@ -473,18 +491,6 @@ export function DashboardPage() {
     () => getTicketReasonOptions(ticketRows.map((row) => String(row.Motivo ?? ''))),
     [ticketRows],
   );
-  const getTicketValue = (row: TicketRow, targetKey: string) => {
-    const normalizeKey = (value: string) =>
-      value
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]/gi, '')
-        .toLowerCase();
-    const normalizedTarget = normalizeKey(targetKey);
-    const entry = Object.entries(row).find(([key]) => normalizeKey(key) === normalizedTarget);
-    return String(entry?.[1] ?? '');
-  };
-  const getTicketCaseNumber = (row: TicketRow) => getTicketValue(row, 'Caso n') || getTicketValue(row, 'Cason');
   const normalizeTicketFilterValue = (value: unknown) =>
     String(value ?? '')
       .trim()
@@ -1253,6 +1259,9 @@ export function DashboardPage() {
     if (isProjectWisePage && !hasSupabaseTicketsConfig()) {
       void loadAutoTicketsSource();
     }
+    // Carrega ao entrar na página ProjectWise. As funções loadAuto* são
+    // recriadas a cada renderização: incluí-las recarregaria sem parar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isProjectWisePage]);
 
   useEffect(() => {
@@ -1267,6 +1276,8 @@ export function DashboardPage() {
     void readE365UsageFromDatabase()
       .then(setE365UsageRows)
       .catch((error) => console.error('Não foi possível carregar os dados E365.', error));
+    // Recarrega quando a sessão ou a página mudam (mesmo motivo do efeito acima).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, isProjectWisePage]);
 
   async function importE365Files(files: File[]) {

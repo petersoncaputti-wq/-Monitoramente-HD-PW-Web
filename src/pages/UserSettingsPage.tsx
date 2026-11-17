@@ -199,6 +199,8 @@ export function UserSettingsPage() {
 
   useEffect(() => {
     void loadUsers();
+    // `loadUsers` depende só de accessToken e profile.role, já listados.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, profile?.role]);
 
   return (

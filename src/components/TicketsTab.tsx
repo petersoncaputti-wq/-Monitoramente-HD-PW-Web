@@ -241,7 +241,7 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
             })
             .sort((a, b) => b.Abertoem.localeCompare(a.Abertoem))
         : [],
-    [rows, detailedTotvs, periodStartDate, periodEndDate, search, situationFilter, requesterFilter, filteredRows],
+    [detailedTotvs, periodStartDate, periodEndDate, search, situationFilter, requesterFilter, filteredRows],
   );
   useEffect(() => setPage(1), [detailedRows]);
   const pages = Math.max(1, Math.ceil(detailedRows.length / 50));

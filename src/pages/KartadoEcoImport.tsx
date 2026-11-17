@@ -36,6 +36,8 @@ export function KartadoEcoImport({ children }: { children: (data: Data) => React
   }
   useEffect(() => {
     void load();
+    // Só na montagem; `load` obtém o token válido no momento da chamada.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   async function prepare(selected: File | undefined) {
     setPreview(null);

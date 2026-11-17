@@ -902,6 +902,9 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
 
   useEffect(() => {
     if (area === 'health' && companies.length) void openHealthArea();
+    // Carrega ao entrar na aba de saúde ou quando a lista de unidades chega.
+    // Incluir a função (recriada a cada renderização) recarregaria sem parar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [area, companies.length]);
 
   const users = useMemo(() => {
