@@ -52,6 +52,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Código fora do padrão do Prettier falha a CI (rode npm run format).
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Type check frontend
         run: npm run typecheck
 

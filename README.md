@@ -38,7 +38,12 @@ Para sincronizar também as fontes locais antes de iniciar, use `npm run dev:wit
 | `npm run typecheck` | Verifica os tipos do frontend (`tsc -b`) |
 | `npm run check:syntax` | Verifica a sintaxe de todo o JavaScript do servidor |
 | `npm run lint` | ESLint em todo o projeto: erros (bugs prováveis) falham; avisos não bloqueiam |
+| `npm run format` | Formata o projeto com o Prettier |
+| `npm run format:check` | Verifica a formatação (a CI falha se algo estiver fora do padrão) |
 | `npm run check` | Sintaxe, lint, tipos e testes, na ordem usada pela CI |
+
+Para o `git blame` ignorar commits só de formatação, rode uma vez:
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` (o GitHub já faz isso sozinho).
 
 Os testes `test-totvs*.mjs` que exigem exportações reais do TOTVS são ignorados
 pelo `npm test`; rode-os manualmente passando o arquivo, por exemplo

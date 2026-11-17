@@ -1,0 +1,6 @@
+# Commits só de formatação, ignorados pelo git blame.
+# GitHub usa este arquivo automaticamente; localmente:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: formata o projeto com Prettier
+99ce6668ac9637d98f86cb5be11d1b529e7d9043
