@@ -133,10 +133,14 @@ export async function updateMyProfile(
   );
 }
 
-export async function updateMyPassword(_accessToken: string, password: string): Promise<void> {
+export async function updateMyPassword(
+  _accessToken: string,
+  currentPassword: string,
+  password: string,
+): Promise<void> {
   return parseResponse<void>(
     await request('/api/auth/password', {
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ currentPassword, password }),
       method: 'PATCH',
     }),
   );

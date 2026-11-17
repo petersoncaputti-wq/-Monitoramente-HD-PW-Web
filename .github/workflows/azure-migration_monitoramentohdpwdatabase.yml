@@ -38,6 +38,9 @@ jobs:
       - name: Test Kartado router security
         run: npm run test:kartado-router
 
+      - name: Test authentication and user administration
+        run: npm run test:auth
+
       - name: Test audit reporting integration
         run: npm run test:kartado-audit
 

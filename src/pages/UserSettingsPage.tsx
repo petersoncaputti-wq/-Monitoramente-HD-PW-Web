@@ -30,6 +30,7 @@ export function UserSettingsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userForm, setUserForm] = useState<UserFormState>(emptyUserForm);
   const [personalName, setPersonalName] = useState(profile?.full_name ?? '');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [personalPassword, setPersonalPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -143,9 +144,13 @@ export function UserSettingsPage() {
 
       setStatus('idle');
       setMessage('Usuário excluído.');
-    } catch {
+    } catch (error) {
       setStatus('error');
-      setMessage('Não foi possível excluir o usuário.');
+      setMessage(
+        error instanceof Error && error.message
+          ? `Não foi possível excluir o usuário: ${error.message}`
+          : 'Não foi possível excluir o usuário.',
+      );
     }
   }
 
@@ -167,17 +172,27 @@ export function UserSettingsPage() {
         updatedProfile = await updateMyProfile(accessToken, normalizedPersonalName);
       }
 
-      if (personalPassword.trim()) {
-        await updateMyPassword(accessToken, personalPassword);
+      const changingPassword = Boolean(personalPassword.trim());
+      if (changingPassword) {
+        await updateMyPassword(accessToken, currentPassword, personalPassword);
+        setCurrentPassword('');
         setPersonalPassword('');
       }
 
       setProfile(updatedProfile);
       setStatus('idle');
-      setMessage('Dados pessoais atualizados.');
-    } catch {
+      setMessage(
+        changingPassword
+          ? 'Dados pessoais atualizados. Por segurança, as suas outras sessões foram encerradas.'
+          : 'Dados pessoais atualizados.',
+      );
+    } catch (error) {
       setStatus('error');
-      setMessage('Não foi possível atualizar seus dados.');
+      setMessage(
+        error instanceof Error && error.message
+          ? `Não foi possível atualizar seus dados: ${error.message}`
+          : 'Não foi possível atualizar seus dados.',
+      );
     }
   }
 
@@ -199,7 +214,7 @@ export function UserSettingsPage() {
           <h2 className="mt-2 text-lg font-semibold text-surface-900">Dados pessoais</h2>
         </div>
 
-        <form className="mt-5 grid gap-4 md:grid-cols-3" onSubmit={handlePersonalSubmit}>
+        <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={handlePersonalSubmit}>
           <label className="block">
             <span className="text-sm font-medium text-surface-700">Email</span>
             <input
@@ -221,17 +236,34 @@ export function UserSettingsPage() {
           </label>
 
           <label className="block">
+            <span className="text-sm font-medium text-surface-700">Senha atual</span>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              required={Boolean(personalPassword)}
+              autoComplete="current-password"
+              className="mt-2 w-full rounded-2xl border border-brand-100 px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+            />
+          </label>
+
+          <label className="block">
             <span className="text-sm font-medium text-surface-700">Nova senha</span>
             <input
               type="password"
               value={personalPassword}
               onChange={(event) => setPersonalPassword(event.target.value)}
-              minLength={6}
+              minLength={12}
+              maxLength={72}
+              autoComplete="new-password"
               className="mt-2 w-full rounded-2xl border border-brand-100 px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
             />
+            <span className="mt-1 block text-xs text-surface-500">
+              Mínimo de 12 caracteres. Preencha só se quiser trocar a senha.
+            </span>
           </label>
 
-          <div className="md:col-span-3">
+          <div className="md:col-span-2">
             <button
               type="submit"
               disabled={status === 'saving'}
@@ -320,7 +352,7 @@ export function UserSettingsPage() {
                 onChange={(event) => setUserForm({ ...userForm, password: event.target.value })}
                 required={!selectedUser}
                 disabled={Boolean(selectedUser)}
-                minLength={6}
+                minLength={12}
                 className="mt-2 w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-surface-50 disabled:text-surface-500"
               />
             </label>
