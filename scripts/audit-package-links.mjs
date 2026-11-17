@@ -18,6 +18,9 @@ async function walk(directory) {
     const path = join(directory, entry.name);
     // Política e relatórios contêm indicadores inertes, não destinos da aplicação.
     if (['scripts/package-link-policy.json', 'package-link-audit.json'].some(file => path === resolve(project, file))) continue;
+    // deploy/ é gerado por scripts/prepare-deploy.mjs a partir de arquivos já
+    // auditados aqui (as mesmas dependências do node_modules da raiz).
+    if (path === resolve(project, 'deploy')) continue;
     if (entry.isDirectory()) await walk(path);
     else if (entry.isFile() && /\.(?:[cm]?js|[jt]sx?|json|md|markdown|mdown|rst|txt|html|css|yml|yaml|map|svg|xml|sql)$/i.test(entry.name)) {
       checked++;

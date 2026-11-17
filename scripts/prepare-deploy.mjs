@@ -20,6 +20,10 @@ const RUNTIME_PATHS = [
   'api',
   'src/data/kartado-eco/acompanhamento.json',
   'package-lock.json',
+  // Dependências guardadas no repositório (ex.: xlsx). O App Service roda
+  // "npm ci --omit=dev" a cada inicialização e o npm 12 recusa pacotes por
+  // URL (EALLOWREMOTE); o arquivo local precisa estar no pacote.
+  'vendor',
 ];
 
 if (!existsSync(join(root, 'dist', 'index.html'))) {

@@ -65,9 +65,11 @@ jobs:
       - name: Prepare deploy package
         run: node scripts/prepare-deploy.mjs
 
-      # O pacote precisa subir sozinho antes de ir para produção.
-      - name: Smoke test deploy package
-        working-directory: deploy
+      # O pacote precisa subir sozinho antes de ir para produção, do mesmo
+      # jeito que o App Service o inicia: /opt/startup/startup.sh executa
+      # "npm ci --omit=dev && npm start", com npm 12, que recusa pacotes por
+      # URL (EALLOWREMOTE). Roda numa cópia para não alterar o pacote publicado.
+      - name: Smoke test deploy package (como o App Service inicia)
         env:
           PORT: '18080'
           NODE_ENV: production
@@ -76,7 +78,11 @@ jobs:
           DB_USER: smoke
           DB_PASSWORD: smoke
           DB_SSL: 'false'
+          npm_config_allow_remote: none
+          npm_config_allow_git: none
         run: |
+          rm -rf "$RUNNER_TEMP/smoke" && cp -r deploy "$RUNNER_TEMP/smoke" && cd "$RUNNER_TEMP/smoke"
+          npm ci --omit=dev --no-audit --no-fund
           npm start > smoke.log 2>&1 &
           for attempt in $(seq 1 30); do
             if curl -sf -o /dev/null http://127.0.0.1:18080/api/auth/saml/config && curl -sf -o /dev/null http://127.0.0.1:18080/; then
@@ -99,7 +105,9 @@ jobs:
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C9D0CCD4C1644AFC8D0C641B43C80A09 }}
 
       # Confirma que o painel voltou e conversa com o banco (/api/health).
-      # O App Service pode levar alguns minutos para reiniciar: espera até 12 min.
+      # Logo após o deploy, a instância ANTIGA ainda responde 200 enquanto a nova
+      # sobe (foi assim que um deploy quebrado passou como verde). Por isso espera
+      # a troca de instância e exige 3 respostas 200 seguidas, com 20s entre elas.
       - name: Verify deployment health
         if: github.ref == 'refs/heads/azure-migration'
         env:
@@ -108,17 +116,25 @@ jobs:
           # A action devolve a URL com http://; o App Service é "HTTPS only" e
           # responde 301. Consulta direto por HTTPS e segue redirecionamentos.
           APP_URL="https://${APP_URL#*://}"
+          echo "Aguardando 90s para o App Service trocar de instância..."
+          sleep 90
           started=$(date +%s)
-          for attempt in $(seq 1 48); do
+          streak=0
+          for attempt in $(seq 1 40); do
             status=$(curl -sL -o health.json -w '%{http_code}' --max-time 20 "$APP_URL/api/health" || true)
-            elapsed=$(( $(date +%s) - started ))
+            elapsed=$(( $(date +%s) - started + 90 ))
             if [ "$status" = "200" ]; then
-              echo "Painel saudável após ${elapsed}s (tentativa $attempt): $(cat health.json)"
-              echo "::notice::Painel voltou ${elapsed}s após o deploy."
-              exit 0
+              streak=$((streak + 1))
+              echo "Tentativa $attempt (${elapsed}s): HTTP 200 ($streak/3 seguidas)"
+              if [ "$streak" -ge 3 ]; then
+                echo "::notice::Painel estável ${elapsed}s após o deploy: $(cat health.json)"
+                exit 0
+              fi
+            else
+              streak=0
+              echo "Tentativa $attempt (${elapsed}s): HTTP $status; aguardando o App Service..."
             fi
-            echo "Tentativa $attempt (${elapsed}s): HTTP $status; aguardando o App Service reiniciar..."
-            sleep 15
+            sleep 20
           done
-          echo "::error::O painel não respondeu 200 em /api/health 12 minutos após o deploy."
+          echo "::error::O painel não ficou estável (3 respostas 200 seguidas) em até ~15 minutos após o deploy."
           exit 1
