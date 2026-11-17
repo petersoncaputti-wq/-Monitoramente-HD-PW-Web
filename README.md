@@ -29,6 +29,28 @@ Base inicial de um painel front-end para importar planilhas operacionais do Proj
 
 Para sincronizar também as fontes locais antes de iniciar, use `npm run dev:with-sync`.
 
+## Testes e verificação
+
+| Comando | O que faz |
+|---|---|
+| `npm test` | Roda todos os `scripts/test-*.mjs` (testes novos entram automaticamente) |
+| `npm test -- auth saml` | Roda só os testes cujo nome contém `auth` ou `saml` |
+| `npm run typecheck` | Verifica os tipos do frontend (`tsc -b`) |
+| `npm run check:syntax` | Verifica a sintaxe de todo o JavaScript do servidor |
+| `npm run check` | Os três acima, na ordem usada pela CI |
+
+Os testes `test-totvs*.mjs` que exigem exportações reais do TOTVS são ignorados
+pelo `npm test`; rode-os manualmente passando o arquivo, por exemplo
+`node scripts/test-totvs.mjs caminho/do/arquivo.zip`.
+
+### Deploy
+
+Todo push na branch `azure-migration` dispara o workflow do GitHub Actions:
+verificação de dependências, sintaxe, tipos, testes, build, deploy no Azure App
+Service e verificação de `/api/health`. Se qualquer verificação falhar, nada é
+publicado. Executar o workflow manualmente em outra branch roda só as
+verificações e o build, sem deploy.
+
 ## Publicacao na Vercel
 
 1. Importe este repositorio GitHub na Vercel e mantenha o preset `Vite`.

@@ -1,5 +1,10 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
+#
+# Fluxo: push na azure-migration → verificações → build → deploy → saúde.
+# Qualquer falha antes do deploy impede a publicação.
+# Executar manualmente (workflow_dispatch) em outra branch roda só as
+# verificações e o build: o deploy acontece apenas a partir da azure-migration.
 
 name: Build and deploy Node.js app to Azure Web App - monitoramentohdpwdatabase
 
@@ -17,8 +22,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read #This is required for actions/checkout
+    # Registra cada deploy em Settings → Environments → production (histórico e link).
+    environment:
+      name: ${{ github.ref == 'refs/heads/azure-migration' && 'production' || 'verification' }}
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -33,37 +43,17 @@ jobs:
         run: npm ci
 
       - name: Verify dependency URL policy
-        run: npm run test:package-links && npm run audit:package-links
+        run: npm run audit:package-links
 
-      - name: Test Kartado router security
-        run: npm run test:kartado-router
+      - name: Check server syntax
+        run: npm run check:syntax
 
-      - name: Test authentication and user administration
-        run: npm run test:auth
+      - name: Type check frontend
+        run: npm run typecheck
 
-      - name: Test error handling, caches and imports
-        run: npm run test:robustness
-
-      - name: Test platform security (CSP, body limits, xlsx, env)
-        run: npm run test:platform
-
-      - name: Test audit reporting integration
-        run: npm run test:kartado-audit
-
-      - name: Test inventory integration
-        run: npm run test:kartado-inventory
-
-      - name: Test ProjectWise tickets
-        run: npm run test:pw-tickets
-
-      - name: Test proxy IP rate limiting
-        run: npm run test:rate-limit
-
-      - name: Test SAML authentication
-        run: npm run test:saml
-
-      - name: Test TOTVS data and accumulation
-        run: node scripts/test-totvs-data.mjs && node scripts/test-totvs-accumulation.mjs
+      # Roda todos os scripts/test-*.mjs (testes novos entram automaticamente).
+      - name: Run tests
+        run: npm test
 
       - name: Build application
         run: npm run build
@@ -72,9 +62,29 @@ jobs:
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
+        if: github.ref == 'refs/heads/azure-migration'
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'monitoramentohdpwdatabase'
           slot-name: 'Production'
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C9D0CCD4C1644AFC8D0C641B43C80A09 }}
+
+      # Confirma que o painel voltou e conversa com o banco (/api/health).
+      # Falha visível na aba Actions se o deploy deixou o painel fora do ar.
+      - name: Verify deployment health
+        if: github.ref == 'refs/heads/azure-migration'
+        env:
+          APP_URL: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+        run: |
+          for attempt in $(seq 1 20); do
+            status=$(curl -s -o health.json -w '%{http_code}' --max-time 20 "$APP_URL/api/health" || true)
+            if [ "$status" = "200" ]; then
+              echo "Painel saudável na tentativa $attempt: $(cat health.json)"
+              exit 0
+            fi
+            echo "Tentativa $attempt: HTTP $status; aguardando o App Service reiniciar..."
+            sleep 15
+          done
+          echo "::error::O painel não respondeu 200 em /api/health após o deploy."
+          exit 1
