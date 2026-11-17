@@ -37,7 +37,8 @@ Para sincronizar também as fontes locais antes de iniciar, use `npm run dev:wit
 | `npm test -- auth saml` | Roda só os testes cujo nome contém `auth` ou `saml` |
 | `npm run typecheck` | Verifica os tipos do frontend (`tsc -b`) |
 | `npm run check:syntax` | Verifica a sintaxe de todo o JavaScript do servidor |
-| `npm run check` | Os três acima, na ordem usada pela CI |
+| `npm run lint` | ESLint em todo o projeto: erros (bugs prováveis) falham; avisos não bloqueiam |
+| `npm run check` | Sintaxe, lint, tipos e testes, na ordem usada pela CI |
 
 Os testes `test-totvs*.mjs` que exigem exportações reais do TOTVS são ignorados
 pelo `npm test`; rode-os manualmente passando o arquivo, por exemplo

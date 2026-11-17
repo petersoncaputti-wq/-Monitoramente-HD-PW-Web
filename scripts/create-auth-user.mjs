@@ -131,6 +131,7 @@ async function main() {
 
       throw new Error(
         `${profileMessage} Também não foi possível remover o usuário criado: ${rollbackMessage}`,
+        { cause: rollbackError },
       );
     }
 

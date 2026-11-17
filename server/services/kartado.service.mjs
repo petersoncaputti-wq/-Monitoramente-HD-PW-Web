@@ -60,6 +60,7 @@ async function safeFetch(url, options = {}) {
 // Concatenar um caminho sem "/" inicial (ex.: ".evil.com/x") trocaria o host
 // para "api.kartado.com.br.evil.com" e enviaria o token a terceiros.
 export function buildKartadoUrl(base, path, queryString = '') {
+  // eslint-disable-next-line no-control-regex -- recusa de propósito caracteres de controle no caminho
   if (typeof path !== 'string' || !path.startsWith('/') || /[\u0000-\u001f\\]/.test(path)) {
     throw { httpStatus: 400, message: 'Caminho da API Kartado inválido.' };
   }

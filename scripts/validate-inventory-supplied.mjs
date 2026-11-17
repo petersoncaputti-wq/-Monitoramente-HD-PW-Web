@@ -90,8 +90,7 @@ raw = raw.replaceAll('fetch(url,', 'globalThis.__inventoryAuditFetch(url,');
 raw += '\nexport { fetchPages, sem };';
 const collector = await moduleFrom(raw);
 const response = payload => new Response(JSON.stringify(payload), { status: 200 });
-globalThis.__inventoryAuditFetch = async url => {
-  const query = new URL(url).searchParams;
+globalThis.__inventoryAuditFetch = async () => {
   return response({ data: [{ id: 'same', attributes: {} }], meta: { pagination: { count: 2, pages: 2 } } });
 };
 const deduped = await collector.fetchPages('fake', '/Inventory/', { page_size: 1 });

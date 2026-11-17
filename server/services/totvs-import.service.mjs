@@ -93,7 +93,7 @@ export function parseTotvsZip(buffer, reportPeriod, { totvsOnly = false } = {}) 
     catch { text = new TextDecoder('windows-1252').decode(bytes); }
     let rows;
     try { rows = parseCsv(text); }
-    catch (error) { throw new Error(`${name}: ${error.message}`); }
+    catch (error) { throw new Error(`${name}: ${error.message}`, { cause: error }); }
     // Exported blank headers (",") are discarded by parseCsv; named headers remain.
     if (text.replace(/^\uFEFF/, '').split(/\r?\n/)[0].replace(/,/g, '').trim()) rows.shift();
     tables.set(key, rows);
@@ -118,7 +118,7 @@ export function parseTotvsZip(buffer, reportPeriod, { totvsOnly = false } = {}) 
         const count = number(row[0]);
         if (!Number.isSafeInteger(count)) throw new Error('Quantidade de chamados deve ser um número inteiro.');
         categories.push({ label, count });
-      } catch (error) { throw new Error(`${names.categories}, linha ${row.sourceLine}, categoria "${label.trim()}": ${error.message}`); }
+      } catch (error) { throw new Error(`${names.categories}, linha ${row.sourceLine}, categoria "${label.trim()}": ${error.message}`, { cause: error }); }
     }
     return { reportPeriod, sourceUpdatedAt, lists: { categories } };
   }

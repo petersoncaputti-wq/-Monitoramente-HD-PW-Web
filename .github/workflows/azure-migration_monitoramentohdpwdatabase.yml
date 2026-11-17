@@ -48,6 +48,10 @@ jobs:
       - name: Check server syntax
         run: npm run check:syntax
 
+      # Erros (bugs prováveis) falham a CI; avisos aparecem no log sem bloquear.
+      - name: Lint
+        run: npm run lint
+
       - name: Type check frontend
         run: npm run typecheck
 
