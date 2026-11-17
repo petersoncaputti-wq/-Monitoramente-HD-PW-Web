@@ -71,7 +71,7 @@ export function createAuthRouter({
     response.status(204).end();
   });
 
-  router.get('/me', sessions.requireUser, (request, response) => {
+  router.get('/me', sessions.requireUserPendingPasswordOk, (request, response) => {
     response.json({
       profile: publicUser(request.user),
       user: { email: request.user.email, id: request.user.id },
@@ -87,7 +87,7 @@ export function createAuthRouter({
     response.json(publicUser(result.rows[0]));
   });
 
-  router.patch('/password', sessions.requireUser, passwordThrottle, async (request, response) => {
+  router.patch('/password', sessions.requireUserPendingPasswordOk, passwordThrottle, async (request, response) => {
     const currentPassword = String(request.body?.currentPassword ?? '');
     const password = String(request.body?.password ?? '');
 
@@ -112,10 +112,11 @@ export function createAuthRouter({
     const passwordHash = await hashPassword(password);
     await transaction(async (client) => {
       const run = (text, values) => client.query(text, values);
-      await run(`update app_users set password_hash = $1, updated_at = now() where id = $2`, [
-        passwordHash,
-        request.user.id,
-      ]);
+      await run(
+        `update app_users set password_hash = $1, must_change_password = false, updated_at = now()
+          where id = $2`,
+        [passwordHash, request.user.id],
+      );
       // Quem tinha uma sessão aberta (ex.: sessão roubada) perde o acesso.
       await sessions.deleteOtherSessions(request.user.id, getSessionToken(request), run);
     });

@@ -162,6 +162,20 @@ export async function updateAdminUser(
   return adminUsersRequest<UserProfile>('PATCH', input);
 }
 
+export async function resetAdminUserPassword(
+  _accessToken: string,
+  id: string,
+  password: string,
+  requirePasswordChange: boolean,
+): Promise<void> {
+  return parseResponse<void>(
+    await request('/api/admin-users/password', {
+      body: JSON.stringify({ id, password, requirePasswordChange }),
+      method: 'PATCH',
+    }),
+  );
+}
+
 export async function deleteAdminUser(_accessToken: string, id: string): Promise<{ id: string }> {
   return adminUsersRequest<{ id: string }>('DELETE', { id });
 }

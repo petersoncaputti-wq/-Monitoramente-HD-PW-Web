@@ -84,7 +84,7 @@ export function createSessionStore(execute = query) {
     }
 
     const result = await execute(
-      `select u.id, u.email, u.full_name, u.role, u.created_at, u.updated_at
+      `select u.id, u.email, u.full_name, u.role, u.must_change_password, u.created_at, u.updated_at
          from app_sessions s
          join app_users u on u.id = s.user_id
         where s.token_hash = $1
@@ -96,27 +96,53 @@ export function createSessionStore(execute = query) {
     return result.rows[0] ?? null;
   }
 
-  async function requireUser(request, response, next) {
-    try {
-      const user = await authenticateRequest(request);
+  // Enquanto a troca de senha exigida pelo admin estiver pendente, só as rotas
+  // montadas com allowPendingPasswordChange (ex.: /auth/me e /auth/password) atendem.
+  function createRequireUser({ allowPendingPasswordChange = false } = {}) {
+    return async function requireUser(request, response, next) {
+      try {
+        const user = await authenticateRequest(request);
 
-      if (!user) {
-        response.status(401).json({ error: 'Sessão ausente ou expirada.' });
-        return;
+        if (!user) {
+          response.status(401).json({ error: 'Sessão ausente ou expirada.' });
+          return;
+        }
+
+        if (user.must_change_password && !allowPendingPasswordChange) {
+          response.status(403).json({ code: 'PASSWORD_CHANGE_REQUIRED', error: 'Troque a sua senha para continuar.' });
+          return;
+        }
+
+        request.user = user;
+        next();
+      } catch (error) {
+        next(error);
       }
-
-      request.user = user;
-      next();
-    } catch (error) {
-      next(error);
-    }
+    };
   }
 
-  return { authenticateRequest, createSession, deleteOtherSessions, deleteSession, requireUser };
+  const requireUser = createRequireUser();
+  const requireUserPendingPasswordOk = createRequireUser({ allowPendingPasswordChange: true });
+
+  return {
+    authenticateRequest,
+    createSession,
+    deleteOtherSessions,
+    deleteSession,
+    requireUser,
+    requireUserPendingPasswordOk,
+  };
 }
 
 const defaultSessions = createSessionStore();
-export const { authenticateRequest, createSession, deleteOtherSessions, deleteSession, requireUser } = defaultSessions;
+export const {
+  authenticateRequest,
+  createSession,
+  deleteOtherSessions,
+  deleteSession,
+  requireUser,
+  requireUserPendingPasswordOk,
+} = defaultSessions;
 
 export function requireAdmin(request, response, next) {
   if (request.user?.role !== 'admin') {
@@ -159,6 +185,7 @@ export function publicUser(user) {
     email: user.email,
     full_name: user.full_name,
     id: user.id,
+    must_change_password: Boolean(user.must_change_password),
     role: user.role,
     updated_at: user.updated_at,
   };

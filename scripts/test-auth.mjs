@@ -178,6 +178,53 @@ try {
     ).status,
     404,
   );
+  // 8. Admin redefine a senha de quem esqueceu: sem senha atual, encerra as sessões do usuário.
+  const reset = (cookie, body) => call('PATCH', '/admin-users/password', { cookie, body });
+  const RESET_PASSWORD = 'senha-redefinida-pelo-admin';
+  const userSession = await login('usuario@teste.local', ADMIN_PASSWORD);
+  assert.equal(userSession.status, 200);
+  assert.equal((await reset(userSession.cookie, { id: adminId, password: RESET_PASSWORD })).status, 403);
+  assert.equal((await reset(undefined, { id: userId, password: RESET_PASSWORD })).status, 401);
+  assert.equal((await reset(admin2.cookie, { id: 'nao-e-uuid', password: RESET_PASSWORD })).status, 400);
+  assert.equal((await reset(admin2.cookie, { id: userId, password: 'curta' })).status, 400);
+  assert.equal((await reset(admin2.cookie, { id: created.body.id, password: RESET_PASSWORD })).status, 400);
+  assert.equal(
+    (await reset(admin2.cookie, { id: '00000000-0000-4000-8000-000000000000', password: RESET_PASSWORD })).status,
+    404,
+  );
+  assert.equal((await reset(admin2.cookie, { id: userId, password: RESET_PASSWORD })).status, 204);
+  assert.equal((await call('GET', '/auth/me', { cookie: userSession.cookie })).status, 401);
+  assert.equal((await login('usuario@teste.local', ADMIN_PASSWORD)).status, 401);
+  assert.equal((await login('usuario@teste.local', RESET_PASSWORD)).status, 200);
+  assert.equal((await call('GET', '/auth/me', { cookie: admin2.cookie })).status, 200, 'sessão do admin segue válida');
+
+  // 9. "Exigir troca no próximo acesso": só /auth/me e /auth/password atendem até a troca.
+  const TEMP_PASSWORD = 'senha-temporaria-123';
+  const FINAL_PASSWORD = 'senha-escolhida-pelo-usuario';
+  assert.equal(
+    (await reset(admin2.cookie, { id: userId, password: TEMP_PASSWORD, requirePasswordChange: true })).status,
+    204,
+  );
+  const pending = await login('usuario@teste.local', TEMP_PASSWORD);
+  assert.equal(pending.status, 200);
+  assert.equal(pending.body.profile.must_change_password, true);
+  assert.equal((await call('GET', '/auth/me', { cookie: pending.cookie })).body.profile.must_change_password, true);
+  const blocked = await call('GET', '/admin-users', { cookie: pending.cookie });
+  assert.equal(blocked.status, 403);
+  assert.equal(blocked.body.code, 'PASSWORD_CHANGE_REQUIRED');
+  assert.equal(
+    (await call('PATCH', '/auth/me', { cookie: pending.cookie, body: { fullName: 'x' } })).body.code,
+    'PASSWORD_CHANGE_REQUIRED',
+  );
+  assert.equal(
+    (await change(pending.cookie, { currentPassword: TEMP_PASSWORD, password: FINAL_PASSWORD })).status,
+    204,
+  );
+  const afterChange = await call('GET', '/auth/me', { cookie: pending.cookie });
+  assert.equal(afterChange.body.profile.must_change_password, false);
+  assert.equal((await call('PATCH', '/auth/me', { cookie: pending.cookie, body: { fullName: 'x' } })).status, 200);
+  assert.equal((await login('usuario@teste.local', FINAL_PASSWORD)).body.profile.must_change_password, false);
+
   assert.equal((await call('DELETE', '/admin-users', { cookie: admin2.cookie, body: { id: userId } })).status, 200);
   const remainingAdmins = await execute(`select count(*)::int as n from app_users where role = 'admin' and is_active`);
   assert.equal(remainingAdmins.rows[0].n, 1);
@@ -187,5 +234,5 @@ try {
 }
 
 console.log(
-  'Auth: senha atual obrigatória, encerramento de outras sessões, política de senha, tempo constante no login, limpeza de sessões expiradas e proteção do último admin: OK.',
+  'Auth: senha atual obrigatória, encerramento de outras sessões, política de senha, tempo constante no login, limpeza de sessões expiradas, redefinição de senha pelo admin, troca obrigatória no próximo acesso e proteção do último admin: OK.',
 );

@@ -78,6 +78,36 @@ export function createAdminUsersRouter({
     response.json(publicUser(user));
   });
 
+  // Redefinição de senha pelo admin (usuário esqueceu a senha). A própria senha
+  // é trocada em "Minha conta", que exige a senha atual.
+  router.patch('/password', async (request, response) => {
+    const id = String(request.body?.id ?? '').trim();
+    const password = String(request.body?.password ?? '');
+    const requirePasswordChange = request.body?.requirePasswordChange === true;
+    if (!UUID.test(id)) throw new AdminUserError(400, 'ID de usuário inválido.');
+    if (id === request.user.id)
+      throw new AdminUserError(400, 'Para trocar a sua própria senha, use "Minha conta" (exige a senha atual).');
+
+    const policyError = passwordPolicyError(password);
+    if (policyError) throw new AdminUserError(400, policyError);
+
+    const passwordHash = await hashPassword(password);
+    const updated = await transaction(async (client) => {
+      const run = (text, values) => client.query(text, values);
+      const result = await run(
+        `update app_users set password_hash = $1, must_change_password = $2, updated_at = now()
+          where id = $3 returning id`,
+        [passwordHash, requirePasswordChange, id],
+      );
+      // Sessões abertas com a senha antiga deixam de valer.
+      if (result.rows[0]) await run('delete from app_sessions where user_id = $1', [id]);
+      return result.rows[0];
+    });
+
+    if (!updated) throw new AdminUserError(404, 'Usuário não encontrado.');
+    response.status(204).end();
+  });
+
   router.delete('/', async (request, response) => {
     const id = String(request.body?.id ?? '').trim();
     if (!UUID.test(id)) throw new AdminUserError(400, 'ID de usuário inválido.');

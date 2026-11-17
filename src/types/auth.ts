@@ -10,6 +10,8 @@ export interface UserProfile {
   email: string;
   full_name: string | null;
   role: AppRole;
+  /** Senha redefinida pelo admin: o usuário precisa trocá-la antes de usar o painel. */
+  must_change_password?: boolean;
   created_at: string;
   updated_at: string;
 }

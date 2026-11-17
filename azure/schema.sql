@@ -17,6 +17,9 @@ create table if not exists app_users (
   updated_at timestamptz not null default now()
 );
 
+-- Definida quando o admin redefine a senha com "exigir troca no próximo acesso".
+alter table app_users add column if not exists must_change_password boolean not null default false;
+
 create table if not exists app_sessions (
   token_hash text primary key,
   user_id uuid not null references app_users(id) on delete cascade,

@@ -4,6 +4,7 @@ import {
   createAdminUser,
   deleteAdminUser,
   listAdminUserProfiles,
+  resetAdminUserPassword,
   updateAdminUser,
   updateMyPassword,
   updateMyProfile,
@@ -32,6 +33,8 @@ export function UserSettingsPage() {
   const [personalName, setPersonalName] = useState(profile?.full_name ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [personalPassword, setPersonalPassword] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetRequireChange, setResetRequireChange] = useState(true);
   const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
@@ -57,11 +60,15 @@ export function UserSettingsPage() {
   function startCreateUser() {
     setSelectedUserId(null);
     setUserForm(emptyUserForm);
+    setResetPassword('');
+    setResetRequireChange(true);
     setMessage('');
   }
 
   function startEditUser(user: UserProfile) {
     setSelectedUserId(user.id);
+    setResetPassword('');
+    setResetRequireChange(true);
     setUserForm({
       email: user.email,
       fullName: user.full_name ?? '',
@@ -113,6 +120,40 @@ export function UserSettingsPage() {
         error instanceof Error && error.message
           ? `Não foi possível salvar o usuário: ${error.message}`
           : 'Não foi possível salvar o usuário.',
+      );
+    }
+  }
+
+  async function handleResetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!accessToken || !selectedUser || selectedUser.id === profile?.id) {
+      return;
+    }
+
+    if (
+      !window.confirm(`Redefinir a senha de ${selectedUser.email}? As sessões abertas desse usuário serão encerradas.`)
+    ) {
+      return;
+    }
+
+    setStatus('saving');
+    setMessage('');
+
+    try {
+      await resetAdminUserPassword(accessToken, selectedUser.id, resetPassword, resetRequireChange);
+      setResetPassword('');
+      setStatus('idle');
+      setMessage(
+        `Senha de ${selectedUser.email} redefinida. Informe a nova senha ao usuário por um canal seguro.` +
+          (resetRequireChange ? ' O usuário deverá trocá-la no próximo acesso.' : ''),
+      );
+    } catch (error) {
+      setStatus('error');
+      setMessage(
+        error instanceof Error && error.message
+          ? `Não foi possível redefinir a senha: ${error.message}`
+          : 'Não foi possível redefinir a senha.',
       );
     }
   }
@@ -382,6 +423,48 @@ export function UserSettingsPage() {
               ) : null}
             </div>
           </form>
+
+          {selectedUser && selectedUser.id !== profile.id ? (
+            <form
+              className="mt-4 grid gap-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-4 md:grid-cols-4"
+              onSubmit={handleResetPassword}
+            >
+              <label className="block md:col-span-2">
+                <span className="text-sm font-medium text-surface-700">Redefinir senha de {selectedUser.email}</span>
+                <input
+                  type="password"
+                  value={resetPassword}
+                  onChange={(event) => setResetPassword(event.target.value)}
+                  required
+                  minLength={12}
+                  maxLength={72}
+                  autoComplete="new-password"
+                  className="mt-2 w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                />
+                <span className="mt-1 block text-xs text-surface-500">
+                  Mínimo de 12 caracteres. As sessões abertas do usuário serão encerradas.
+                </span>
+              </label>
+              <div className="flex flex-col items-start gap-3 md:col-span-2 md:pt-7">
+                <label className="inline-flex items-center gap-2 text-sm text-surface-700">
+                  <input
+                    type="checkbox"
+                    checked={resetRequireChange}
+                    onChange={(event) => setResetRequireChange(event.target.checked)}
+                    className="h-4 w-4 rounded border-brand-200 text-brand-700 focus:ring-brand-100"
+                  />
+                  Exigir troca de senha no próximo acesso
+                </label>
+                <button
+                  type="submit"
+                  disabled={status === 'saving'}
+                  className="inline-flex items-center justify-center rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {status === 'saving' ? 'Salvando...' : 'Redefinir senha'}
+                </button>
+              </div>
+            </form>
+          ) : null}
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-brand-100">
             <table className="min-w-full divide-y divide-brand-100 text-left text-sm">

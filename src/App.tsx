@@ -1,10 +1,11 @@
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { ForcePasswordChangePage } from '@/pages/ForcePasswordChangePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { BrowserRouter } from 'react-router-dom';
 
 function AuthenticatedApp() {
-  const { status } = useAuth();
+  const { profile, status } = useAuth();
 
   // Prévias visuais sem login: somente no servidor de desenvolvimento, nunca no build.
   if (
@@ -26,6 +27,10 @@ function AuthenticatedApp() {
 
   if (status === 'unauthenticated') {
     return <LoginPage />;
+  }
+
+  if (profile?.must_change_password) {
+    return <ForcePasswordChangePage />;
   }
 
   return <DashboardPage />;
