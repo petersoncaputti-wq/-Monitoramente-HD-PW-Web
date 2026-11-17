@@ -105,9 +105,12 @@ jobs:
         env:
           APP_URL: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
         run: |
+          # A action devolve a URL com http://; o App Service é "HTTPS only" e
+          # responde 301. Consulta direto por HTTPS e segue redirecionamentos.
+          APP_URL="https://${APP_URL#*://}"
           started=$(date +%s)
           for attempt in $(seq 1 48); do
-            status=$(curl -s -o health.json -w '%{http_code}' --max-time 20 "$APP_URL/api/health" || true)
+            status=$(curl -sL -o health.json -w '%{http_code}' --max-time 20 "$APP_URL/api/health" || true)
             elapsed=$(( $(date +%s) - started ))
             if [ "$status" = "200" ]; then
               echo "Painel saudável após ${elapsed}s (tentativa $attempt): $(cat health.json)"
