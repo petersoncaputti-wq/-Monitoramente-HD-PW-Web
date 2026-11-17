@@ -6,11 +6,7 @@ import { PanelShell } from '@/components/PanelShell';
 import { TicketKpiCard } from '@/components/TicketKpiCard';
 import type { TicketRow } from '@/types/monitoring';
 import { formatTicketDate, getTicketDateRange, getTicketsSummary, isClosedStatus } from '@/utils/ticketsKpis';
-import {
-  getDatePeriodPreset,
-  getDefaultDatePeriod,
-  type DatePeriodPreset,
-} from '@/utils/datePeriod';
+import { getDatePeriodPreset, getDefaultDatePeriod, type DatePeriodPreset } from '@/utils/datePeriod';
 
 interface TicketsTabProps {
   rows: TicketRow[];
@@ -70,13 +66,7 @@ function RankingList({
   );
 }
 
-function DistributionBars({
-  emptyText,
-  items,
-}: {
-  emptyText: string;
-  items: Array<{ label: string; count: number }>;
-}) {
+function DistributionBars({ emptyText, items }: { emptyText: string; items: Array<{ label: string; count: number }> }) {
   const total = items.reduce((sum, item) => sum + item.count, 0);
 
   if (total === 0) {
@@ -94,10 +84,7 @@ function DistributionBars({
             </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-brand-50">
-            <div
-              className="h-full rounded-full bg-brand-600"
-              style={{ width: `${(item.count / total) * 100}%` }}
-            />
+            <div className="h-full rounded-full bg-brand-600" style={{ width: `${(item.count / total) * 100}%` }} />
           </div>
         </div>
       ))}
@@ -105,11 +92,7 @@ function DistributionBars({
   );
 }
 
-function MonthlyVolumeChart({
-  items,
-}: {
-  items: Array<{ label: string; opened: number; closed: number }>;
-}) {
+function MonthlyVolumeChart({ items }: { items: Array<{ label: string; opened: number; closed: number }> }) {
   const maxValue = Math.max(...items.flatMap((item) => [item.opened, item.closed]), 1);
 
   if (items.length === 0) {
@@ -119,8 +102,14 @@ function MonthlyVolumeChart({
   return (
     <div>
       <div className="mb-6 flex flex-wrap gap-4 text-xs font-semibold text-surface-700">
-        <span className="inline-flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-brand-600" />Abertos</span>
-        <span className="inline-flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Encerrados</span>
+        <span className="inline-flex items-center gap-2">
+          <i className="h-2.5 w-2.5 rounded-full bg-brand-600" />
+          Abertos
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <i className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          Encerrados
+        </span>
       </div>
       <div className="flex h-56 items-end gap-2 border-b border-brand-100 pb-2 sm:gap-4">
         {items.map((item) => (
@@ -137,7 +126,9 @@ function MonthlyVolumeChart({
                 style={{ height: `${Math.max(item.closed > 0 ? 5 : 0, (item.closed / maxValue) * 100)}%` }}
               />
             </div>
-            <span className="w-full truncate text-center text-[10px] font-medium text-surface-600 sm:text-xs">{item.label}</span>
+            <span className="w-full truncate text-center text-[10px] font-medium text-surface-600 sm:text-xs">
+              {item.label}
+            </span>
           </div>
         ))}
       </div>
@@ -162,13 +153,7 @@ function GaugeCard({
 }) {
   const normalizedValue = Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
   const strokeColor =
-    tone === 'good'
-      ? '#059669'
-      : tone === 'attention'
-        ? '#eab308'
-        : tone === 'warning'
-          ? '#e11d48'
-          : '#64748b';
+    tone === 'good' ? '#059669' : tone === 'attention' ? '#eab308' : tone === 'warning' ? '#e11d48' : '#64748b';
 
   return (
     <article className="flex h-full min-h-[220px] flex-col rounded-[28px] border border-brand-100 bg-white p-6 shadow-soft">
@@ -192,14 +177,14 @@ function GaugeCard({
 function AverageResolutionCard({ value, elapsed = false }: { value: string; elapsed?: boolean }) {
   return (
     <article className="flex h-full min-h-[220px] flex-col rounded-[28px] border border-brand-100 bg-white p-6 shadow-soft">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-        Tempo médio de solução
-      </p>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Tempo médio de solução</p>
       <p className="mt-4 break-words text-[1.75rem] font-semibold leading-tight text-brand-700 md:text-[2.05rem]">
         {value}
       </p>
       <p className="mt-auto pt-4 text-sm leading-6 text-surface-700">
-        {elapsed ? 'Média em horas corridas entre criação e resolução, apenas com datas válidas.' : 'Média em tempo útil entre abertura e encerramento. Acima de 24h, usa dias úteis de 8h.'}
+        {elapsed
+          ? 'Média em horas corridas entre criação e resolução, apenas com datas válidas.'
+          : 'Média em tempo útil entre abertura e encerramento. Acima de 24h, usa dias úteis de 8h.'}
       </p>
     </article>
   );
@@ -214,22 +199,50 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
   const [situationFilter, setSituationFilter] = useState('');
   const [requesterFilter, setRequesterFilter] = useState('');
   const [page, setPage] = useState(1);
-  const normalizeSearch = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+  const normalizeSearch = (value: unknown) =>
+    String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('pt-BR')
+      .trim();
   const filterOptions = useMemo(() => {
-    const values = (key: keyof TicketRow) => Array.from(new Set(rows.map(row => String(row[key] ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const values = (key: keyof TicketRow) =>
+      Array.from(new Set(rows.map((row) => String(row[key] ?? '').trim()).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b, 'pt-BR'),
+      );
     return { requesters: values('Solicitante') };
   }, [rows]);
-  const filteredRows = useMemo(() => detailedTotvs ? filterMgiTickets(rows, mgiFilters, periodStartDate, periodEndDate) : rows, [rows, mgiFilters, detailedTotvs, periodStartDate, periodEndDate]);
-  const detailedRows = useMemo(() => detailedTotvs ? filteredRows.filter(row => {
-    const opened = row.Abertoem.slice(0, 10);
-    const inPeriod = (!periodStartDate || opened >= periodStartDate) && (!periodEndDate || opened <= periodEndDate);
-    const closed = isClosedStatus(row.Status);
-    const matchesSituation = !situationFilter || (situationFilter === 'pending' ? !closed : closed);
-    const searchable = normalizeSearch([row['Caso n.º'], row.Resumo, row.Status, row.Organizaçãodosolicitante, row.Solicitante].join(' '));
-    return inPeriod && matchesSituation
-      && (!requesterFilter || String(row.Solicitante ?? '').trim() === requesterFilter)
-      && normalizeSearch(search).split(/\s+/).filter(Boolean).every(term => searchable.includes(term));
-  }).sort((a, b) => b.Abertoem.localeCompare(a.Abertoem)) : [], [rows, detailedTotvs, periodStartDate, periodEndDate, search, situationFilter, requesterFilter, filteredRows]);
+  const filteredRows = useMemo(
+    () => (detailedTotvs ? filterMgiTickets(rows, mgiFilters, periodStartDate, periodEndDate) : rows),
+    [rows, mgiFilters, detailedTotvs, periodStartDate, periodEndDate],
+  );
+  const detailedRows = useMemo(
+    () =>
+      detailedTotvs
+        ? filteredRows
+            .filter((row) => {
+              const opened = row.Abertoem.slice(0, 10);
+              const inPeriod =
+                (!periodStartDate || opened >= periodStartDate) && (!periodEndDate || opened <= periodEndDate);
+              const closed = isClosedStatus(row.Status);
+              const matchesSituation = !situationFilter || (situationFilter === 'pending' ? !closed : closed);
+              const searchable = normalizeSearch(
+                [row['Caso n.º'], row.Resumo, row.Status, row.Organizaçãodosolicitante, row.Solicitante].join(' '),
+              );
+              return (
+                inPeriod &&
+                matchesSituation &&
+                (!requesterFilter || String(row.Solicitante ?? '').trim() === requesterFilter) &&
+                normalizeSearch(search)
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .every((term) => searchable.includes(term))
+              );
+            })
+            .sort((a, b) => b.Abertoem.localeCompare(a.Abertoem))
+        : [],
+    [rows, detailedTotvs, periodStartDate, periodEndDate, search, situationFilter, requesterFilter, filteredRows],
+  );
   useEffect(() => setPage(1), [detailedRows]);
   const pages = Math.max(1, Math.ceil(detailedRows.length / 50));
   const visiblePage = Math.min(page, pages);
@@ -249,10 +262,7 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
       }),
     [periodEndDate, periodStartDate, filteredRows, detailedTotvs],
   );
-  const defaultTicketPeriod = useMemo(
-    () => getDefaultDatePeriod(dateRange?.maxDate),
-    [dateRange?.maxDate],
-  );
+  const defaultTicketPeriod = useMemo(() => getDefaultDatePeriod(dateRange?.maxDate), [dateRange?.maxDate]);
   const isUsingLatestTicketMonth =
     defaultTicketPeriod.usedLatestAvailableMonth &&
     periodStartDate === defaultTicketPeriod.startDate &&
@@ -284,14 +294,22 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
   }
 
   function exportFilteredTickets() {
-    const sheet = XLSX.utils.json_to_sheet(detailedRows.map(row => ({
-      Chamado: row['Caso n.º'], Descrição: row.Resumo || '', Status: row.Status,
-      Criação: formatTicketDate(row.Abertoem), Resolução: row.Fechadoem ? formatTicketDate(row.Fechadoem) : '',
-      Organização: row.Organizaçãodosolicitante || '', Solicitante: row.Solicitante || '',
-      Grupo: row.Grupoatribuído || '', Prioridade: row.Prioridade || '',
-      Origem: row.Origem || '', 'Resolvido por': row.AgenteAtribuído || '',
-    })));
-    sheet['!cols'] = [18, 80, 20, 22, 22, 40, 35, 35, 20, 25, 35].map(wch => ({ wch }));
+    const sheet = XLSX.utils.json_to_sheet(
+      detailedRows.map((row) => ({
+        Chamado: row['Caso n.º'],
+        Descrição: row.Resumo || '',
+        Status: row.Status,
+        Criação: formatTicketDate(row.Abertoem),
+        Resolução: row.Fechadoem ? formatTicketDate(row.Fechadoem) : '',
+        Organização: row.Organizaçãodosolicitante || '',
+        Solicitante: row.Solicitante || '',
+        Grupo: row.Grupoatribuído || '',
+        Prioridade: row.Prioridade || '',
+        Origem: row.Origem || '',
+        'Resolvido por': row.AgenteAtribuído || '',
+      })),
+    );
+    sheet['!cols'] = [18, 80, 20, 22, 22, 40, 35, 35, 20, 25, 35].map((wch) => ({ wch }));
     sheet['!autofilter'] = { ref: sheet['!ref'] || 'A1:K1' };
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, sheet, 'Chamados filtrados');
@@ -302,7 +320,11 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
     <div className="flex flex-col gap-6">
       <PanelShell
         title="Chamados"
-        description={detailedTotvs ? 'Indicadores do recorte importado. Pendentes representam o status na exportação, entre os chamados criados no período.' : 'Indicadores de atendimento, SLA, categorias e distribuição por organização.'}
+        description={
+          detailedTotvs
+            ? 'Indicadores do recorte importado. Pendentes representam o status na exportação, entre os chamados criados no período.'
+            : 'Indicadores de atendimento, SLA, categorias e distribuição por organização.'
+        }
       >
         <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,180px)] sm:items-end">
           <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
@@ -328,7 +350,6 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
               className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
-
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -355,7 +376,21 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
           </p>
         ) : null}
 
-        {detailedTotvs && <MgiTicketFilters rows={rows} filters={mgiFilters} onChange={setMgiFilters} onClear={() => { setMgiFilters(emptyMgiFilters()); setPeriodStartDate(''); setPeriodEndDate(''); setSearch(''); setSituationFilter(''); setRequesterFilter(''); }} />}
+        {detailedTotvs && (
+          <MgiTicketFilters
+            rows={rows}
+            filters={mgiFilters}
+            onChange={setMgiFilters}
+            onClear={() => {
+              setMgiFilters(emptyMgiFilters());
+              setPeriodStartDate('');
+              setPeriodEndDate('');
+              setSearch('');
+              setSituationFilter('');
+              setRequesterFilter('');
+            }}
+          />
+        )}
         <div className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <TicketKpiCard
             title="Chamados abertos"
@@ -365,24 +400,40 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
           <TicketKpiCard
             title="Chamados encerrados"
             value={String(summary.closedInPeriod)}
-            helperText={detailedTotvs ? 'Fechados ou resolvidos entre os chamados filtrados' : 'Fechados ou resolvidos dentro do período'}
+            helperText={
+              detailedTotvs
+                ? 'Fechados ou resolvidos entre os chamados filtrados'
+                : 'Fechados ou resolvidos dentro do período'
+            }
             tone="good"
           />
           <TicketKpiCard
             title="Chamados não finalizados"
             value={String(summary.pendingTickets)}
-            helperText={detailedTotvs ? 'Criados no período e não finalizados na última importação.' : 'Status ainda não finalizados'}
+            helperText={
+              detailedTotvs
+                ? 'Criados no período e não finalizados na última importação.'
+                : 'Status ainda não finalizados'
+            }
             tone="attention"
           />
-          {detailedTotvs ? <TicketKpiCard title="Mediana de solução" value={summary.medianResolutionTime} helperText="Metade dos chamados filtrados foi resolvida em até esse tempo. Horas corridas, com datas válidas." /> : <GaugeCard
-            title="SLA"
-            value={summary.slaComplianceValue}
-            valueLabel={summary.slaCompliancePercentage}
-            maxLabel="100%"
-            helperText={`${slaLevel} · ${summary.inSla} dentro do SLA em ${summary.slaApplicableTickets} chamados aplicáveis`}
-            variant="segmented"
-            tone={slaTone}
-          />}
+          {detailedTotvs ? (
+            <TicketKpiCard
+              title="Mediana de solução"
+              value={summary.medianResolutionTime}
+              helperText="Metade dos chamados filtrados foi resolvida em até esse tempo. Horas corridas, com datas válidas."
+            />
+          ) : (
+            <GaugeCard
+              title="SLA"
+              value={summary.slaComplianceValue}
+              valueLabel={summary.slaCompliancePercentage}
+              maxLabel="100%"
+              helperText={`${slaLevel} · ${summary.inSla} dentro do SLA em ${summary.slaApplicableTickets} chamados aplicáveis`}
+              variant="segmented"
+              tone={slaTone}
+            />
+          )}
           <AverageResolutionCard value={summary.averageResolutionTime} elapsed={detailedTotvs} />
         </div>
       </PanelShell>
@@ -391,7 +442,11 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
         <div className="xl:col-span-2">
           <PanelShell
             title="Evolução dos chamados"
-            description={detailedTotvs ? 'Aberturas e resoluções dos chamados filtrados por mês (até os últimos 12 meses).' : 'Aberturas e encerramentos por mês no período selecionado (até os últimos 12 meses).'}
+            description={
+              detailedTotvs
+                ? 'Aberturas e resoluções dos chamados filtrados por mês (até os últimos 12 meses).'
+                : 'Aberturas e encerramentos por mês no período selecionado (até os últimos 12 meses).'
+            }
           >
             <MonthlyVolumeChart items={summary.monthlyVolume} />
           </PanelShell>
@@ -402,10 +457,7 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
           description="Situação dos chamados registrados dentro do período."
           tone="soft"
         >
-          <DistributionBars
-            emptyText="Nenhum status encontrado no período."
-            items={summary.statusBreakdown}
-          />
+          <DistributionBars emptyText="Nenhum status encontrado no período." items={summary.statusBreakdown} />
         </PanelShell>
       </div>
 
@@ -423,15 +475,16 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
           description={`Distribuição dos encerrados. Mediana: ${summary.medianResolutionTime}.`}
           tone="soft"
         >
-          <DistributionBars
-            emptyText="Nenhum chamado encerrado no período."
-            items={summary.resolutionTimeBuckets}
-          />
+          <DistributionBars emptyText="Nenhum chamado encerrado no período." items={summary.resolutionTimeBuckets} />
         </PanelShell>
 
         <PanelShell
           title={detailedTotvs ? 'Organizações solicitantes' : 'Motivos'}
-          description={detailedTotvs ? 'Organizações dos chamados abertos no período.' : 'Maiores motivos entre os chamados abertos no período.'}
+          description={
+            detailedTotvs
+              ? 'Organizações dos chamados abertos no período.'
+              : 'Maiores motivos entre os chamados abertos no período.'
+          }
           tone="soft"
         >
           <RankingList
@@ -442,30 +495,130 @@ export function TicketsTab({ rows, detailedTotvs = false }: TicketsTabProps) {
         </PanelShell>
       </div>
 
-      {detailedTotvs && <PanelShell title="Lista de chamados" description="Chamados criados no período selecionado. Os filtros abaixo afetam somente esta lista.">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
-          <label className="min-w-0 sm:col-span-2 lg:col-span-6 flex flex-col gap-2 text-sm font-medium text-surface-700">Buscar chamado<input className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300" value={search} onChange={event => setSearch(event.target.value)} placeholder="Número, descrição ou solicitante" type="search" /></label>
-          <label className="min-w-0 lg:col-span-3 flex flex-col gap-2 text-sm font-medium text-surface-700">Situação<select className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={situationFilter} onChange={event => { setSituationFilter(event.target.value); }}><option value="">Todas as situações</option><option value="pending">Não finalizados</option><option value="closed">Finalizados</option></select></label>
-          <label className="min-w-0 lg:col-span-6 flex flex-col gap-2 text-sm font-medium text-surface-700">Solicitante<select className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm" value={requesterFilter} onChange={event => setRequesterFilter(event.target.value)}><option value="">Todos os solicitantes</option>{filterOptions.requesters.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
-        </div>
-        <div className="mt-4 flex flex-col gap-4 border-t border-brand-100 pt-4 xl:flex-row xl:items-center xl:justify-between">
-        <p className="min-w-0 flex-1 text-sm text-surface-600" role="status">{detailedRows.length} chamado(s) encontrado(s). Pendentes: status diferente de Fechado e Resolvido na exportação.</p>
-          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
-          <button type="button" onClick={() => { setSearch(''); setSituationFilter(''); setRequesterFilter(''); }} className="min-h-11 w-full rounded-xl border border-brand-100 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:w-auto">Limpar filtros da lista</button>
-        <button type="button" onClick={exportFilteredTickets} disabled={!detailedRows.length} className="min-h-11 w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 sm:w-auto disabled:cursor-not-allowed disabled:opacity-50">Exportar filtrados em Excel ({detailedRows.length})</button>
+      {detailedTotvs && (
+        <PanelShell
+          title="Lista de chamados"
+          description="Chamados criados no período selecionado. Os filtros abaixo afetam somente esta lista."
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+            <label className="min-w-0 sm:col-span-2 lg:col-span-6 flex flex-col gap-2 text-sm font-medium text-surface-700">
+              Buscar chamado
+              <input
+                className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Número, descrição ou solicitante"
+                type="search"
+              />
+            </label>
+            <label className="min-w-0 lg:col-span-3 flex flex-col gap-2 text-sm font-medium text-surface-700">
+              Situação
+              <select
+                className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm"
+                value={situationFilter}
+                onChange={(event) => {
+                  setSituationFilter(event.target.value);
+                }}
+              >
+                <option value="">Todas as situações</option>
+                <option value="pending">Não finalizados</option>
+                <option value="closed">Finalizados</option>
+              </select>
+            </label>
+            <label className="min-w-0 lg:col-span-6 flex flex-col gap-2 text-sm font-medium text-surface-700">
+              Solicitante
+              <select
+                className="h-11 w-full min-w-0 rounded-2xl border border-brand-100 bg-white px-3 text-sm"
+                value={requesterFilter}
+                onChange={(event) => setRequesterFilter(event.target.value)}
+              >
+                <option value="">Todos os solicitantes</option>
+                {filterOptions.requesters.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-        </div>
-        <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm">
-          <thead><tr className="border-b border-brand-100">{['Chamado', 'Descrição', 'Status', 'Criação', 'Resolução', 'Organização'].map(label => <th key={label} scope="col" className="p-3">{label}</th>)}</tr></thead>
-          <tbody>{detailedRows.slice((visiblePage - 1) * 50, visiblePage * 50).map(row => <tr key={row['Caso n.º']} className="border-b border-brand-100">
-            <th scope="row" className="p-3 font-medium">{row['Caso n.º']}</th><td className="max-w-sm whitespace-pre-wrap break-words p-3">{row.Resumo || 'Não informado'}</td><td className="p-3">{row.Status}</td><td className="whitespace-nowrap p-3">{formatTicketDate(row.Abertoem)}</td><td className="whitespace-nowrap p-3">{formatTicketDate(row.Fechadoem)}</td><td className="p-3">{row.Organizaçãodosolicitante || 'Não informada'}</td>
-          </tr>)}</tbody>
-        </table></div>
-        {!detailedRows.length && <p className="py-5 text-sm text-surface-700">Nenhum chamado encontrado.</p>}
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm"><span>{detailedRows.length} chamados · Página {visiblePage} de {pages}</span><button type="button" disabled={visiblePage <= 1} onClick={() => setPage(visiblePage - 1)} className="rounded-xl border border-brand-100 px-3 py-2 disabled:opacity-50">Anterior</button><button type="button" disabled={visiblePage >= pages} onClick={() => setPage(visiblePage + 1)} className="rounded-xl border border-brand-100 px-3 py-2 disabled:opacity-50">Próxima</button></div>
-      </PanelShell>}
-
+          <div className="mt-4 flex flex-col gap-4 border-t border-brand-100 pt-4 xl:flex-row xl:items-center xl:justify-between">
+            <p className="min-w-0 flex-1 text-sm text-surface-600" role="status">
+              {detailedRows.length} chamado(s) encontrado(s). Pendentes: status diferente de Fechado e Resolvido na
+              exportação.
+            </p>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setSituationFilter('');
+                  setRequesterFilter('');
+                }}
+                className="min-h-11 w-full rounded-xl border border-brand-100 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:w-auto"
+              >
+                Limpar filtros da lista
+              </button>
+              <button
+                type="button"
+                onClick={exportFilteredTickets}
+                disabled={!detailedRows.length}
+                className="min-h-11 w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 sm:w-auto disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Exportar filtrados em Excel ({detailedRows.length})
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-brand-100">
+                  {['Chamado', 'Descrição', 'Status', 'Criação', 'Resolução', 'Organização'].map((label) => (
+                    <th key={label} scope="col" className="p-3">
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {detailedRows.slice((visiblePage - 1) * 50, visiblePage * 50).map((row) => (
+                  <tr key={row['Caso n.º']} className="border-b border-brand-100">
+                    <th scope="row" className="p-3 font-medium">
+                      {row['Caso n.º']}
+                    </th>
+                    <td className="max-w-sm whitespace-pre-wrap break-words p-3">{row.Resumo || 'Não informado'}</td>
+                    <td className="p-3">{row.Status}</td>
+                    <td className="whitespace-nowrap p-3">{formatTicketDate(row.Abertoem)}</td>
+                    <td className="whitespace-nowrap p-3">{formatTicketDate(row.Fechadoem)}</td>
+                    <td className="p-3">{row.Organizaçãodosolicitante || 'Não informada'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!detailedRows.length && <p className="py-5 text-sm text-surface-700">Nenhum chamado encontrado.</p>}
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
+            <span>
+              {detailedRows.length} chamados · Página {visiblePage} de {pages}
+            </span>
+            <button
+              type="button"
+              disabled={visiblePage <= 1}
+              onClick={() => setPage(visiblePage - 1)}
+              className="rounded-xl border border-brand-100 px-3 py-2 disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              disabled={visiblePage >= pages}
+              onClick={() => setPage(visiblePage + 1)}
+              className="rounded-xl border border-brand-100 px-3 py-2 disabled:opacity-50"
+            >
+              Próxima
+            </button>
+          </div>
+        </PanelShell>
+      )}
     </div>
   );
 }
-

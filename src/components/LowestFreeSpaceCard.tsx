@@ -10,21 +10,15 @@ const TONE_STYLES: Record<LowestFreeSpaceResult['tone'], string> = {
   attention: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
-export function LowestFreeSpaceCard({
-  lowestFreeSpace,
-}: LowestFreeSpaceCardProps) {
+export function LowestFreeSpaceCard({ lowestFreeSpace }: LowestFreeSpaceCardProps) {
   const statusStyles =
-    lowestFreeSpace.status === 'invalid'
-      ? 'border-amber-200 bg-amber-50'
-      : 'border-brand-100 bg-white';
+    lowestFreeSpace.status === 'invalid' ? 'border-amber-200 bg-amber-50' : 'border-brand-100 bg-white';
 
   return (
     <article className={`kpi-card ${statusStyles}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="kpi-card-title">
-            Menor espaço livre
-          </p>
+          <p className="kpi-card-title">Menor espaço livre</p>
           <KpiInfoIcon tooltipKey="lowestFreeSpace" />
         </div>
         <span
@@ -33,11 +27,8 @@ export function LowestFreeSpaceCard({
           Mínimo
         </span>
       </div>
-      <p className="kpi-card-value text-amber-700">
-        {lowestFreeSpace.value}
-      </p>
+      <p className="kpi-card-value text-amber-700">{lowestFreeSpace.value}</p>
       <p className="kpi-card-helper">{lowestFreeSpace.helperText}</p>
     </article>
   );
 }
-

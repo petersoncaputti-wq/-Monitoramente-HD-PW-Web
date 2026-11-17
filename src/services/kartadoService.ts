@@ -70,9 +70,7 @@ export interface KartadoDashboard {
 }
 
 export async function loadKartadoCompanies(): Promise<KartadoCompany[]> {
-  const result = await request<{ success: boolean; companies: KartadoCompany[]; error?: string }>(
-    '/companies',
-  );
+  const result = await request<{ success: boolean; companies: KartadoCompany[]; error?: string }>('/companies');
   if (!result.success) throw new Error(result.error || 'Concessões Kartado indisponíveis.');
   return result.companies || [];
 }

@@ -10,9 +10,17 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   {
     ignores: [
-      'dist/', 'deploy/', 'node_modules/', 'vendor/', 'output/', 'exports/', 'tmp/', 'public/',
+      'dist/',
+      'deploy/',
+      'node_modules/',
+      'vendor/',
+      'output/',
+      'exports/',
+      'tmp/',
+      'public/',
       // Gerados pelo `tsc -b` a partir do vite.config.ts.
-      'vite.config.js', 'vite.config.d.ts',
+      'vite.config.js',
+      'vite.config.d.ts',
     ],
   },
 

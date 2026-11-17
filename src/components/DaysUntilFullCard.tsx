@@ -30,9 +30,7 @@ function getYearsEstimateLabel(value: string): string | null {
     return `~ ${years} ${years === 1 ? 'ano' : 'anos'}`;
   }
 
-  return `~ ${years} ${years === 1 ? 'ano' : 'anos'} e ${months} ${
-    months === 1 ? 'mes' : 'meses'
-  }`;
+  return `~ ${years} ${years === 1 ? 'ano' : 'anos'} e ${months} ${months === 1 ? 'mes' : 'meses'}`;
 }
 
 const TONE_STYLES: Record<DaysUntilFullResult['tone'], string> = {
@@ -45,9 +43,7 @@ const TONE_STYLES: Record<DaysUntilFullResult['tone'], string> = {
 export function DaysUntilFullCard({ daysUntilFull }: DaysUntilFullCardProps) {
   const yearsEstimateLabel = getYearsEstimateLabel(daysUntilFull.value);
   const statusStyles =
-    daysUntilFull.status === 'invalid'
-      ? 'border-amber-200 bg-amber-50'
-      : 'border-brand-100 bg-white';
+    daysUntilFull.status === 'invalid' ? 'border-amber-200 bg-amber-50' : 'border-brand-100 bg-white';
 
   const badgeLabel =
     daysUntilFull.tone === 'critical'
@@ -62,9 +58,7 @@ export function DaysUntilFullCard({ daysUntilFull }: DaysUntilFullCardProps) {
     <article className={`kpi-card ${statusStyles}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="kpi-card-title">
-            Dias até esgotar
-          </p>
+          <p className="kpi-card-title">Dias até esgotar</p>
           <KpiInfoIcon tooltipKey="daysUntilFull" />
         </div>
         <span
@@ -73,14 +67,9 @@ export function DaysUntilFullCard({ daysUntilFull }: DaysUntilFullCardProps) {
           {badgeLabel}
         </span>
       </div>
-      <p className="kpi-card-value text-brand-700">
-        {daysUntilFull.value}
-      </p>
-      {yearsEstimateLabel ? (
-        <p className="mt-2 text-sm font-medium text-surface-700">{yearsEstimateLabel}</p>
-      ) : null}
+      <p className="kpi-card-value text-brand-700">{daysUntilFull.value}</p>
+      {yearsEstimateLabel ? <p className="mt-2 text-sm font-medium text-surface-700">{yearsEstimateLabel}</p> : null}
       <p className="kpi-card-helper">{daysUntilFull.helperText}</p>
     </article>
   );
 }
-

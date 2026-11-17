@@ -15,9 +15,7 @@ class AdminUserError extends Error {
 // Bloqueia (FOR UPDATE) os admins ativos: duas alterações simultâneas não
 // conseguem, juntas, deixar o sistema sem administrador.
 async function assertKeepsAnAdmin(run, targetId) {
-  const admins = await run(
-    `select id from app_users where role = 'admin' and is_active = true order by id for update`,
-  );
+  const admins = await run(`select id from app_users where role = 'admin' and is_active = true order by id for update`);
   const targetIsAdmin = admins.rows.some((row) => row.id === targetId);
   if (targetIsAdmin && admins.rows.length <= 1) throw new AdminUserError(409, LAST_ADMIN_ERROR);
 }
@@ -37,7 +35,9 @@ export function createAdminUsersRouter({
   });
 
   router.post('/', async (request, response) => {
-    const email = String(request.body?.email ?? '').trim().toLowerCase();
+    const email = String(request.body?.email ?? '')
+      .trim()
+      .toLowerCase();
     const fullName = String(request.body?.fullName ?? '').trim() || null;
     const password = String(request.body?.password ?? '');
     const role = request.body?.role === 'admin' ? 'admin' : 'user';

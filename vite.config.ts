@@ -53,77 +53,67 @@ function sourceSyncPlugin(): Plugin {
         {
           fallbackMessage: 'Fonte de armazenamento sincronizada.',
           route: '/api/sync-storage',
-          scriptPath: fileURLToPath(
-            new URL('./scripts/sync-storage-source.mjs', import.meta.url),
-          ),
+          scriptPath: fileURLToPath(new URL('./scripts/sync-storage-source.mjs', import.meta.url)),
         },
         {
           fallbackMessage: 'Fonte de chamados sincronizada.',
           route: '/api/sync-tickets',
-          scriptPath: fileURLToPath(
-            new URL('./scripts/sync-tickets-source.mjs', import.meta.url),
-          ),
+          scriptPath: fileURLToPath(new URL('./scripts/sync-tickets-source.mjs', import.meta.url)),
         },
         {
           fallbackMessage: 'Fonte de usuários PW atualizada.',
           route: '/api/sync-pw-users',
-          scriptPath: fileURLToPath(
-            new URL('./scripts/export-pw-users-to-xlsx.mjs', import.meta.url),
-          ),
+          scriptPath: fileURLToPath(new URL('./scripts/export-pw-users-to-xlsx.mjs', import.meta.url)),
         },
         {
           fallbackMessage: 'Fonte de usuários do Portal Bentley atualizada.',
           route: '/api/sync-portal-users',
-          scriptPath: fileURLToPath(
-            new URL('./scripts/sync-portal-users-source.mjs', import.meta.url),
-          ),
+          scriptPath: fileURLToPath(new URL('./scripts/sync-portal-users-source.mjs', import.meta.url)),
         },
       ];
 
       for (const config of routes) {
         const { route } = config;
         server.middlewares.use(route, (request, response) => {
-        if (request.method !== 'POST') {
-          response.statusCode = 405;
-          response.setHeader('Content-Type', 'application/json');
-          response.end(JSON.stringify({ error: 'Método não permitido.' }));
-          return;
-        }
-
-        execFile(process.execPath, [config.scriptPath], (error, stdout, stderr) => {
-          response.setHeader('Content-Type', 'application/json');
-
-          if (error) {
-            response.statusCode = 500;
-            response.end(
-              JSON.stringify({
-                error: stderr.trim() || stdout.trim() || error.message,
-              }),
-            );
+          if (request.method !== 'POST') {
+            response.statusCode = 405;
+            response.setHeader('Content-Type', 'application/json');
+            response.end(JSON.stringify({ error: 'Método não permitido.' }));
             return;
           }
 
-          response.statusCode = 200;
+          execFile(process.execPath, [config.scriptPath], (error, stdout, stderr) => {
+            response.setHeader('Content-Type', 'application/json');
 
-          const output = stdout.trim();
-          let sync;
+            if (error) {
+              response.statusCode = 500;
+              response.end(
+                JSON.stringify({
+                  error: stderr.trim() || stdout.trim() || error.message,
+                }),
+              );
+              return;
+            }
 
-          try {
-            sync = output ? JSON.parse(output) : null;
-          } catch {
-            sync = null;
-          }
+            response.statusCode = 200;
 
-          response.end(
-            JSON.stringify({
-              message: sync
-                ? config.fallbackMessage
-                : output || config.fallbackMessage,
-              sync,
-            }),
-          );
+            const output = stdout.trim();
+            let sync;
+
+            try {
+              sync = output ? JSON.parse(output) : null;
+            } catch {
+              sync = null;
+            }
+
+            response.end(
+              JSON.stringify({
+                message: sync ? config.fallbackMessage : output || config.fallbackMessage,
+                sync,
+              }),
+            );
+          });
         });
-      });
       }
     },
   };
@@ -183,9 +173,7 @@ function localAdminUsersApiPlugin(): Plugin {
 
       server.middlewares.use('/api/pw-users-import', async (request, response) => {
         try {
-          const { handleProjectWiseUsersImportRequest } = await import(
-            './api/pw-users-import.mjs'
-          );
+          const { handleProjectWiseUsersImportRequest } = await import('./api/pw-users-import.mjs');
           const result = await handleProjectWiseUsersImportRequest({
             body: await readJsonBody(request),
             headers: request.headers,
@@ -245,4 +233,3 @@ export default defineConfig({
     },
   },
 });
-

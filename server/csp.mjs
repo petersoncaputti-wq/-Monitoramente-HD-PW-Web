@@ -58,7 +58,15 @@ function summarize(report) {
 
 export function createCspReportRouter({ log = console.warn } = {}) {
   const router = Router();
-  router.use(rateLimit({ windowMs: 60_000, limit: 30, keyGenerator: clientIpKeyGenerator, standardHeaders: 'draft-7', legacyHeaders: false }));
+  router.use(
+    rateLimit({
+      windowMs: 60_000,
+      limit: 30,
+      keyGenerator: clientIpKeyGenerator,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+    }),
+  );
   router.post('/', express.json({ type: REPORT_TYPES, limit: '16kb' }), (request, response) => {
     const reports = Array.isArray(request.body) ? request.body.slice(0, 10) : [request.body];
     for (const report of reports) log('[CSP] violação', summarize(report));

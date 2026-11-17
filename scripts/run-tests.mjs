@@ -19,7 +19,9 @@ const NEEDS_FIXTURES = new Map([
 ]);
 
 const filters = process.argv.slice(2);
-const all = readdirSync(scriptsDir).filter((name) => /^test-.+\.mjs$/.test(name)).sort();
+const all = readdirSync(scriptsDir)
+  .filter((name) => /^test-.+\.mjs$/.test(name))
+  .sort();
 const selected = all.filter((name) => !filters.length || filters.some((filter) => name.includes(filter)));
 const skipped = selected.filter((name) => NEEDS_FIXTURES.has(name));
 const tests = selected.filter((name) => !NEEDS_FIXTURES.has(name));
@@ -34,9 +36,16 @@ function run(name) {
     const started = Date.now();
     const child = spawn(process.execPath, [join(scriptsDir, name)], { stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';
-    child.stdout.on('data', (chunk) => { output += chunk; });
-    child.stderr.on('data', (chunk) => { output += chunk; });
-    const timer = setTimeout(() => { output += `\nTempo limite de ${TIMEOUT_MS / 1000}s excedido.`; child.kill(); }, TIMEOUT_MS);
+    child.stdout.on('data', (chunk) => {
+      output += chunk;
+    });
+    child.stderr.on('data', (chunk) => {
+      output += chunk;
+    });
+    const timer = setTimeout(() => {
+      output += `\nTempo limite de ${TIMEOUT_MS / 1000}s excedido.`;
+      child.kill();
+    }, TIMEOUT_MS);
     child.on('close', (code) => {
       clearTimeout(timer);
       resolve({ name, ok: code === 0, output, seconds: ((Date.now() - started) / 1000).toFixed(1) });
@@ -49,14 +58,24 @@ for (const name of tests) {
   const result = await run(name);
   results.push(result);
   const lastLine = result.output.trim().split(/\r?\n/).pop() ?? '';
-  console.log(`${result.ok ? 'PASS' : 'FAIL'} ${name} (${result.seconds}s)${result.ok ? ` — ${lastLine.slice(0, 120)}` : ''}`);
-  if (!result.ok) console.log(result.output.split(/\r?\n/).map((line) => `     ${line}`).join('\n'));
+  console.log(
+    `${result.ok ? 'PASS' : 'FAIL'} ${name} (${result.seconds}s)${result.ok ? ` — ${lastLine.slice(0, 120)}` : ''}`,
+  );
+  if (!result.ok)
+    console.log(
+      result.output
+        .split(/\r?\n/)
+        .map((line) => `     ${line}`)
+        .join('\n'),
+    );
 }
 
 for (const name of skipped) console.log(`SKIP ${name} — requer ${NEEDS_FIXTURES.get(name)}`);
 
 const failed = results.filter((result) => !result.ok);
-console.log(`\n${results.length - failed.length}/${results.length} testes passaram${skipped.length ? `, ${skipped.length} ignorados (exigem arquivos)` : ''}.`);
+console.log(
+  `\n${results.length - failed.length}/${results.length} testes passaram${skipped.length ? `, ${skipped.length} ignorados (exigem arquivos)` : ''}.`,
+);
 if (failed.length) {
   console.log(`Falharam: ${failed.map((result) => result.name).join(', ')}`);
   process.exit(1);

@@ -4,37 +4,119 @@ import { createPool } from '../server/db.mjs';
 
 const TABLES = {
   storage_imports: [
-    'id', 'file_name', 'file_hash', 'rows_read', 'rows_imported', 'status', 'error_message', 'imported_at',
+    'id',
+    'file_name',
+    'file_hash',
+    'rows_read',
+    'rows_imported',
+    'status',
+    'error_message',
+    'imported_at',
   ],
   storage_readings: [
-    'id', 'import_id', 'reading_date', 'reading_time', 'observed_at', 'computer', 'unit', 'total_gb',
-    'used_gb', 'free_gb', 'percent_used', 'percent_free', 'created_at', 'updated_at',
+    'id',
+    'import_id',
+    'reading_date',
+    'reading_time',
+    'observed_at',
+    'computer',
+    'unit',
+    'total_gb',
+    'used_gb',
+    'free_gb',
+    'percent_used',
+    'percent_free',
+    'created_at',
+    'updated_at',
   ],
   tickets: [
-    'id', 'case_number', 'status', 'reason', 'opened_at', 'updated_at', 'closed_at',
-    'requester', 'requester_organization', 'assigned_agent', 'assigned_to', 'assigned_group', 'ticket_type',
-    'sla_status', 'beneficiary_organization', 'requested_for', 'created_at', 'updated_at_system',
+    'id',
+    'case_number',
+    'status',
+    'reason',
+    'opened_at',
+    'updated_at',
+    'closed_at',
+    'requester',
+    'requester_organization',
+    'assigned_agent',
+    'assigned_to',
+    'assigned_group',
+    'ticket_type',
+    'sla_status',
+    'beneficiary_organization',
+    'requested_for',
+    'created_at',
+    'updated_at_system',
   ],
   pw_user_imports: [
-    'id', 'source_kind', 'file_name', 'file_hash', 'rows_read', 'rows_imported', 'status', 'error_message',
+    'id',
+    'source_kind',
+    'file_name',
+    'file_hash',
+    'rows_read',
+    'rows_imported',
+    'status',
+    'error_message',
     'imported_at',
   ],
   pw_explorer_users: [
-    'id', 'import_id', 'nome', 'email', 'pw_id', 'data_criacao', 'descricao', 'ultimo_acesso', 'status',
-    'status_acesso', 'status_projectwise', 'elegivel_exclusao', 'motivo', 'acao_executada', 'resultado',
-    'raw_data', 'created_at', 'updated_at',
+    'id',
+    'import_id',
+    'nome',
+    'email',
+    'pw_id',
+    'data_criacao',
+    'descricao',
+    'ultimo_acesso',
+    'status',
+    'status_acesso',
+    'status_projectwise',
+    'elegivel_exclusao',
+    'motivo',
+    'acao_executada',
+    'resultado',
+    'raw_data',
+    'created_at',
+    'updated_at',
   ],
   pw_portal_users: [
-    'id', 'import_id', 'email', 'communication_email', 'first_name', 'middle_name', 'last_name',
-    'profile_country', 'language', 'entitlement_country', 'entitlement_groups', 'cost_allocation_group',
-    'user_management_groups', 'roles', 'global_fulfillment_contact', 'fulfillment_contact_countries',
-    'city', 'company_name', 'job_title', 'locked', 'profile_creation_date', 'last_login_date', 'mfa',
-    'raw_data', 'created_at', 'updated_at',
+    'id',
+    'import_id',
+    'email',
+    'communication_email',
+    'first_name',
+    'middle_name',
+    'last_name',
+    'profile_country',
+    'language',
+    'entitlement_country',
+    'entitlement_groups',
+    'cost_allocation_group',
+    'user_management_groups',
+    'roles',
+    'global_fulfillment_contact',
+    'fulfillment_contact_countries',
+    'city',
+    'company_name',
+    'job_title',
+    'locked',
+    'profile_creation_date',
+    'last_login_date',
+    'mfa',
+    'raw_data',
+    'created_at',
+    'updated_at',
   ],
 };
 
 const INSERT_ORDER = [
-  'storage_imports', 'storage_readings', 'tickets', 'pw_user_imports', 'pw_explorer_users', 'pw_portal_users',
+  'storage_imports',
+  'storage_readings',
+  'tickets',
+  'pw_user_imports',
+  'pw_explorer_users',
+  'pw_portal_users',
 ];
 
 function required(name) {
@@ -82,10 +164,7 @@ async function insertRows(client, table, columns, rows) {
       });
       return `(${placeholders.join(',')})`;
     });
-    await client.query(
-      `insert into ${table} (${columns.join(',')}) values ${tuples.join(',')}`,
-      values,
-    );
+    await client.query(`insert into ${table} (${columns.join(',')}) values ${tuples.join(',')}`, values);
   }
 }
 
@@ -105,7 +184,10 @@ for (const [table, columns] of Object.entries(TABLES)) {
 
 const pool = createPool({ migration: true });
 const client = await pool.connect();
-const backupSchema = `backup_${new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14)}`;
+const backupSchema = `backup_${new Date()
+  .toISOString()
+  .replace(/[-:TZ.]/g, '')
+  .slice(0, 14)}`;
 
 try {
   await client.query('begin');

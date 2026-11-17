@@ -1,8 +1,5 @@
 import { Router } from 'express';
-import {
-  getContentHash as getStorageHash,
-  parseStorageCsv,
-} from '../../api/storage-import.mjs';
+import { getContentHash as getStorageHash, parseStorageCsv } from '../../api/storage-import.mjs';
 import {
   assertRequiredHeaders,
   getContentHash as getWorkbookHash,
@@ -10,12 +7,7 @@ import {
   mapPortalRow,
   readWorkbookRows,
 } from '../../api/pw-users-import.mjs';
-import {
-  assertE365Headers,
-  getE365ContentHash,
-  mapE365Row,
-  readE365Rows,
-} from '../../api/e365-import.mjs';
+import { assertE365Headers, getE365ContentHash, mapE365Row, readE365Rows } from '../../api/e365-import.mjs';
 import { requireAdmin, requireUser } from '../auth.mjs';
 import { query, withTransaction } from '../db.mjs';
 import { badRequest } from '../http-error.mjs';
@@ -50,15 +42,14 @@ async function insertRows(client, table, columns, rows, suffix = '') {
     const chunk = rows.slice(start, start + chunkSize);
     const values = [];
     const tuples = chunk.map((row, rowIndex) => {
-      return `(${columns.map((column, columnIndex) => {
-        values.push(row[column] ?? null);
-        return `$${rowIndex * columns.length + columnIndex + 1}`;
-      }).join(',')})`;
+      return `(${columns
+        .map((column, columnIndex) => {
+          values.push(row[column] ?? null);
+          return `$${rowIndex * columns.length + columnIndex + 1}`;
+        })
+        .join(',')})`;
     });
-    await client.query(
-      `insert into ${table} (${columns.join(',')}) values ${tuples.join(',')} ${suffix}`,
-      values,
-    );
+    await client.query(`insert into ${table} (${columns.join(',')}) values ${tuples.join(',')} ${suffix}`, values);
   }
 }
 
@@ -81,8 +72,17 @@ router.post('/storage', async (request, response) => {
     const importId = imported.rows[0].id;
     const mapped = rows.map((row) => ({ ...row, import_id: importId }));
     const columns = [
-      'import_id','reading_date','reading_time','observed_at','computer','unit','total_gb','used_gb',
-      'free_gb','percent_used','percent_free',
+      'import_id',
+      'reading_date',
+      'reading_time',
+      'observed_at',
+      'computer',
+      'unit',
+      'total_gb',
+      'used_gb',
+      'free_gb',
+      'percent_used',
+      'percent_free',
     ];
     await insertRows(
       client,
@@ -125,10 +125,53 @@ router.post('/pw-users', async (request, response) => {
     );
     const importId = imported.rows[0].id;
     const table = sourceKind === 'explorer' ? 'pw_explorer_users' : 'pw_portal_users';
-    const mapped = rows.map((row) => sourceKind === 'explorer' ? mapExplorerRow(row, importId) : mapPortalRow(row, importId));
-    const columns = sourceKind === 'explorer'
-      ? ['import_id','nome','email','pw_id','data_criacao','descricao','ultimo_acesso','status','status_acesso','status_projectwise','elegivel_exclusao','motivo','acao_executada','resultado','raw_data']
-      : ['import_id','email','communication_email','first_name','middle_name','last_name','profile_country','language','entitlement_country','entitlement_groups','cost_allocation_group','user_management_groups','roles','global_fulfillment_contact','fulfillment_contact_countries','city','company_name','job_title','locked','profile_creation_date','last_login_date','mfa','raw_data'];
+    const mapped = rows.map((row) =>
+      sourceKind === 'explorer' ? mapExplorerRow(row, importId) : mapPortalRow(row, importId),
+    );
+    const columns =
+      sourceKind === 'explorer'
+        ? [
+            'import_id',
+            'nome',
+            'email',
+            'pw_id',
+            'data_criacao',
+            'descricao',
+            'ultimo_acesso',
+            'status',
+            'status_acesso',
+            'status_projectwise',
+            'elegivel_exclusao',
+            'motivo',
+            'acao_executada',
+            'resultado',
+            'raw_data',
+          ]
+        : [
+            'import_id',
+            'email',
+            'communication_email',
+            'first_name',
+            'middle_name',
+            'last_name',
+            'profile_country',
+            'language',
+            'entitlement_country',
+            'entitlement_groups',
+            'cost_allocation_group',
+            'user_management_groups',
+            'roles',
+            'global_fulfillment_contact',
+            'fulfillment_contact_countries',
+            'city',
+            'company_name',
+            'job_title',
+            'locked',
+            'profile_creation_date',
+            'last_login_date',
+            'mfa',
+            'raw_data',
+          ];
     await client.query(`delete from ${table}`);
     await insertRows(client, table, columns, mapped);
     await client.query('update pw_user_imports set rows_imported=$1 where id=$2', [rows.length, importId]);
@@ -190,9 +233,23 @@ router.post('/e365', async (request, response) => {
     const mapped = [...mappedByKey.values()];
     const replacedQuarters = [...new Set(mapped.map((row) => row.usage_quarter))];
     const columns = [
-      'import_id','ultimate_id','account_name','country_iso','product_id','product_name',
-      'connection_status','ims_id','persona_email','usage_date','usage_quarter','usage_interval',
-      'currency','gross_amount','net_amount','exported_at','raw_data',
+      'import_id',
+      'ultimate_id',
+      'account_name',
+      'country_iso',
+      'product_id',
+      'product_name',
+      'connection_status',
+      'ims_id',
+      'persona_email',
+      'usage_date',
+      'usage_quarter',
+      'usage_interval',
+      'currency',
+      'gross_amount',
+      'net_amount',
+      'exported_at',
+      'raw_data',
     ];
     await client.query('delete from e365_usage where usage_quarter = any($1::text[])', [replacedQuarters]);
     await insertRows(
@@ -231,10 +288,7 @@ router.delete('/e365', async (request, response) => {
   }
 
   const result = await withTransaction(async (client) => {
-    const deleted = await client.query(
-      'delete from e365_usage where usage_quarter=$1 returning id',
-      [usageQuarter],
-    );
+    const deleted = await client.query('delete from e365_usage where usage_quarter=$1 returning id', [usageQuarter]);
     await client.query(
       `delete from e365_imports imports
        where not exists (select 1 from e365_usage usage where usage.import_id=imports.id)`,

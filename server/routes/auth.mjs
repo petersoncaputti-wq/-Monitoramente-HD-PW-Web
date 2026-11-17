@@ -42,7 +42,9 @@ export function createAuthRouter({
   const router = Router();
 
   router.post('/login', loginThrottle, async (request, response) => {
-    const email = String(request.body?.email ?? '').trim().toLowerCase();
+    const email = String(request.body?.email ?? '')
+      .trim()
+      .toLowerCase();
     const password = String(request.body?.password ?? '');
 
     if (!email || !password) {
@@ -78,10 +80,10 @@ export function createAuthRouter({
 
   router.patch('/me', sessions.requireUser, async (request, response) => {
     const fullName = String(request.body?.fullName ?? '').trim() || null;
-    const result = await execute(
-      `update app_users set full_name = $1, updated_at = now() where id = $2 returning *`,
-      [fullName, request.user.id],
-    );
+    const result = await execute(`update app_users set full_name = $1, updated_at = now() where id = $2 returning *`, [
+      fullName,
+      request.user.id,
+    ]);
     response.json(publicUser(result.rows[0]));
   });
 
@@ -110,10 +112,10 @@ export function createAuthRouter({
     const passwordHash = await hashPassword(password);
     await transaction(async (client) => {
       const run = (text, values) => client.query(text, values);
-      await run(
-        `update app_users set password_hash = $1, updated_at = now() where id = $2`,
-        [passwordHash, request.user.id],
-      );
+      await run(`update app_users set password_hash = $1, updated_at = now() where id = $2`, [
+        passwordHash,
+        request.user.id,
+      ]);
       // Quem tinha uma sessão aberta (ex.: sessão roubada) perde o acesso.
       await sessions.deleteOtherSessions(request.user.id, getSessionToken(request), run);
     });

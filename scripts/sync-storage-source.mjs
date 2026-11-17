@@ -108,9 +108,7 @@ if (!statSync(resolvedSourcePath).isFile()) {
 const extension = extname(resolvedSourcePath).toLowerCase();
 
 if (!['.xlsx', '.xls', '.csv', '.xml'].includes(extension)) {
-  console.error(
-    `[storage-sync] Formato não suportado: ${extension}. Use .xlsx, .xls, .csv ou .xml.`,
-  );
+  console.error(`[storage-sync] Formato não suportado: ${extension}. Use .xlsx, .xls, .csv ou .xml.`);
   process.exit(1);
 }
 

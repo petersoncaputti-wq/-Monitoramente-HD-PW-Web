@@ -64,9 +64,7 @@ function parseWorkbookBuffer(buffer: ArrayBuffer, fileName: string): ImportedWor
   ) as Array<MonitoringRow | ProjectWiseUserRow | ProjectWiseWebUserRow | TicketRow>;
 
   if (kind === 'unknown') {
-    console.warn(
-      'A planilha foi lida, mas os cabeçalhos esperados não foram encontrados integralmente.',
-    );
+    console.warn('A planilha foi lida, mas os cabeçalhos esperados não foram encontrados integralmente.');
   }
 
   return {
@@ -77,17 +75,12 @@ function parseWorkbookBuffer(buffer: ArrayBuffer, fileName: string): ImportedWor
   };
 }
 
-export async function readMonitoringWorkbook(
-  file: File,
-): Promise<ImportedWorkbookData> {
+export async function readMonitoringWorkbook(file: File): Promise<ImportedWorkbookData> {
   const buffer = await file.arrayBuffer();
   return parseWorkbookBuffer(buffer, file.name);
 }
 
-export async function readMonitoringWorkbookFromUrl(
-  url: string,
-  fileName?: string,
-): Promise<ImportedWorkbookData> {
+export async function readMonitoringWorkbookFromUrl(url: string, fileName?: string): Promise<ImportedWorkbookData> {
   const response = await fetch(url, {
     cache: 'no-store',
   });

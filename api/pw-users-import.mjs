@@ -89,7 +89,9 @@ async function assertAdmin(headers) {
 }
 
 function normalizeHeader(value) {
-  const compactHeader = String(value ?? '').trim().replace(/\s+/g, '');
+  const compactHeader = String(value ?? '')
+    .trim()
+    .replace(/\s+/g, '');
   const aliasKey = compactHeader
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -146,8 +148,7 @@ export function readWorkbookRows(buffer) {
 
 export function assertRequiredHeaders(rows, sourceKind) {
   const headers = new Set(Object.keys(rows[0] ?? {}).map(normalizeHeader));
-  const requiredHeaders =
-    sourceKind === 'explorer' ? EXPLORER_REQUIRED_HEADERS : PORTAL_REQUIRED_HEADERS;
+  const requiredHeaders = sourceKind === 'explorer' ? EXPLORER_REQUIRED_HEADERS : PORTAL_REQUIRED_HEADERS;
   const missingHeaders = requiredHeaders.filter((header) => !headers.has(header));
 
   if (missingHeaders.length > 0) {
@@ -272,9 +273,7 @@ async function importProjectWiseUsers(body, caller) {
   });
 
   const mappedRows = rows.map((row) =>
-    sourceKind === 'explorer'
-      ? mapExplorerRow(row, importRecord.id)
-      : mapPortalRow(row, importRecord.id),
+    sourceKind === 'explorer' ? mapExplorerRow(row, importRecord.id) : mapPortalRow(row, importRecord.id),
   );
   const rowsImported = await insertInChunks(table, mappedRows);
 

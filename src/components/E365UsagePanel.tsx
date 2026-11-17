@@ -38,12 +38,7 @@ function formatCompactNumber(value: number) {
   }).format(value);
 }
 
-function E365EvolutionChart({
-  currency,
-  onSelectQuarter,
-  selectedQuarter,
-  summaries,
-}: E365EvolutionChartProps) {
+function E365EvolutionChart({ currency, onSelectQuarter, selectedQuarter, summaries }: E365EvolutionChartProps) {
   const width = 1000;
   const height = 340;
   const padding = { bottom: 52, left: 82, right: 70, top: 28 };
@@ -63,8 +58,12 @@ function E365EvolutionChart({
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-medium text-surface-700">
-        <span className="inline-flex items-center gap-2"><span className="h-3 w-3 bg-brand-600" /> Gasto do quarter</span>
-        <span className="inline-flex items-center gap-2"><span className="h-0.5 w-5 bg-cyan-600" /> Usuários faturados</span>
+        <span className="inline-flex items-center gap-2">
+          <span className="h-3 w-3 bg-brand-600" /> Gasto do quarter
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="h-0.5 w-5 bg-cyan-600" /> Usuários faturados
+        </span>
         <span className="text-surface-500">Clique em um quarter para selecioná-lo</span>
       </div>
       <div className="overflow-x-auto">
@@ -78,32 +77,107 @@ function E365EvolutionChart({
             const y = padding.top + chartHeight - chartHeight * ratio;
             return (
               <g key={ratio}>
-                <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#dce8df" strokeDasharray="4 5" />
-                <text x={padding.left - 12} y={y + 4} textAnchor="end" fontSize="12" fill="#5f7464">{formatCompactNumber(maxSpend * ratio)}</text>
-                <text x={width - padding.right + 12} y={y + 4} textAnchor="start" fontSize="12" fill="#5f7464">{Math.round(maxUsers * ratio)}</text>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={width - padding.right}
+                  y2={y}
+                  stroke="#dce8df"
+                  strokeDasharray="4 5"
+                />
+                <text x={padding.left - 12} y={y + 4} textAnchor="end" fontSize="12" fill="#5f7464">
+                  {formatCompactNumber(maxSpend * ratio)}
+                </text>
+                <text x={width - padding.right + 12} y={y + 4} textAnchor="start" fontSize="12" fill="#5f7464">
+                  {Math.round(maxUsers * ratio)}
+                </text>
               </g>
             );
           })}
-          <text x="18" y={height / 2} transform={`rotate(-90 18 ${height / 2})`} textAnchor="middle" fontSize="12" fontWeight="600" fill="#365844">Gasto ({currency})</text>
-          <text x={width - 14} y={height / 2} transform={`rotate(90 ${width - 14} ${height / 2})`} textAnchor="middle" fontSize="12" fontWeight="600" fill="#365844">Usuários</text>
+          <text
+            x="18"
+            y={height / 2}
+            transform={`rotate(-90 18 ${height / 2})`}
+            textAnchor="middle"
+            fontSize="12"
+            fontWeight="600"
+            fill="#365844"
+          >
+            Gasto ({currency})
+          </text>
+          <text
+            x={width - 14}
+            y={height / 2}
+            transform={`rotate(90 ${width - 14} ${height / 2})`}
+            textAnchor="middle"
+            fontSize="12"
+            fontWeight="600"
+            fill="#365844"
+          >
+            Usuários
+          </text>
 
           {points.map(({ item, x }) => {
             const barHeight = (item.spend / maxSpend) * chartHeight;
             const selected = item.quarter === selectedQuarter;
             return (
               <g key={item.quarter} onClick={() => onSelectQuarter(item.quarter)} className="cursor-pointer">
-                {selected ? <rect x={x - slotWidth / 2 + 4} y={padding.top - 8} width={slotWidth - 8} height={chartHeight + 34} rx="4" fill="#edf7ee" /> : null}
-                <rect x={x - barWidth / 2} y={padding.top + chartHeight - barHeight} width={barWidth} height={barHeight} rx="3" fill={selected ? '#056b28' : '#3f8458'}>
+                {selected ? (
+                  <rect
+                    x={x - slotWidth / 2 + 4}
+                    y={padding.top - 8}
+                    width={slotWidth - 8}
+                    height={chartHeight + 34}
+                    rx="4"
+                    fill="#edf7ee"
+                  />
+                ) : null}
+                <rect
+                  x={x - barWidth / 2}
+                  y={padding.top + chartHeight - barHeight}
+                  width={barWidth}
+                  height={barHeight}
+                  rx="3"
+                  fill={selected ? '#056b28' : '#3f8458'}
+                >
                   <title>{`${formatE365Quarter(item.quarter)} · ${formatE365QuarterPeriod(item.quarter)}\nGasto: ${formatE365Currency(item.spend, currency)}\nUsuários faturados: ${item.users}\nCusto médio: ${formatE365Currency(item.users ? item.spend / item.users : 0, currency)}`}</title>
                 </rect>
-                <text x={x} y={height - 22} textAnchor="middle" fontSize="13" fontWeight={selected ? '700' : '500'} fill={selected ? '#056b28' : '#365844'}>{formatE365Quarter(item.quarter)}</text>
+                <text
+                  x={x}
+                  y={height - 22}
+                  textAnchor="middle"
+                  fontSize="13"
+                  fontWeight={selected ? '700' : '500'}
+                  fill={selected ? '#056b28' : '#365844'}
+                >
+                  {formatE365Quarter(item.quarter)}
+                </text>
               </g>
             );
           })}
 
-          {summaries.length > 1 ? <polyline points={linePoints} fill="none" stroke="#0891b2" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" /> : null}
+          {summaries.length > 1 ? (
+            <polyline
+              points={linePoints}
+              fill="none"
+              stroke="#0891b2"
+              strokeWidth="3"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          ) : null}
           {points.map(({ item, x, userY }) => (
-            <circle key={`user-${item.quarter}`} cx={x} cy={userY} r={item.quarter === selectedQuarter ? 7 : 5} fill="#0891b2" stroke="white" strokeWidth="3" className="cursor-pointer" onClick={() => onSelectQuarter(item.quarter)}>
+            <circle
+              key={`user-${item.quarter}`}
+              cx={x}
+              cy={userY}
+              r={item.quarter === selectedQuarter ? 7 : 5}
+              fill="#0891b2"
+              stroke="white"
+              strokeWidth="3"
+              className="cursor-pointer"
+              onClick={() => onSelectQuarter(item.quarter)}
+            >
               <title>{`${formatE365Quarter(item.quarter)} · ${formatE365QuarterPeriod(item.quarter)}: ${item.users} usuários faturados`}</title>
             </circle>
           ))}
@@ -139,25 +213,27 @@ export function E365UsagePanel({
   const summary = summaries.find((item) => item.quarter === effectiveQuarter);
   const currency = rows.find((row) => String(row.UsageQuarter).trim() === effectiveQuarter)?.Currency || 'BRL';
   const comparison = useMemo(
-    () => getE365RegistrationComparison(
-      portalRows,
-      rows.filter((row) => String(row.UsageQuarter).trim() === effectiveQuarter),
-    ),
+    () =>
+      getE365RegistrationComparison(
+        portalRows,
+        rows.filter((row) => String(row.UsageQuarter).trim() === effectiveQuarter),
+      ),
     [effectiveQuarter, portalRows, rows],
   );
   const comparedUsers = useMemo(() => {
-    const source = billingListFilter === 'portal'
-      ? comparison.portalBilledUsers
-      : billingListFilter === 'outside'
-        ? comparison.billedOutsidePortalUsers
-        : [...comparison.portalBilledUsers, ...comparison.billedOutsidePortalUsers];
+    const source =
+      billingListFilter === 'portal'
+        ? comparison.portalBilledUsers
+        : billingListFilter === 'outside'
+          ? comparison.billedOutsidePortalUsers
+          : [...comparison.portalBilledUsers, ...comparison.billedOutsidePortalUsers];
     const term = searchTerm.trim().toLocaleLowerCase('pt-BR');
     return source
       .filter((user) => !term || user.email.toLocaleLowerCase('pt-BR').includes(term))
       .sort((a, b) => a.email.localeCompare(b.email, 'pt-BR'));
   }, [billingListFilter, comparison, searchTerm]);
   const comparisonTotal = comparison.portalUsers + comparison.billedOutsidePortal;
-  const comparisonBarWidth = (value: number) => comparisonTotal ? (value / comparisonTotal) * 100 : 0;
+  const comparisonBarWidth = (value: number) => (comparisonTotal ? (value / comparisonTotal) * 100 : 0);
 
   useEffect(() => {
     if (initialRows.length > 0) setRows(initialRows);
@@ -242,19 +318,25 @@ export function E365UsagePanel({
 
   if (portalRows.length === 0 && isLocalPreview) {
     return (
-      <PanelShell
-        title="Base operacional"
-        description="Comece pela base oficial de usuários exportada do Portal PW."
-      >
+      <PanelShell title="Base operacional" description="Comece pela base oficial de usuários exportada do Portal PW.">
         <div className="flex min-h-[220px] flex-col items-center justify-center border-y border-brand-100 px-5 py-10 text-center">
           <p className="text-lg font-semibold text-surface-900">Importe os usuários do Portal PW</p>
           <p className="mt-2 max-w-xl text-sm leading-6 text-surface-700">
             Essa base define o total de usuários cadastrados no sistema. O arquivo é processado somente nesta sessão.
           </p>
-          <label htmlFor={portalInputId} className="mt-5 inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-600">
+          <label
+            htmlFor={portalInputId}
+            className="mt-5 inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-600"
+          >
             {isImportingPortal ? 'Importando...' : 'Selecionar arquivo do Portal PW'}
           </label>
-          <input id={portalInputId} type="file" accept=".csv,.xls,.xlsx" onChange={handlePortalFile} className="sr-only" />
+          <input
+            id={portalInputId}
+            type="file"
+            accept=".csv,.xls,.xlsx"
+            onChange={handlePortalFile}
+            className="sr-only"
+          />
           {errorMessage ? <p className="mt-4 text-sm font-medium text-rose-700">{errorMessage}</p> : null}
         </div>
       </PanelShell>
@@ -267,16 +349,60 @@ export function E365UsagePanel({
         <PanelShell title="Base operacional" description="Indicadores da base oficial importada do Portal PW.">
           {portalCards}
           <div className="mt-5 flex flex-col gap-3 border-t border-brand-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-surface-600">{portalFileName ? `Fonte local: ${portalFileName}` : 'Fonte carregada automaticamente pelo painel'}</p>
-            {isLocalPreview ? <><label htmlFor={portalInputId} className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">Substituir arquivo do Portal</label><input id={portalInputId} type="file" accept=".csv,.xls,.xlsx" onChange={handlePortalFile} className="sr-only" /></> : null}
+            <p className="text-xs text-surface-600">
+              {portalFileName ? `Fonte local: ${portalFileName}` : 'Fonte carregada automaticamente pelo painel'}
+            </p>
+            {isLocalPreview ? (
+              <>
+                <label
+                  htmlFor={portalInputId}
+                  className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
+                >
+                  Substituir arquivo do Portal
+                </label>
+                <input
+                  id={portalInputId}
+                  type="file"
+                  accept=".csv,.xls,.xlsx"
+                  onChange={handlePortalFile}
+                  className="sr-only"
+                />
+              </>
+            ) : null}
           </div>
         </PanelShell>
 
-        <PanelShell title="Uso e faturamento E365" description="Adicione os dados trimestrais depois de validar a base cadastrada.">
+        <PanelShell
+          title="Uso e faturamento E365"
+          description="Adicione os dados trimestrais depois de validar a base cadastrada."
+        >
           <div className="flex min-h-[190px] flex-col items-center justify-center border-y border-brand-100 px-5 py-9 text-center">
             <p className="text-lg font-semibold text-surface-900">Agora importe o E365 Usage Data</p>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-surface-700">O arquivo acrescenta usuários faturados, aplicações e gastos por quarter.</p>
-            {canManage && isLocalPreview ? <><label htmlFor={e365InputId} className="mt-5 inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-600">{isImporting ? 'Importando...' : 'Selecionar arquivos E365'}</label><input id={e365InputId} type="file" multiple accept=".csv,.xls,.xlsx" onChange={handleFiles} className="sr-only" /></> : <p className="mt-4 text-sm font-medium text-surface-600">Nenhum dado E365 foi publicado. A importação fica na área de fontes acima.</p>}
+            <p className="mt-2 max-w-xl text-sm leading-6 text-surface-700">
+              O arquivo acrescenta usuários faturados, aplicações e gastos por quarter.
+            </p>
+            {canManage && isLocalPreview ? (
+              <>
+                <label
+                  htmlFor={e365InputId}
+                  className="mt-5 inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-600"
+                >
+                  {isImporting ? 'Importando...' : 'Selecionar arquivos E365'}
+                </label>
+                <input
+                  id={e365InputId}
+                  type="file"
+                  multiple
+                  accept=".csv,.xls,.xlsx"
+                  onChange={handleFiles}
+                  className="sr-only"
+                />
+              </>
+            ) : (
+              <p className="mt-4 text-sm font-medium text-surface-600">
+                Nenhum dado E365 foi publicado. A importação fica na área de fontes acima.
+              </p>
+            )}
             {errorMessage ? <p className="mt-4 text-sm font-medium text-rose-700">{errorMessage}</p> : null}
           </div>
         </PanelShell>
@@ -289,8 +415,26 @@ export function E365UsagePanel({
       <PanelShell title="Base operacional" description="Indicadores da base oficial importada do Portal PW.">
         {portalCards}
         <div className="mt-5 flex flex-col gap-3 border-t border-brand-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-surface-600">{portalFileName ? `Fonte local: ${portalFileName}` : 'Fonte carregada automaticamente pelo painel'}</p>
-          {isLocalPreview ? <><label htmlFor={portalInputId} className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">Substituir arquivo do Portal</label><input id={portalInputId} type="file" accept=".csv,.xls,.xlsx" onChange={handlePortalFile} className="sr-only" /></> : null}
+          <p className="text-xs text-surface-600">
+            {portalFileName ? `Fonte local: ${portalFileName}` : 'Fonte carregada automaticamente pelo painel'}
+          </p>
+          {isLocalPreview ? (
+            <>
+              <label
+                htmlFor={portalInputId}
+                className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
+              >
+                Substituir arquivo do Portal
+              </label>
+              <input
+                id={portalInputId}
+                type="file"
+                accept=".csv,.xls,.xlsx"
+                onChange={handlePortalFile}
+                className="sr-only"
+              />
+            </>
+          ) : null}
         </div>
       </PanelShell>
 
@@ -303,34 +447,96 @@ export function E365UsagePanel({
         />
       </PanelShell>
 
-      <PanelShell title="Uso e faturamento E365" description="Usuários faturados e gastos do programa E365 por quarter.">
+      <PanelShell
+        title="Uso e faturamento E365"
+        description="Usuários faturados e gastos do programa E365 por quarter."
+      >
         <div className="flex flex-col gap-4 border-b border-brand-100 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
               Quarter
-              <select value={effectiveQuarter} onChange={(event) => setSelectedQuarter(event.target.value)} className="h-11 min-w-[290px] rounded-lg border border-brand-100 bg-white px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100">
-                {summaries.map((item) => <option key={item.quarter} value={item.quarter}>{formatE365Quarter(item.quarter)} · {formatE365QuarterPeriod(item.quarter)}</option>)}
+              <select
+                value={effectiveQuarter}
+                onChange={(event) => setSelectedQuarter(event.target.value)}
+                className="h-11 min-w-[290px] rounded-lg border border-brand-100 bg-white px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              >
+                {summaries.map((item) => (
+                  <option key={item.quarter} value={item.quarter}>
+                    {formatE365Quarter(item.quarter)} · {formatE365QuarterPeriod(item.quarter)}
+                  </option>
+                ))}
               </select>
             </label>
-            {canManage && isLocalPreview ? <><label htmlFor={e365InputId} className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-100">
-              {isImporting ? 'Importando...' : 'Adicionar arquivo'}
-            </label>
-            <input id={e365InputId} type="file" multiple accept=".csv,.xls,.xlsx" onChange={handleFiles} className="sr-only" />
-            {isLocalPreview ? <button type="button" onClick={() => { setRows([]); setFileNames([]); setSelectedQuarter(''); setSearchTerm(''); }} className="h-11 px-3 text-sm font-semibold text-surface-700 transition hover:text-brand-700">Limpar dados</button> : null}</> : null}
+            {canManage && isLocalPreview ? (
+              <>
+                <label
+                  htmlFor={e365InputId}
+                  className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
+                >
+                  {isImporting ? 'Importando...' : 'Adicionar arquivo'}
+                </label>
+                <input
+                  id={e365InputId}
+                  type="file"
+                  multiple
+                  accept=".csv,.xls,.xlsx"
+                  onChange={handleFiles}
+                  className="sr-only"
+                />
+                {isLocalPreview ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRows([]);
+                      setFileNames([]);
+                      setSelectedQuarter('');
+                      setSearchTerm('');
+                    }}
+                    className="h-11 px-3 text-sm font-semibold text-surface-700 transition hover:text-brand-700"
+                  >
+                    Limpar dados
+                  </button>
+                ) : null}
+              </>
+            ) : null}
           </div>
           <div className="text-left text-xs leading-5 text-surface-600 lg:text-right">
-            <p>{fileNames.length} arquivo(s) local(is) · {rows.length} registros únicos</p>
-            <p>Cobertura: {formatE365Date(summary.minUsageDate)} a {formatE365Date(summary.maxUsageDate)}</p>
+            <p>
+              {fileNames.length} arquivo(s) local(is) · {rows.length} registros únicos
+            </p>
+            <p>
+              Cobertura: {formatE365Date(summary.minUsageDate)} a {formatE365Date(summary.maxUsageDate)}
+            </p>
           </div>
         </div>
 
-        {errorMessage ? <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p> : null}
+        {errorMessage ? (
+          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {errorMessage}
+          </p>
+        ) : null}
 
         <div className="mt-5 grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <ProjectWiseUserKpiCard title="Usuários faturados" value={String(summary.users)} helperText={`${formatE365Quarter(summary.quarter)} · ${formatE365QuarterPeriod(summary.quarter)}`} />
-          <ProjectWiseUserKpiCard title="Gasto do quarter" value={formatE365Currency(summary.spend, currency)} helperText="Valor líquido E365" />
-          <ProjectWiseUserKpiCard title="Custo médio" value={formatE365Currency(summary.users ? summary.spend / summary.users : 0, currency)} helperText="Por usuário faturado" />
-          <ProjectWiseUserKpiCard title="Aplicações" value={String(summary.applications.length)} helperText="Com cobrança no período" />
+          <ProjectWiseUserKpiCard
+            title="Usuários faturados"
+            value={String(summary.users)}
+            helperText={`${formatE365Quarter(summary.quarter)} · ${formatE365QuarterPeriod(summary.quarter)}`}
+          />
+          <ProjectWiseUserKpiCard
+            title="Gasto do quarter"
+            value={formatE365Currency(summary.spend, currency)}
+            helperText="Valor líquido E365"
+          />
+          <ProjectWiseUserKpiCard
+            title="Custo médio"
+            value={formatE365Currency(summary.users ? summary.spend / summary.users : 0, currency)}
+            helperText="Por usuário faturado"
+          />
+          <ProjectWiseUserKpiCard
+            title="Aplicações"
+            value={String(summary.applications.length)}
+            helperText="Com cobrança no período"
+          />
         </div>
       </PanelShell>
 
@@ -338,9 +544,23 @@ export function E365UsagePanel({
         <PanelShell title="Gasto por aplicação" description={`Composição de ${formatE365Quarter(summary.quarter)}.`}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="border-b border-brand-100 text-xs uppercase text-brand-700"><tr><th className="pb-3 font-semibold">Aplicação</th><th className="pb-3 text-right font-semibold">Usuários</th><th className="pb-3 text-right font-semibold">Gasto</th><th className="pb-3 text-right font-semibold">Por usuário</th></tr></thead>
+              <thead className="border-b border-brand-100 text-xs uppercase text-brand-700">
+                <tr>
+                  <th className="pb-3 font-semibold">Aplicação</th>
+                  <th className="pb-3 text-right font-semibold">Usuários</th>
+                  <th className="pb-3 text-right font-semibold">Gasto</th>
+                  <th className="pb-3 text-right font-semibold">Por usuário</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-brand-50">
-                {summary.applications.map((item) => <tr key={item.application}><td className="py-4 pr-4 font-medium text-surface-900">{item.application}</td><td className="py-4 text-right">{item.users}</td><td className="py-4 text-right">{formatE365Currency(item.spend, currency)}</td><td className="py-4 text-right">{formatE365Currency(item.costPerUser, currency)}</td></tr>)}
+                {summary.applications.map((item) => (
+                  <tr key={item.application}>
+                    <td className="py-4 pr-4 font-medium text-surface-900">{item.application}</td>
+                    <td className="py-4 text-right">{item.users}</td>
+                    <td className="py-4 text-right">{formatE365Currency(item.spend, currency)}</td>
+                    <td className="py-4 text-right">{formatE365Currency(item.costPerUser, currency)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -388,20 +608,58 @@ export function E365UsagePanel({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-surface-700">
-            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 bg-brand-600" /> Cadastrados faturados: {comparison.portalBilled}</span>
-            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 bg-amber-400" /> Cadastrados não faturados: {comparison.portalNotBilled}</span>
-            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 bg-rose-500" /> Faturados fora da base: {comparison.billedOutsidePortal}</span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 bg-brand-600" /> Cadastrados faturados: {comparison.portalBilled}
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 bg-amber-400" /> Cadastrados não faturados: {comparison.portalNotBilled}
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 bg-rose-500" /> Faturados fora da base: {comparison.billedOutsidePortal}
+            </span>
           </div>
 
           <p className="mt-3 text-xs text-surface-600">
-            Total faturado: {comparison.quarterBilledUsers} = {comparison.portalBilled} cadastrados + {comparison.billedOutsidePortal} fora da base. Comparação por e-mail entre Portal PW e UniquePersona do E365.
+            Total faturado: {comparison.quarterBilledUsers} = {comparison.portalBilled} cadastrados +{' '}
+            {comparison.billedOutsidePortal} fora da base. Comparação por e-mail entre Portal PW e UniquePersona do
+            E365.
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="border-l-4 border-brand-600 bg-brand-50 px-4 py-3"><p className="text-xs font-semibold text-surface-700">Cadastrados</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalUsers}</p><p className="mt-1 text-xs text-surface-600">Usuários existentes na base do Portal PW.</p></div>
-            <button type="button" onClick={() => setBillingListFilter('portal')} aria-pressed={billingListFilter === 'portal'} className={`border-l-4 px-4 py-3 text-left transition ${billingListFilter === 'portal' ? 'border-emerald-600 bg-emerald-100 ring-2 ring-emerald-200' : 'border-emerald-500 bg-emerald-50 hover:bg-emerald-100'}`}><p className="text-xs font-semibold text-surface-700">Cadastrados faturados</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalBilled}</p><p className="mt-1 text-xs text-surface-600">Encontrados no Portal PW e no E365. Clique para visualizar.</p></button>
-            <div className="border-l-4 border-amber-400 bg-amber-50 px-4 py-3"><p className="text-xs font-semibold text-surface-700">Sem faturamento</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalNotBilled}</p><p className="mt-1 text-xs text-surface-600">Cadastrados sem cobrança no quarter.</p></div>
-            <button type="button" onClick={() => setBillingListFilter('outside')} aria-pressed={billingListFilter === 'outside'} className={`border-l-4 px-4 py-3 text-left transition ${billingListFilter === 'outside' ? 'border-rose-600 bg-rose-100 ring-2 ring-rose-200' : 'border-rose-400 bg-rose-50 hover:bg-rose-100'}`}><p className="text-xs font-semibold text-surface-700">Faturados fora da base</p><p className="mt-1 text-xl font-semibold text-surface-900">{comparison.billedOutsidePortal}</p><p className="mt-1 text-xs text-surface-600">Presentes no E365 e ausentes no Portal PW. Clique para visualizar.</p></button>
+            <div className="border-l-4 border-brand-600 bg-brand-50 px-4 py-3">
+              <p className="text-xs font-semibold text-surface-700">Cadastrados</p>
+              <p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalUsers}</p>
+              <p className="mt-1 text-xs text-surface-600">Usuários existentes na base do Portal PW.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBillingListFilter('portal')}
+              aria-pressed={billingListFilter === 'portal'}
+              className={`border-l-4 px-4 py-3 text-left transition ${billingListFilter === 'portal' ? 'border-emerald-600 bg-emerald-100 ring-2 ring-emerald-200' : 'border-emerald-500 bg-emerald-50 hover:bg-emerald-100'}`}
+            >
+              <p className="text-xs font-semibold text-surface-700">Cadastrados faturados</p>
+              <p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalBilled}</p>
+              <p className="mt-1 text-xs text-surface-600">
+                Encontrados no Portal PW e no E365. Clique para visualizar.
+              </p>
+            </button>
+            <div className="border-l-4 border-amber-400 bg-amber-50 px-4 py-3">
+              <p className="text-xs font-semibold text-surface-700">Sem faturamento</p>
+              <p className="mt-1 text-xl font-semibold text-surface-900">{comparison.portalNotBilled}</p>
+              <p className="mt-1 text-xs text-surface-600">Cadastrados sem cobrança no quarter.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBillingListFilter('outside')}
+              aria-pressed={billingListFilter === 'outside'}
+              className={`border-l-4 px-4 py-3 text-left transition ${billingListFilter === 'outside' ? 'border-rose-600 bg-rose-100 ring-2 ring-rose-200' : 'border-rose-400 bg-rose-50 hover:bg-rose-100'}`}
+            >
+              <p className="text-xs font-semibold text-surface-700">Faturados fora da base</p>
+              <p className="mt-1 text-xl font-semibold text-surface-900">{comparison.billedOutsidePortal}</p>
+              <p className="mt-1 text-xs text-surface-600">
+                Presentes no E365 e ausentes no Portal PW. Clique para visualizar.
+              </p>
+            </button>
           </div>
         </div>
 
@@ -418,20 +676,68 @@ export function E365UsagePanel({
 
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex w-full max-w-2xl items-end gap-2">
-            <label className="flex flex-1 flex-col gap-2 text-sm font-medium text-surface-700">Pesquisar e-mail<input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="nome@empresa.com.br" className="h-11 rounded-lg border border-brand-100 bg-white px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100" /></label>
-            <button type="button" onClick={() => setSearchTerm('')} disabled={!searchTerm} className="h-11 rounded-lg border border-brand-100 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">Limpar</button>
+            <label className="flex flex-1 flex-col gap-2 text-sm font-medium text-surface-700">
+              Pesquisar e-mail
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="nome@empresa.com.br"
+                className="h-11 rounded-lg border border-brand-100 bg-white px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              disabled={!searchTerm}
+              className="h-11 rounded-lg border border-brand-100 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Limpar
+            </button>
           </div>
           <div className="flex items-center gap-3">
-            {billingListFilter !== 'all' ? <button type="button" onClick={() => setBillingListFilter('all')} className="text-xs font-semibold text-brand-700 hover:underline">Mostrar todos os faturados</button> : null}
+            {billingListFilter !== 'all' ? (
+              <button
+                type="button"
+                onClick={() => setBillingListFilter('all')}
+                className="text-xs font-semibold text-brand-700 hover:underline"
+              >
+                Mostrar todos os faturados
+              </button>
+            ) : null}
             <p className="text-xs font-medium text-surface-600">{comparedUsers.length} usuário(s)</p>
           </div>
         </div>
         <div className="max-h-[480px] overflow-auto border-y border-brand-100">
           <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="sticky top-0 bg-brand-50 text-xs uppercase text-brand-700"><tr><th className="px-3 py-3 font-semibold">E-mail</th><th className="px-3 py-3 font-semibold">Situação</th><th className="px-3 py-3 font-semibold">Aplicações</th><th className="px-3 py-3 text-right font-semibold">Gasto</th><th className="px-3 py-3 font-semibold">Origem</th><th className="px-3 py-3 font-semibold">IMSID</th></tr></thead>
+            <thead className="sticky top-0 bg-brand-50 text-xs uppercase text-brand-700">
+              <tr>
+                <th className="px-3 py-3 font-semibold">E-mail</th>
+                <th className="px-3 py-3 font-semibold">Situação</th>
+                <th className="px-3 py-3 font-semibold">Aplicações</th>
+                <th className="px-3 py-3 text-right font-semibold">Gasto</th>
+                <th className="px-3 py-3 font-semibold">Origem</th>
+                <th className="px-3 py-3 font-semibold">IMSID</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-brand-50">
-              {comparedUsers.map((user) => <tr key={`${user.status}-${user.email}`} className="hover:bg-brand-50/60"><td className="px-3 py-3 font-medium text-surface-900">{user.email}</td><td className="px-3 py-3 text-surface-700">{user.status}</td><td className="px-3 py-3 text-surface-700">{user.applications.join(', ') || '-'}</td><td className="whitespace-nowrap px-3 py-3 text-right">{formatE365Currency(user.spend, currency)}</td><td className="whitespace-nowrap px-3 py-3">{user.origin}</td><td className="px-3 py-3 font-mono text-xs text-surface-600">{user.imsIds.join(', ') || '-'}</td></tr>)}
-              {comparedUsers.length === 0 ? <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-surface-600">Nenhum usuário encontrado nesta seleção.</td></tr> : null}
+              {comparedUsers.map((user) => (
+                <tr key={`${user.status}-${user.email}`} className="hover:bg-brand-50/60">
+                  <td className="px-3 py-3 font-medium text-surface-900">{user.email}</td>
+                  <td className="px-3 py-3 text-surface-700">{user.status}</td>
+                  <td className="px-3 py-3 text-surface-700">{user.applications.join(', ') || '-'}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-right">{formatE365Currency(user.spend, currency)}</td>
+                  <td className="whitespace-nowrap px-3 py-3">{user.origin}</td>
+                  <td className="px-3 py-3 font-mono text-xs text-surface-600">{user.imsIds.join(', ') || '-'}</td>
+                </tr>
+              ))}
+              {comparedUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm text-surface-600">
+                    Nenhum usuário encontrado nesta seleção.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

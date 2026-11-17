@@ -17,4 +17,6 @@ try {
     console.log('Configure DB_APP_USER para conceder as permissões de importação e limpeza da tabela TOTVS.');
   }
   console.log('Tabela public.totvs_imports verificada: XLSX cumulativo e ZIP único por mês.');
-} finally { await pool.end(); }
+} finally {
+  await pool.end();
+}

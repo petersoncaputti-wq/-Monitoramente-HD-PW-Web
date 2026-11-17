@@ -48,7 +48,8 @@ export function createSessionStore(execute = query) {
     const token = randomBytes(32).toString('base64url');
     const defaultExpiry = Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000;
     const expiresAt = new Date(Math.min(defaultExpiry, options.expiresAt ?? defaultExpiry));
-    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) throw new Error('Expiração de sessão inválida.');
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= Date.now())
+      throw new Error('Expiração de sessão inválida.');
 
     // Limpeza oportunista: sessões expiradas não têm mais uso (índice em expires_at).
     await execute('delete from app_sessions where expires_at <= now()');
@@ -69,10 +70,10 @@ export function createSessionStore(execute = query) {
 
   // Encerra as demais sessões do usuário (ex.: após troca de senha).
   async function deleteOtherSessions(userId, currentToken, executor = execute) {
-    await executor(
-      'delete from app_sessions where user_id = $1 and token_hash <> $2',
-      [userId, hashToken(currentToken || '')],
-    );
+    await executor('delete from app_sessions where user_id = $1 and token_hash <> $2', [
+      userId,
+      hashToken(currentToken || ''),
+    ]);
   }
 
   async function authenticateRequest(request) {
@@ -143,7 +144,8 @@ export async function verifyPasswordOrDummy(password, passwordHash) {
 // bcrypt ignora silenciosamente o que passa de 72 bytes; recusa em vez de truncar.
 export function passwordPolicyError(password) {
   if (password.length < 12) return 'A senha deve ter pelo menos 12 caracteres.';
-  if (Buffer.byteLength(password, 'utf8') > 72) return 'A senha deve ter no máximo 72 bytes (cerca de 72 caracteres sem acentos).';
+  if (Buffer.byteLength(password, 'utf8') > 72)
+    return 'A senha deve ter no máximo 72 bytes (cerca de 72 caracteres sem acentos).';
   return null;
 }
 

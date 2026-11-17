@@ -13,11 +13,32 @@ import { createSamlRouter } from '../server/routes/saml.mjs';
 
 // Certificados efêmeros exclusivamente para testes; nenhuma credencial real é necessária.
 const directory = mkdtempSync(join(tmpdir(), 'monitoramento-saml-test-'));
-const openssl = process.platform === 'win32' && existsSync('C:/Program Files/Git/usr/bin/openssl.exe') ? 'C:/Program Files/Git/usr/bin/openssl.exe' : 'openssl';
+const openssl =
+  process.platform === 'win32' && existsSync('C:/Program Files/Git/usr/bin/openssl.exe')
+    ? 'C:/Program Files/Git/usr/bin/openssl.exe'
+    : 'openssl';
 function certificate(name) {
   const keyPath = join(directory, name + '.key');
   const certPath = join(directory, name + '.pem');
-  execFileSync(openssl, ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', keyPath, '-out', certPath, '-days', '1', '-subj', `/CN=${name}`], { stdio: 'ignore' });
+  execFileSync(
+    openssl,
+    [
+      'req',
+      '-x509',
+      '-newkey',
+      'rsa:2048',
+      '-nodes',
+      '-keyout',
+      keyPath,
+      '-out',
+      certPath,
+      '-days',
+      '1',
+      '-subj',
+      `/CN=${name}`,
+    ],
+    { stdio: 'ignore' },
+  );
   return { key: readFileSync(keyPath, 'utf8'), cert: readFileSync(certPath, 'utf8') };
 }
 let server;
@@ -28,7 +49,12 @@ try {
   const tenant = '00000000-0000-4000-8000-000000000001';
   const objectId = '00000000-0000-4000-8000-000000000002';
   const userId = '00000000-0000-4000-8000-000000000003';
-  const env = { SAML_ENABLED: 'true', SAML_PUBLIC_ORIGIN: 'https://panel.example.test', SAML_ENTRA_TENANT_ID: tenant, SAML_IDP_CERT: idp.cert };
+  const env = {
+    SAML_ENABLED: 'true',
+    SAML_PUBLIC_ORIGIN: 'https://panel.example.test',
+    SAML_ENTRA_TENANT_ID: tenant,
+    SAML_IDP_CERT: idp.cert,
+  };
   const config = samlConfig(env);
   assert.equal(samlConfig({}), null);
   assert.throws(() => samlConfig({ ...env, SAML_PUBLIC_ORIGIN: 'http://panel.example.test' }));
@@ -39,18 +65,32 @@ try {
   db = new PGlite();
   await db.exec('create table app_users(id uuid primary key, role text not null, is_active boolean not null)');
   const schema = readFileSync(new URL('../azure/saml-schema.sql', import.meta.url), 'utf8');
-  await db.exec(schema); await db.exec(schema);
+  await db.exec(schema);
+  await db.exec(schema);
   await db.query("insert into app_users values ($1,'user',true)", [userId]);
-  await db.query('insert into app_saml_identities(tenant_id,object_id,user_id) values ($1,$2,$3)', [tenant, objectId, userId]);
+  await db.query('insert into app_saml_identities(tenant_id,object_id,user_id) values ($1,$2,$3)', [
+    tenant,
+    objectId,
+    userId,
+  ]);
   const repository = createSamlRepository((sql, values) => db.query(sql, values));
   let issued = [];
   const app = express();
-  app.use('/saml', createSamlRouter({ configuration: () => config, repository,
-    throttle: (_req, _res, next) => next(),
-    issueSession: async (id, options) => { issued.push({ id, options }); return 'test-session'; },
-  }));
+  app.use(
+    '/saml',
+    createSamlRouter({
+      configuration: () => config,
+      repository,
+      throttle: (_req, _res, next) => next(),
+      issueSession: async (id, options) => {
+        issued.push({ id, options });
+        return 'test-session';
+      },
+    }),
+  );
   app.use('/disabled', createSamlRouter({ configuration: () => null }));
-  server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
+  server = app.listen(0, '127.0.0.1');
+  await new Promise((resolve) => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   async function start() {
     const response = await fetch(base + '/saml/login', { redirect: 'manual' });
@@ -59,17 +99,27 @@ try {
     assert.equal(location.origin, 'https://login.microsoftonline.com');
     assert.equal(location.pathname, `/${tenant}/saml2`);
     const cookies = response.headers.get('Set-Cookie');
-    assert.match(cookies, /HttpOnly/); assert.match(cookies, /Secure/); assert.match(cookies, /SameSite=None/);
+    assert.match(cookies, /HttpOnly/);
+    assert.match(cookies, /Secure/);
+    assert.match(cookies, /SameSite=None/);
     const xml = inflateRawSync(Buffer.from(location.searchParams.get('SAMLRequest'), 'base64')).toString();
     const requestId = xml.match(/\bID="([^"]+)"/)[1];
     return { requestId, relay: location.searchParams.get('RelayState'), cookie: cookies.split(';')[0] };
   }
   function sign(xml, tag, signingKey = idp.key) {
-    const signature = new SignedXml({ privateKey: signingKey,
+    const signature = new SignedXml({
+      privateKey: signingKey,
       signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256',
-      canonicalizationAlgorithm: 'http://www.w3.org/2001/10/xml-exc-c14n#' });
-    signature.addReference({ xpath: `//*[local-name()='${tag}']`, transforms: ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#'], digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256' });
-    signature.computeSignature(xml, { location: { reference: `//*[local-name()='${tag}']/*[local-name()='Issuer']`, action: 'after' } });
+      canonicalizationAlgorithm: 'http://www.w3.org/2001/10/xml-exc-c14n#',
+    });
+    signature.addReference({
+      xpath: `//*[local-name()='${tag}']`,
+      transforms: ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#'],
+      digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256',
+    });
+    signature.computeSignature(xml, {
+      location: { reference: `//*[local-name()='${tag}']/*[local-name()='Issuer']`, action: 'after' },
+    });
     return signature.getSignedXml();
   }
   function responseFor(flow, options = {}) {
@@ -93,23 +143,44 @@ try {
     return Buffer.from(xml).toString('base64');
   }
   async function post(flow, xml, cookie = flow.cookie, relay = flow.relay) {
-    return fetch(base + '/saml/acs', { method: 'POST', redirect: 'manual', headers: { Cookie: cookie, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ SAMLResponse: xml, RelayState: relay }) });
+    return fetch(base + '/saml/acs', {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { Cookie: cookie, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ SAMLResponse: xml, RelayState: relay }),
+    });
   }
   assert.equal((await (await fetch(base + '/disabled/config')).json()).enabled, false);
   assert.equal((await fetch(base + '/disabled/login')).status, 404);
   const metadata = await (await fetch(base + '/saml/metadata')).text();
-  assert.ok(metadata.includes(config.callbackUrl)); assert.ok(metadata.includes('WantAssertionsSigned="true"')); assert.ok(!metadata.includes('PRIVATE KEY'));
-  const flow = await start(); const signed = responseFor(flow);
+  assert.ok(metadata.includes(config.callbackUrl));
+  assert.ok(metadata.includes('WantAssertionsSigned="true"'));
+  assert.ok(!metadata.includes('PRIVATE KEY'));
+  const flow = await start();
+  const signed = responseFor(flow);
   const success = await post(flow, signed);
   assert.equal(success.headers.get('Location'), '/');
   assert.match(success.headers.get('Set-Cookie'), /monitoramento_session=test-session/);
-  assert.equal(issued.length, 1); assert.equal(issued[0].id, userId);
+  assert.equal(issued.length, 1);
+  assert.equal(issued[0].id, userId);
   assert.ok(issued[0].options.expiresAt <= Date.now() + 3600_000);
   assert.equal((await repository.findUser(tenant, objectId)).role, 'user'); // claim admin ignorada.
   assert.equal((await post(flow, signed)).headers.get('Location'), '/?saml_error=login_failed');
   assert.equal(issued.length, 1);
 
-  for (const options of [{ destination: 'https://evil.test/acs' }, { audience: 'wrong' }, { issuer: 'https://sts.windows.net/wrong/' }, { tenant: userId }, { recipient: 'https://evil.test/acs' }, { expired: true }, { requestId: '_unknown' }, { key: other.key }, { tamper: true }, { unsignedAssertion: true }, { unsignedResponse: true }]) {
+  for (const options of [
+    { destination: 'https://evil.test/acs' },
+    { audience: 'wrong' },
+    { issuer: 'https://sts.windows.net/wrong/' },
+    { tenant: userId },
+    { recipient: 'https://evil.test/acs' },
+    { expired: true },
+    { requestId: '_unknown' },
+    { key: other.key },
+    { tamper: true },
+    { unsignedAssertion: true },
+    { unsignedResponse: true },
+  ]) {
     const next = await start();
     const response = await post(next, responseFor(next, options));
     assert.equal(response.headers.get('Location'), '/?saml_error=login_failed', JSON.stringify(options));
@@ -118,26 +189,40 @@ try {
   const noCookie = await start();
   assert.equal((await post(noCookie, responseFor(noCookie), '')).headers.get('Location'), '/?saml_error=login_failed');
   const wrongState = await start();
-  assert.equal((await post(wrongState, responseFor(wrongState), wrongState.cookie, 'a'.repeat(64))).headers.get('Location'), '/?saml_error=login_failed');
+  assert.equal(
+    (await post(wrongState, responseFor(wrongState), wrongState.cookie, 'a'.repeat(64))).headers.get('Location'),
+    '/?saml_error=login_failed',
+  );
   const noMapping = await start();
-  assert.equal((await post(noMapping, responseFor(noMapping, { objectId: userId }))).headers.get('Location'), '/?saml_error=access_denied');
+  assert.equal(
+    (await post(noMapping, responseFor(noMapping, { objectId: userId }))).headers.get('Location'),
+    '/?saml_error=access_denied',
+  );
   await db.query('update app_users set is_active=false where id=$1', [userId]);
   const inactive = await start();
   assert.equal((await post(inactive, responseFor(inactive))).headers.get('Location'), '/?saml_error=access_denied');
   await db.query('update app_users set is_active=true where id=$1', [userId]);
-  const race = await start(); const raceResponse = responseFor(race);
+  const race = await start();
+  const raceResponse = responseFor(race);
   const outcomes = await Promise.all([post(race, raceResponse), post(race, raceResponse)]);
-  assert.equal(outcomes.filter(result => result.headers.get('Location') === '/').length, 1);
+  assert.equal(outcomes.filter((result) => result.headers.get('Location') === '/').length, 1);
   assert.equal(issued.length, 2);
   const cross = await start();
   const wrongFlowClient = createSamlClient(config, repository.cache(samlHash('unrelated-flow')));
   await assert.rejects(wrongFlowClient.validatePostResponseAsync({ SAMLResponse: responseFor(cross) }));
-  await db.query("update app_saml_flows set expires_at=now()-interval '1 second' where state_hash=$1", [samlHash(cross.relay)]);
+  await db.query("update app_saml_flows set expires_at=now()-interval '1 second' where state_hash=$1", [
+    samlHash(cross.relay),
+  ]);
   assert.equal((await post(cross, responseFor(cross))).headers.get('Location'), '/?saml_error=login_failed');
-  console.log('SAML: assinaturas reais, certificado, audiência, emissor/tenant, destinatário, expiração, correlação, vínculo, usuário inativo, privilégio, replay concorrente e migração: OK.');
+  console.log(
+    'SAML: assinaturas reais, certificado, audiência, emissor/tenant, destinatário, expiração, correlação, vínculo, usuário inativo, privilégio, replay concorrente e migração: OK.',
+  );
 } finally {
-  server?.closeAllConnections(); server?.close();
+  server?.closeAllConnections();
+  server?.close();
   await db?.close();
-  const path = resolve(directory); const rel = relative(resolve(tmpdir()), path);
-  if (!rel.startsWith('..') && !isAbsolute(rel) && rel.startsWith('monitoramento-saml-test-')) rmSync(path, { recursive: true, force: true });
+  const path = resolve(directory);
+  const rel = relative(resolve(tmpdir()), path);
+  if (!rel.startsWith('..') && !isAbsolute(rel) && rel.startsWith('monitoramento-saml-test-'))
+    rmSync(path, { recursive: true, force: true });
 }

@@ -11,11 +11,22 @@
 
 import { Router } from 'express';
 import {
-  getToken, listCompanies, listUsers, listReportings, listReportingPage,
-  listInventoryCounts, listJobProgress, listFirmCounts,
-  loadAllCompanies, listPhotosForCompany,
+  getToken,
+  listCompanies,
+  listUsers,
+  listReportings,
+  listReportingPage,
+  listInventoryCounts,
+  listJobProgress,
+  listFirmCounts,
+  loadAllCompanies,
+  listPhotosForCompany,
 } from '../services/kartado.service.mjs';
-import { buildConcessaoDashboard, buildMultiDashboard, buildReportingMetrics } from '../services/kartado-analytics.service.mjs';
+import {
+  buildConcessaoDashboard,
+  buildMultiDashboard,
+  buildReportingMetrics,
+} from '../services/kartado-analytics.service.mjs';
 import { createBoundedCache } from '../services/bounded-cache.mjs';
 
 export const kartadoRouter = Router();
@@ -35,7 +46,8 @@ export function publicKartadoError(err) {
   const upstream = Number.isInteger(err?.httpStatus) ? err.httpStatus : 0;
   // 401/403 do Kartado não podem chegar ao navegador como 401: isso
   // significaria sessão do painel expirada.
-  if (upstream === 401 || upstream === 403) return { status: 502, message: 'A integração Kartado não tem permissão para esta consulta.' };
+  if (upstream === 401 || upstream === 403)
+    return { status: 502, message: 'A integração Kartado não tem permissão para esta consulta.' };
   if (UPSTREAM_MESSAGES[upstream]) return { status: upstream, message: UPSTREAM_MESSAGES[upstream] };
   return { status: 502, message: 'Falha ao consultar o Kartado. Tente novamente.' };
 }
@@ -77,7 +89,13 @@ kartadoRouter.post('/companies', async (req, res) => {
   try {
     const { token, user, latencyMs } = await getToken(creds.username, creds.password);
     const companies = await listCompanies(token);
-    res.json({ success: true, ...SOURCE, auth: { latencyMs, user: user?.username }, companies, count: companies.length });
+    res.json({
+      success: true,
+      ...SOURCE,
+      auth: { latencyMs, user: user?.username },
+      companies,
+      count: companies.length,
+    });
   } catch (err) {
     sendKartadoError(res, err, req.path.slice(1));
   }
@@ -98,19 +116,32 @@ kartadoRouter.post('/search', async (req, res) => {
   try {
     const { token, latencyMs: authMs } = await getToken(creds.username, creds.password);
     const data = await listUsers(token, companyUuid, { pageSize: 100, search: query.trim() });
-    const users = data.users.map(u => {
+    const users = data.users.map((u) => {
       const a = u.attributes || u;
       return {
-        id:       u.id || a.uuid,
-        fullName: a.fullName || a.full_name || `${a.firstName||a.first_name||''} ${a.lastName||a.last_name||''}`.trim() || '—',
+        id: u.id || a.uuid,
+        fullName:
+          a.fullName ||
+          a.full_name ||
+          `${a.firstName || a.first_name || ''} ${a.lastName || a.last_name || ''}`.trim() ||
+          '—',
         username: a.username || null,
-        email:    a.email    || null,
+        email: a.email || null,
         isSupervisor: a.isSupervisor ?? a.is_supervisor ?? false,
-        isInternal:   a.isInternal   ?? a.is_internal   ?? true,
+        isInternal: a.isInternal ?? a.is_internal ?? true,
         expirationDate: a.expirationDate || a.expiration_date || null,
       };
     });
-    res.json({ success: true, ...SOURCE, auth: { latencyMs: authMs }, query, companyUuid, total: data.totalCount, returned: users.length, users });
+    res.json({
+      success: true,
+      ...SOURCE,
+      auth: { latencyMs: authMs },
+      query,
+      companyUuid,
+      total: data.totalCount,
+      returned: users.length,
+      users,
+    });
   } catch (err) {
     sendKartadoError(res, err, req.path.slice(1));
   }
@@ -154,12 +185,18 @@ kartadoRouter.post('/reportings', async (req, res) => {
     }
     const metrics = buildReportingMetrics(data.reportings, data.totalCount, null, data.isFirstPage);
     res.json({
-      success: true, ...SOURCE,
-      auth:        { latencyMs: authMs },
+      success: true,
+      ...SOURCE,
+      auth: { latencyMs: authMs },
       companyUuid,
-      filter:      { foundAtAfter, foundAtBefore, origin },
-      pagination:  { returned: data.reportings.length, totalApi: data.totalCount, totalPages: data.totalPages, isFirstPage: data.isFirstPage },
-      reportings:  data.reportings,
+      filter: { foundAtAfter, foundAtBefore, origin },
+      pagination: {
+        returned: data.reportings.length,
+        totalApi: data.totalCount,
+        totalPages: data.totalPages,
+        isFirstPage: data.isFirstPage,
+      },
+      reportings: data.reportings,
       metrics,
       note: data.isFirstPage
         ? `Exibindo 100 mais recentes. Total na base: ${data.totalCount}. Use foundAtAfter/foundAtBefore para filtrar por período.`
@@ -188,22 +225,31 @@ async function loadHealthDashboard(company, credentials) {
   const fifteenDaysAgo = new Date(now.getTime() - 15 * 86_400_000).toISOString().split('T')[0];
   const [reportingsResult, monthResult, photosResult, jobsResult] = await Promise.allSettled([
     listReportings(auth.token, company.uuid, { pageSize: 25, includeUsage: true }),
-    listReportings(auth.token, company.uuid, { foundAtAfter: startOfMonth, pageSize: 100, maxPages: 3, includeUsage: true }),
+    listReportings(auth.token, company.uuid, {
+      foundAtAfter: startOfMonth,
+      pageSize: 100,
+      maxPages: 3,
+      includeUsage: true,
+    }),
     listPhotosForCompany(auth.token, company.uuid, { foundAtAfter: fifteenDaysAgo, pageSize: 100, maxPages: 5 }),
     listJobProgress(auth.token, company.uuid),
   ]);
-  const reportings = reportingsResult.status === 'fulfilled'
-    ? reportingsResult.value
-    : { reportings: [], totalCount: 0, error: reportingsResult.reason?.message };
-  const reportingsMonth = monthResult.status === 'fulfilled'
-    ? monthResult.value
-    : { reportings: [], totalCount: 0, error: monthResult.reason?.message };
-  const photos = photosResult.status === 'fulfilled'
-    ? photosResult.value
-    : { photos: [], reportingUuids: [], totalPhotos: null, error: photosResult.reason?.message };
-  const jobs = jobsResult.status === 'fulfilled'
-    ? jobsResult.value
-    : { totalJobs: null, totalThisMonth: null, dimProgramacoes: null, error: jobsResult.reason?.message };
+  const reportings =
+    reportingsResult.status === 'fulfilled'
+      ? reportingsResult.value
+      : { reportings: [], totalCount: 0, error: reportingsResult.reason?.message };
+  const reportingsMonth =
+    monthResult.status === 'fulfilled'
+      ? monthResult.value
+      : { reportings: [], totalCount: 0, error: monthResult.reason?.message };
+  const photos =
+    photosResult.status === 'fulfilled'
+      ? photosResult.value
+      : { photos: [], reportingUuids: [], totalPhotos: null, error: photosResult.reason?.message };
+  const jobs =
+    jobsResult.status === 'fulfilled'
+      ? jobsResult.value
+      : { totalJobs: null, totalThisMonth: null, dimProgramacoes: null, error: jobsResult.reason?.message };
   return buildConcessaoDashboard(
     company,
     { users: [], totalCount: 0 },
@@ -235,11 +281,14 @@ kartadoRouter.post('/health', async (req, res) => {
         credentials,
       );
       healthInFlight.set(companyUuid, pending);
-      void pending.then(() => {
-        if (healthInFlight.get(companyUuid) === pending) healthInFlight.delete(companyUuid);
-      }, () => {
-        if (healthInFlight.get(companyUuid) === pending) healthInFlight.delete(companyUuid);
-      });
+      void pending.then(
+        () => {
+          if (healthInFlight.get(companyUuid) === pending) healthInFlight.delete(companyUuid);
+        },
+        () => {
+          if (healthInFlight.get(companyUuid) === pending) healthInFlight.delete(companyUuid);
+        },
+      );
     }
     const dashboard = await pending;
     const entry = healthCache.set(companyUuid, dashboard);
@@ -276,9 +325,15 @@ kartadoRouter.post('/dashboard', async (req, res) => {
   try {
     add('1', 'run', 'POST /token/login/');
     const auth = await getToken(creds.username, creds.password);
-    add('1', auth.fromCache ? 'ok' : 'ok', `Autenticado — ${auth.user?.username || creds.username}${auth.fromCache ? ' (token em cache)' : ''}`, auth.latencyMs);
+    add(
+      '1',
+      auth.fromCache ? 'ok' : 'ok',
+      `Autenticado — ${auth.user?.username || creds.username}${auth.fromCache ? ' (token em cache)' : ''}`,
+      auth.latencyMs,
+    );
 
-    let companies = [], selected = null;
+    let companies = [],
+      selected = null;
 
     if (inputIsUuid) {
       // UUID já conhecido — pula GET /Company/ (economiza 1 request por concessão)
@@ -300,17 +355,17 @@ kartadoRouter.post('/dashboard', async (req, res) => {
         // as palavras (>3 letras) únicas.
         const searchTerm = (companyUuid || concessaoNome || '').toLowerCase().trim();
         if (searchTerm && companies.length > 1) {
-          let match = companies.find(c => c.name?.toLowerCase().trim() === searchTerm);
+          let match = companies.find((c) => c.name?.toLowerCase().trim() === searchTerm);
 
           if (!match) {
-            const substringMatches = companies.filter(c => c.name?.toLowerCase().includes(searchTerm));
+            const substringMatches = companies.filter((c) => c.name?.toLowerCase().includes(searchTerm));
             if (substringMatches.length === 1) match = substringMatches[0];
           }
 
           if (!match) {
-            const words = searchTerm.split(/\s+/).filter(w => w.length > 3);
+            const words = searchTerm.split(/\s+/).filter((w) => w.length > 3);
             if (words.length) {
-              const wordMatches = companies.filter(c => words.every(w => c.name?.toLowerCase().includes(w)));
+              const wordMatches = companies.filter((c) => words.every((w) => c.name?.toLowerCase().includes(w)));
               if (wordMatches.length === 1) match = wordMatches[0];
             }
           }
@@ -327,7 +382,14 @@ kartadoRouter.post('/dashboard', async (req, res) => {
             add('2', 'ok', `Única concessão: ${selected.name}`);
           } else if (companies.length > 1) {
             add('2', 'info', `${companies.length} concessões — selecione uma`);
-            return res.json({ success: false, requiresCompany: true, companies, log, auth: { latencyMs: auth.latencyMs }, ...SOURCE });
+            return res.json({
+              success: false,
+              requiresCompany: true,
+              companies,
+              log,
+              auth: { latencyMs: auth.latencyMs },
+              ...SOURCE,
+            });
           } else {
             throw { step: 'companies', httpStatus: 404, expose: true, message: 'Nenhuma concessão ativa disponível.' };
           }
@@ -341,23 +403,39 @@ kartadoRouter.post('/dashboard', async (req, res) => {
 
     const ps = summaryOnly ? 25 : Math.min(parseInt(pageSize) || 100, 100);
     const now2 = new Date();
-    const startOfMonth    = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString().split('T')[0];
+    const startOfMonth = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString().split('T')[0];
     const quinzeDiasAtras = new Date(now2.getTime() - 15 * 86_400_000).toISOString().split('T')[0];
 
     add('3', 'run', `${summaryOnly ? 'Carga resumida' : 'Carga completa'} — company=${selected.uuid}`);
     const [uR, rR, invR, jobR, firmR, rMesR, photosR] = await Promise.allSettled([
       listUsers(auth.token, selected.uuid, { pageSize: ps, maxPages: summaryOnly ? 1 : 10 }),
       listReportings(auth.token, selected.uuid, { pageSize: ps, includeUsage: true }),
-      summaryOnly ? Promise.resolve({ totalCount: null, withImageCount: null, inventoryItems: [] }) : listInventoryCounts(auth.token, selected.uuid),
-      summaryOnly ? Promise.resolve({ totalJobs: null, totalThisMonth: null, avgProgress: null }) : listJobProgress(auth.token, selected.uuid),
+      summaryOnly
+        ? Promise.resolve({ totalCount: null, withImageCount: null, inventoryItems: [] })
+        : listInventoryCounts(auth.token, selected.uuid),
+      summaryOnly
+        ? Promise.resolve({ totalJobs: null, totalThisMonth: null, avgProgress: null })
+        : listJobProgress(auth.token, selected.uuid),
       summaryOnly ? Promise.resolve({ total: null, firms: [] }) : listFirmCounts(auth.token, selected.uuid),
-      summaryOnly ? Promise.resolve({ reportings: [], totalCount: 0 }) : listReportings(auth.token, selected.uuid, { foundAtAfter: startOfMonth, pageSize: ps, maxPages: 3, includeUsage: true }),
-      summaryOnly ? Promise.resolve({ photos: [], reportingUuids: [], totalPhotos: null }) : listPhotosForCompany(auth.token, selected.uuid, { foundAtAfter: quinzeDiasAtras, pageSize: 100, maxPages: 5 }),
+      summaryOnly
+        ? Promise.resolve({ reportings: [], totalCount: 0 })
+        : listReportings(auth.token, selected.uuid, {
+            foundAtAfter: startOfMonth,
+            pageSize: ps,
+            maxPages: 3,
+            includeUsage: true,
+          }),
+      summaryOnly
+        ? Promise.resolve({ photos: [], reportingUuids: [], totalPhotos: null })
+        : listPhotosForCompany(auth.token, selected.uuid, {
+            foundAtAfter: quinzeDiasAtras,
+            pageSize: 100,
+            maxPages: 5,
+          }),
     ]);
 
-    const ud = uR.status === 'fulfilled'
-      ? uR.value
-      : { users: [], totalCount: 0, latencyMs: 0, error: uR.reason?.message };
+    const ud =
+      uR.status === 'fulfilled' ? uR.value : { users: [], totalCount: 0, latencyMs: 0, error: uR.reason?.message };
 
     let rd;
     if (rR.status === 'fulfilled') {
@@ -374,32 +452,87 @@ kartadoRouter.post('/dashboard', async (req, res) => {
       }
     }
 
-    const invd    = invR.status    === 'fulfilled' ? invR.value    : { totalCount: null, withImageCount: null, inventoryItems: [], error: invR.reason?.message };
-    const jobd    = jobR.status    === 'fulfilled' ? jobR.value    : { totalJobs: null, totalThisMonth: null, avgProgress: null, error: jobR.reason?.message };
-    const firmd   = firmR.status   === 'fulfilled' ? firmR.value   : { total: null, firms: [], error: firmR.reason?.message };
-    const rMesd   = rMesR.status   === 'fulfilled' ? rMesR.value   : { reportings: [], totalCount: 0, error: rMesR.reason?.message };
-    const photosd = photosR.status === 'fulfilled' ? photosR.value : { photos: [], reportingUuids: [], totalPhotos: null, error: photosR.reason?.message };
+    const invd =
+      invR.status === 'fulfilled'
+        ? invR.value
+        : { totalCount: null, withImageCount: null, inventoryItems: [], error: invR.reason?.message };
+    const jobd =
+      jobR.status === 'fulfilled'
+        ? jobR.value
+        : { totalJobs: null, totalThisMonth: null, avgProgress: null, error: jobR.reason?.message };
+    const firmd = firmR.status === 'fulfilled' ? firmR.value : { total: null, firms: [], error: firmR.reason?.message };
+    const rMesd =
+      rMesR.status === 'fulfilled' ? rMesR.value : { reportings: [], totalCount: 0, error: rMesR.reason?.message };
+    const photosd =
+      photosR.status === 'fulfilled'
+        ? photosR.value
+        : { photos: [], reportingUuids: [], totalPhotos: null, error: photosR.reason?.message };
 
-    add('3', ud.error      ? 'warn' : 'ok', `Usuários: ${ud.users.length}/${ud.totalCount}${ud.error ? ' — '+ud.error : ''}`, ud.latencyMs);
-    add('3', rd.error      ? 'warn' : 'ok', `Apontamentos: ${rd.reportings.length}/${rd.totalCount}${rd.error ? ' — '+rd.error : ''}`, rd.latencyMs);
-    add('3', invd.error    ? 'warn' : 'ok', `Inventários: ${invd.withImageCount}/${invd.totalCount} c/foto · ${invd.inventoryItems?.length ?? 0} itens${invd.error ? ' — '+invd.error : ''}`, invd.latencyMs);
-    add('3', jobd.error    ? 'warn' : 'ok', `Jobs: ${jobd.totalThisMonth}/${jobd.totalJobs} este mês, progress:${jobd.avgProgress}%${jobd.error ? ' — '+jobd.error : ''}`, jobd.latencyMs);
-    add('3', firmd.error   ? 'warn' : 'ok', `Equipes: ${firmd.total} cadastradas${firmd.error ? ' — '+firmd.error : ''}`, firmd.latencyMs);
-    add('3', rMesd.error   ? 'warn' : 'ok', `Apontamentos do mês: ${rMesd.reportings.length}/${rMesd.totalCount}${rMesd.error ? ' — '+rMesd.error : ''}`, rMesd.latencyMs);
-    add('3', photosd.error ? 'warn' : 'ok', `Fotos 15d: ${photosd.totalFetched ?? 0}/${photosd.totalPhotos ?? '?'} fotos · ${photosd.reportingUuids?.length ?? 0} apontamentos${photosd.error ? ' — '+photosd.error : ''}`, photosd.latencyMs);
+    add(
+      '3',
+      ud.error ? 'warn' : 'ok',
+      `Usuários: ${ud.users.length}/${ud.totalCount}${ud.error ? ' — ' + ud.error : ''}`,
+      ud.latencyMs,
+    );
+    add(
+      '3',
+      rd.error ? 'warn' : 'ok',
+      `Apontamentos: ${rd.reportings.length}/${rd.totalCount}${rd.error ? ' — ' + rd.error : ''}`,
+      rd.latencyMs,
+    );
+    add(
+      '3',
+      invd.error ? 'warn' : 'ok',
+      `Inventários: ${invd.withImageCount}/${invd.totalCount} c/foto · ${invd.inventoryItems?.length ?? 0} itens${invd.error ? ' — ' + invd.error : ''}`,
+      invd.latencyMs,
+    );
+    add(
+      '3',
+      jobd.error ? 'warn' : 'ok',
+      `Jobs: ${jobd.totalThisMonth}/${jobd.totalJobs} este mês, progress:${jobd.avgProgress}%${jobd.error ? ' — ' + jobd.error : ''}`,
+      jobd.latencyMs,
+    );
+    add(
+      '3',
+      firmd.error ? 'warn' : 'ok',
+      `Equipes: ${firmd.total} cadastradas${firmd.error ? ' — ' + firmd.error : ''}`,
+      firmd.latencyMs,
+    );
+    add(
+      '3',
+      rMesd.error ? 'warn' : 'ok',
+      `Apontamentos do mês: ${rMesd.reportings.length}/${rMesd.totalCount}${rMesd.error ? ' — ' + rMesd.error : ''}`,
+      rMesd.latencyMs,
+    );
+    add(
+      '3',
+      photosd.error ? 'warn' : 'ok',
+      `Fotos 15d: ${photosd.totalFetched ?? 0}/${photosd.totalPhotos ?? '?'} fotos · ${photosd.reportingUuids?.length ?? 0} apontamentos${photosd.error ? ' — ' + photosd.error : ''}`,
+      photosd.latencyMs,
+    );
 
     add('4', 'run', 'Calculando métricas e alertas…');
     const dash = buildConcessaoDashboard(selected, ud, rd, invd, jobd, firmd, rMesd, photosd);
-    add('4', 'ok', `${dash.summary.usuariosAtivos} usuários ativos | ${dash.summary.apontamentosTotal} apontamentos | ${dash.summary.alertasTotal} alertas`);
+    add(
+      '4',
+      'ok',
+      `${dash.summary.usuariosAtivos} usuários ativos | ${dash.summary.apontamentosTotal} apontamentos | ${dash.summary.alertasTotal} alertas`,
+    );
 
     const payload = {
-      success: true, ...SOURCE, fetchedAt: new Date().toISOString(),
-      auth: { latencyMs: auth.latencyMs }, company: selected, companies,
+      success: true,
+      ...SOURCE,
+      fetchedAt: new Date().toISOString(),
+      auth: { latencyMs: auth.latencyMs },
+      company: selected,
+      companies,
       pagination: {
-        users:      { returned: ud.users.length,      totalApi: ud.totalCount,      totalPages: ud.totalPages },
-        reportings: { returned: rd.reportings.length, totalApi: rd.totalCount,      totalPages: rd.totalPages },
+        users: { returned: ud.users.length, totalApi: ud.totalCount, totalPages: ud.totalPages },
+        reportings: { returned: rd.reportings.length, totalApi: rd.totalCount, totalPages: rd.totalPages },
       },
-      dashboard: dash, summaryOnly, log,
+      dashboard: dash,
+      summaryOnly,
+      log,
     };
     if (res.locals.dashboardCacheKey) dashboardCache.set(res.locals.dashboardCacheKey, payload);
     return res.json(payload);
@@ -428,32 +561,45 @@ kartadoRouter.post('/multi', async (req, res) => {
 
     add('companies', 'run', 'GET /Company/ — somente concessões ativas');
     const companies = await listCompanies(auth.token);
-    add('companies', 'ok', `${companies.length} concessão(ões): ${companies.map(c => c.name).join(', ')}`);
+    add('companies', 'ok', `${companies.length} concessão(ões): ${companies.map((c) => c.name).join(', ')}`);
 
     if (!companies.length) {
       return res.status(403).json({ success: false, error: 'Nenhuma concessão ativa disponível.', log, ...SOURCE });
     }
 
     const ps = Math.min(parseInt(pageSize) || 100, 100);
-    add('load', 'run', `Consultando ${companies.length} concessões em paralelo — active=true em todas as consultas de usuários…`);
-    const t0  = Date.now();
+    add(
+      'load',
+      'run',
+      `Consultando ${companies.length} concessões em paralelo — active=true em todas as consultas de usuários…`,
+    );
+    const t0 = Date.now();
     const raw = await loadAllCompanies(auth.token, companies, { pageSize: ps });
 
-    raw.forEach(d => {
-      const u = d.users.error      ? `⚠ ${d.users.error}`                                  : `${d.users.users?.length} ativos de ${d.users.totalCount}`;
-      const r = d.reportings.error ? `⚠ ${d.reportings.error}`                             : `${d.reportings.reportings?.length} de ${d.reportings.totalCount} apontamentos`;
+    raw.forEach((d) => {
+      const u = d.users.error ? `⚠ ${d.users.error}` : `${d.users.users?.length} ativos de ${d.users.totalCount}`;
+      const r = d.reportings.error
+        ? `⚠ ${d.reportings.error}`
+        : `${d.reportings.reportings?.length} de ${d.reportings.totalCount} apontamentos`;
       add('load', d.users.error ? 'warn' : 'ok', `${d.company.name}: ${u} | ${r}`);
     });
     add('load', 'ok', `Carga concluída`, Date.now() - t0);
 
     add('analytics', 'run', 'Construindo dashboard consolidado…');
     const dashboard = buildMultiDashboard(raw);
-    add('analytics', 'ok', `${dashboard.totals.usuariosAtivos} usuários ativos | ${dashboard.totals.apontamentos} apontamentos | ${dashboard.totals.criticos} críticos`);
+    add(
+      'analytics',
+      'ok',
+      `${dashboard.totals.usuariosAtivos} usuários ativos | ${dashboard.totals.apontamentos} apontamentos | ${dashboard.totals.criticos} críticos`,
+    );
 
     return res.json({
-      success: true, ...SOURCE, fetchedAt: new Date().toISOString(),
+      success: true,
+      ...SOURCE,
+      fetchedAt: new Date().toISOString(),
       auth: { latencyMs: auth.latencyMs, user: auth.user?.username || creds.username },
-      dashboard, log,
+      dashboard,
+      log,
     });
   } catch (err) {
     const { message } = publicKartadoError(err);
@@ -467,7 +613,13 @@ kartadoRouter.post('/reportings/page', async (req, res) => {
   const creds = requireCreds(req, res);
   if (!creds) return;
   const { companyUuid, page = 1, kind = 'reportings' } = req.body;
-  if (!['reportings', 'inventory'].includes(kind) || typeof companyUuid !== 'string' || !/^[0-9a-f-]{36}$/i.test(companyUuid) || !Number.isSafeInteger(page) || page < 1) {
+  if (
+    !['reportings', 'inventory'].includes(kind) ||
+    typeof companyUuid !== 'string' ||
+    !/^[0-9a-f-]{36}$/i.test(companyUuid) ||
+    !Number.isSafeInteger(page) ||
+    page < 1
+  ) {
     return res.status(400).json({ error: 'Unidade ou página inválida.' });
   }
   const started = Date.now();
@@ -478,15 +630,39 @@ kartadoRouter.post('/reportings/page', async (req, res) => {
     const data = await listReportingPage(token, companyUuid, page, kind);
     stage = 'normalization';
     const metrics = buildReportingMetrics(data.items, data.totalCount);
-    if (data.failedRecords.length) console.warn('[Kartado/reportings/page/partial]', { companyUuid, page, failedRecords: data.failedRecords, elapsedMs: Date.now() - started });
-    res.set('Cache-Control', 'no-store').json({ items: metrics.items, total: data.totalCount, pages: data.totalPages, failedRecords: data.failedRecords });
+    if (data.failedRecords.length)
+      console.warn('[Kartado/reportings/page/partial]', {
+        companyUuid,
+        page,
+        failedRecords: data.failedRecords,
+        elapsedMs: Date.now() - started,
+      });
+    res.set('Cache-Control', 'no-store').json({
+      items: metrics.items,
+      total: data.totalCount,
+      pages: data.totalPages,
+      failedRecords: data.failedRecords,
+    });
   } catch (err) {
-    const status = Number.isInteger(err.httpStatus) && err.httpStatus >= 400 && err.httpStatus <= 599 ? err.httpStatus : 502;
+    const status =
+      Number.isInteger(err.httpStatus) && err.httpStatus >= 400 && err.httpStatus <= 599 ? err.httpStatus : 502;
     // Não registra tokens, credenciais ou corpos retornados pela API externa.
-    console.error('[Kartado/reportings/page]', { companyUuid, page, stage, status, elapsedMs: Date.now() - started, kind: err.name || 'UpstreamError' });
+    console.error('[Kartado/reportings/page]', {
+      companyUuid,
+      page,
+      stage,
+      status,
+      elapsedMs: Date.now() - started,
+      kind: err.name || 'UpstreamError',
+    });
     const retry = Number(err.retryAfter);
     if (Number.isFinite(retry) && retry > 0) res.set('Retry-After', String(Math.ceil(retry)));
-    const reason = stage === 'normalization' ? 'Falha ao processar os registros recebidos.' : stage === 'authentication' ? 'Falha na autenticação com o Kartado.' : 'Falha ao consultar o Kartado.';
+    const reason =
+      stage === 'normalization'
+        ? 'Falha ao processar os registros recebidos.'
+        : stage === 'authentication'
+          ? 'Falha na autenticação com o Kartado.'
+          : 'Falha ao consultar o Kartado.';
     res.status(status).json({ error: reason, page, stage });
   }
 });

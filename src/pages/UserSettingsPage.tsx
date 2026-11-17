@@ -35,10 +35,7 @@ export function UserSettingsPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
-  const selectedUser = useMemo(
-    () => users.find((user) => user.id === selectedUserId) ?? null,
-    [selectedUserId, users],
-  );
+  const selectedUser = useMemo(() => users.find((user) => user.id === selectedUserId) ?? null, [selectedUserId, users]);
 
   async function loadUsers() {
     if (!accessToken || profile?.role !== 'admin') {
@@ -208,9 +205,7 @@ export function UserSettingsPage() {
     <div className="mt-6 space-y-6">
       <section className="rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-            Minha conta
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Minha conta</p>
           <h2 className="mt-2 text-lg font-semibold text-surface-900">Dados pessoais</h2>
         </div>
 
@@ -279,12 +274,8 @@ export function UserSettingsPage() {
         <section className="rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                Configurações
-              </p>
-              <h2 className="mt-2 text-lg font-semibold text-surface-900">
-                Usuários e permissões
-              </h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Configurações</p>
+              <h2 className="mt-2 text-lg font-semibold text-surface-900">Usuários e permissões</h2>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -361,9 +352,7 @@ export function UserSettingsPage() {
               <span className="text-sm font-medium text-surface-700">Permissão</span>
               <select
                 value={userForm.role}
-                onChange={(event) =>
-                  setUserForm({ ...userForm, role: event.target.value as AppRole })
-                }
+                onChange={(event) => setUserForm({ ...userForm, role: event.target.value as AppRole })}
                 disabled={selectedUser?.id === profile.id}
                 className="mt-2 w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-surface-50 disabled:text-surface-500"
               >
@@ -407,9 +396,7 @@ export function UserSettingsPage() {
                   <tr key={user.id}>
                     <td className="px-4 py-3">{user.email}</td>
                     <td className="px-4 py-3">{user.full_name || '-'}</td>
-                    <td className="px-4 py-3">
-                      {user.role === 'admin' ? 'Administrador' : 'Usuário padrão'}
-                    </td>
+                    <td className="px-4 py-3">{user.role === 'admin' ? 'Administrador' : 'Usuário padrão'}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <button

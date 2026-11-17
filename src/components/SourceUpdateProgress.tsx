@@ -30,9 +30,7 @@ export function SourceUpdateProgress({ active, steps }: SourceUpdateProgressProp
   return (
     <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
       <div className="flex items-center justify-between gap-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-          Processando
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Processando</p>
         <p className="text-xs font-medium text-surface-600">
           Etapa {Math.min(stepIndex + 1, steps.length)} de {steps.length}
         </p>

@@ -7,7 +7,10 @@ function AuthenticatedApp() {
   const { status } = useAuth();
 
   // Prévias visuais sem login: somente no servidor de desenvolvimento, nunca no build.
-  if (import.meta.env.DEV && (import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true' || import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')) {
+  if (
+    import.meta.env.DEV &&
+    (import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true' || import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')
+  ) {
     return <DashboardPage />;
   }
 

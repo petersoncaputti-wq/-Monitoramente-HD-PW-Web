@@ -40,15 +40,22 @@ for (const path of RUNTIME_PATHS) {
 // dependem de arquivos que não vão no pacote e quebrariam um "npm install"
 // feito pelo próprio App Service.
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-writeFileSync(join(target, 'package.json'), `${JSON.stringify({
-  name: pkg.name,
-  private: true,
-  version: pkg.version,
-  type: pkg.type,
-  engines: pkg.engines,
-  scripts: { start: pkg.scripts.start },
-  dependencies: pkg.dependencies,
-}, null, 2)}\n`);
+writeFileSync(
+  join(target, 'package.json'),
+  `${JSON.stringify(
+    {
+      name: pkg.name,
+      private: true,
+      version: pkg.version,
+      type: pkg.type,
+      engines: pkg.engines,
+      scripts: { start: pkg.scripts.start },
+      dependencies: pkg.dependencies,
+    },
+    null,
+    2,
+  )}\n`,
+);
 
 // Argumentos fixos (sem entrada externa), então a linha de comando é segura.
 const flags = ['--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'];
@@ -59,6 +66,8 @@ execSync(`npm ci ${flags.join(' ')}`, { cwd: target, stdio: 'inherit' });
 // links das dependências que o projeto aplica no node_modules principal.
 const { sanitizePackageLinks } = await import('./sanitize-package-links.mjs');
 const sanitized = await sanitizePackageLinks(join(target, 'node_modules'));
-console.log(`Links de dependências do pacote: ${sanitized.checked} manifestos verificados; ${sanitized.changed} arquivos higienizados.`);
+console.log(
+  `Links de dependências do pacote: ${sanitized.checked} manifestos verificados; ${sanitized.changed} arquivos higienizados.`,
+);
 
 console.log(`Pacote de deploy pronto em deploy/ (start: "${pkg.scripts.start}").`);

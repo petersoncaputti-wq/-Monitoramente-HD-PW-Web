@@ -28,7 +28,10 @@ function readEnvFile(path) {
 
 function getArgValue(name) {
   const prefix = `--${name}=`;
-  return process.argv.slice(2).find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
+  return process.argv
+    .slice(2)
+    .find((arg) => arg.startsWith(prefix))
+    ?.slice(prefix.length);
 }
 
 async function supabaseRequest(env, path, options = {}) {
@@ -124,15 +127,12 @@ async function main() {
         method: 'DELETE',
       });
     } catch (rollbackError) {
-      const profileMessage =
-        profileError instanceof Error ? profileError.message : 'Erro ao criar o perfil.';
-      const rollbackMessage =
-        rollbackError instanceof Error ? rollbackError.message : 'Erro ao desfazer a criação.';
+      const profileMessage = profileError instanceof Error ? profileError.message : 'Erro ao criar o perfil.';
+      const rollbackMessage = rollbackError instanceof Error ? rollbackError.message : 'Erro ao desfazer a criação.';
 
-      throw new Error(
-        `${profileMessage} Também não foi possível remover o usuário criado: ${rollbackMessage}`,
-        { cause: rollbackError },
-      );
+      throw new Error(`${profileMessage} Também não foi possível remover o usuário criado: ${rollbackMessage}`, {
+        cause: rollbackError,
+      });
     }
 
     throw profileError;

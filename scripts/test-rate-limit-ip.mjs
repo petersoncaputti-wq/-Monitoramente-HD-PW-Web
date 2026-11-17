@@ -19,9 +19,9 @@ console.error = (...args) => errors.push(args);
 app.use(rateLimit({ windowMs: 60000, limit: 2, keyGenerator: clientIpKeyGenerator, legacyHeaders: false }));
 app.get('/', (_req, res) => res.sendStatus(200));
 const server = app.listen(0, '127.0.0.1');
-await new Promise(resolve => server.once('listening', resolve));
+await new Promise((resolve) => server.once('listening', resolve));
 const url = `http://127.0.0.1:${server.address().port}/`;
-const send = ip => fetch(url, { headers: { 'X-Forwarded-For': ip } });
+const send = (ip) => fetch(url, { headers: { 'X-Forwarded-For': ip } });
 try {
   assert.equal((await send('203.0.113.10:10001')).status, 200);
   assert.equal((await send('203.0.113.10:10002')).status, 200);
@@ -34,5 +34,5 @@ try {
   console.log('Rate limit: Azure IP ports, separate clients, IPv6 subnets and validation passed.');
 } finally {
   console.error = originalError;
-  await new Promise(resolve => server.close(resolve));
+  await new Promise((resolve) => server.close(resolve));
 }

@@ -19,11 +19,23 @@ export const emptyMgiFilters = (): MgiTicketFilters => ({ values: {}, resolution
 export const ticketFilterValue = (value: unknown) => String(value ?? '').trim();
 
 export function filterMgiTickets(rows: TicketRow[], filters: MgiTicketFilters, creationStart = '', creationEnd = '') {
-  return rows.filter(row => {
+  return rows.filter((row) => {
     const created = row.Abertoem?.slice(0, 10) ?? '';
-    if ((creationStart || creationEnd) && (!created || (creationStart && created < creationStart) || (creationEnd && created > creationEnd))) return false;
+    if (
+      (creationStart || creationEnd) &&
+      (!created || (creationStart && created < creationStart) || (creationEnd && created > creationEnd))
+    )
+      return false;
     const resolved = row.Fechadoem?.slice(0, 10) ?? '';
-    if ((filters.resolutionStart || filters.resolutionEnd) && (!resolved || (filters.resolutionStart && resolved < filters.resolutionStart) || (filters.resolutionEnd && resolved > filters.resolutionEnd))) return false;
-    return Object.entries(filters.values).every(([key, selected]) => !selected.length || selected.includes(ticketFilterValue(row[key])));
+    if (
+      (filters.resolutionStart || filters.resolutionEnd) &&
+      (!resolved ||
+        (filters.resolutionStart && resolved < filters.resolutionStart) ||
+        (filters.resolutionEnd && resolved > filters.resolutionEnd))
+    )
+      return false;
+    return Object.entries(filters.values).every(
+      ([key, selected]) => !selected.length || selected.includes(ticketFilterValue(row[key])),
+    );
   });
 }

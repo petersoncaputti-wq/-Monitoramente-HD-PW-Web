@@ -67,26 +67,15 @@ function parseDate(value) {
 
   if (typeof value === 'number' && Number.isFinite(value)) {
     const parsed = XLSX.SSF.parse_date_code(value);
-    return parsed
-      ? new Date(parsed.y, parsed.m - 1, parsed.d, parsed.H, parsed.M, Math.floor(parsed.S))
-      : null;
+    return parsed ? new Date(parsed.y, parsed.m - 1, parsed.d, parsed.H, parsed.M, Math.floor(parsed.S)) : null;
   }
 
   const valueText = String(value).trim();
-  const brMatch = valueText.match(
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
-  );
+  const brMatch = valueText.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
 
   if (brMatch) {
     const [, day, month, year, hours = '0', minutes = '0', seconds = '0'] = brMatch;
-    return new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-      Number(hours),
-      Number(minutes),
-      Number(seconds),
-    );
+    return new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds));
   }
 
   const parsed = new Date(valueText);
@@ -130,18 +119,14 @@ function mapTicket(row) {
     assigned_agent: text(valueOf(row, 'AgenteAtribuido', 'Agente Atribuído')),
     assigned_group: text(valueOf(row, 'Grupoatribuido', 'Grupo atribuído')),
     assigned_to: text(valueOf(row, 'Atribuido', 'Atribuído')),
-    beneficiary_organization: text(
-      valueOf(row, 'Organizacaodobeneficiario', 'Organização do beneficiário'),
-    ),
+    beneficiary_organization: text(valueOf(row, 'Organizacaodobeneficiario', 'Organização do beneficiário')),
     case_number: text(valueOf(row, 'Cason', 'Caso n.º', 'Caso')),
     closed_at: dateIso(valueOf(row, 'Fechadoem', 'Fechado em')),
     opened_at: openedAt,
     reason: text(valueOf(row, 'Motivo')),
     requested_for: text(valueOf(row, 'Solicitadopara', 'Solicitado para')),
     requester: text(valueOf(row, 'Solicitante')),
-    requester_organization: text(
-      valueOf(row, 'Organizacaodosolicitante', 'Organização do solicitante'),
-    ),
+    requester_organization: text(valueOf(row, 'Organizacaodosolicitante', 'Organização do solicitante')),
     sla_status: text(valueOf(row, 'StatusdoSLA', 'Status do SLA')),
     status: text(valueOf(row, 'Status')) ?? 'Novo',
     ticket_type: text(valueOf(row, 'Tipodeticket', 'Tipo de ticket')),

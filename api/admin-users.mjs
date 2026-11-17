@@ -91,7 +91,9 @@ async function listProfiles() {
 }
 
 async function createUser(body) {
-  const email = String(body.email ?? '').trim().toLowerCase();
+  const email = String(body.email ?? '')
+    .trim()
+    .toLowerCase();
   const password = String(body.password ?? '');
   const fullName = String(body.fullName ?? '').trim();
   const role = normalizeRole(body.role);
@@ -140,15 +142,12 @@ async function createUser(body) {
         method: 'DELETE',
       });
     } catch (rollbackError) {
-      const profileMessage =
-        profileError instanceof Error ? profileError.message : 'Erro ao criar o perfil.';
-      const rollbackMessage =
-        rollbackError instanceof Error ? rollbackError.message : 'Erro ao desfazer a criação.';
+      const profileMessage = profileError instanceof Error ? profileError.message : 'Erro ao criar o perfil.';
+      const rollbackMessage = rollbackError instanceof Error ? rollbackError.message : 'Erro ao desfazer a criação.';
 
-      throw new Error(
-        `${profileMessage} Também não foi possível remover o usuário criado: ${rollbackMessage}`,
-        { cause: rollbackError },
-      );
+      throw new Error(`${profileMessage} Também não foi possível remover o usuário criado: ${rollbackMessage}`, {
+        cause: rollbackError,
+      });
     }
 
     throw profileError;

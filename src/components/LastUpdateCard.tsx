@@ -6,13 +6,9 @@ interface LastUpdateCardProps {
 }
 
 export function LastUpdateCard({ latestUpdate }: LastUpdateCardProps) {
-  const statusStyles =
-    latestUpdate.status === 'invalid'
-      ? 'border-amber-200 bg-amber-50'
-      : 'border-brand-100 bg-white';
+  const statusStyles = latestUpdate.status === 'invalid' ? 'border-amber-200 bg-amber-50' : 'border-brand-100 bg-white';
 
-  const valueStyles =
-    latestUpdate.status === 'ready' ? 'text-brand-700' : 'text-surface-700';
+  const valueStyles = latestUpdate.status === 'ready' ? 'text-brand-700' : 'text-surface-700';
 
   return (
     <article className={`kpi-card ${statusStyles}`}>
@@ -20,11 +16,8 @@ export function LastUpdateCard({ latestUpdate }: LastUpdateCardProps) {
         <p className="kpi-card-title">Última atualização</p>
         <KpiInfoIcon tooltipKey="latestUpdate" />
       </div>
-      <p className={`kpi-card-value ${valueStyles}`}>
-        {latestUpdate.value}
-      </p>
+      <p className={`kpi-card-value ${valueStyles}`}>{latestUpdate.value}</p>
       <p className="kpi-card-helper">{latestUpdate.helperText}</p>
     </article>
   );
 }
-

@@ -87,7 +87,9 @@ async function assertAdmin(headers) {
 }
 
 function normalizeHeader(value) {
-  return String(value ?? '').trim().replace(/\s+/g, '');
+  return String(value ?? '')
+    .trim()
+    .replace(/\s+/g, '');
 }
 
 function parseNumber(value) {
@@ -195,9 +197,7 @@ function formatDate(date) {
 }
 
 function formatTime(time) {
-  return [time.hours, time.minutes, time.seconds]
-    .map((part) => String(part).padStart(2, '0'))
-    .join(':');
+  return [time.hours, time.minutes, time.seconds].map((part) => String(part).padStart(2, '0')).join(':');
 }
 
 function toObservedAt(date, time) {
@@ -207,7 +207,9 @@ function toObservedAt(date, time) {
 }
 
 export function getContentHash(content) {
-  return createHash('sha256').update(String(content ?? '')).digest('hex');
+  return createHash('sha256')
+    .update(String(content ?? ''))
+    .digest('hex');
 }
 
 export function parseStorageCsv(content) {
@@ -220,9 +222,7 @@ export function parseStorageCsv(content) {
   }
 
   return rows.map((row, index) => {
-    const normalizedRow = Object.fromEntries(
-      Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]),
-    );
+    const normalizedRow = Object.fromEntries(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]));
     const date = parseDate(normalizedRow.Data);
     const time = parseTime(normalizedRow.Hora);
 
@@ -278,16 +278,13 @@ async function importStorageCsv(body) {
     import_id: importRecord.id,
   }));
 
-  const importedRows = await supabaseRequest(
-    '/rest/v1/storage_readings?on_conflict=observed_at,computer,unit',
-    {
-      body: JSON.stringify(rowsWithImportId),
-      headers: {
-        Prefer: 'resolution=merge-duplicates,return=representation',
-      },
-      method: 'POST',
+  const importedRows = await supabaseRequest('/rest/v1/storage_readings?on_conflict=observed_at,computer,unit', {
+    body: JSON.stringify(rowsWithImportId),
+    headers: {
+      Prefer: 'resolution=merge-duplicates,return=representation',
     },
-  );
+    method: 'POST',
+  });
 
   await supabaseRequest(`/rest/v1/storage_imports?id=eq.${importRecord.id}`, {
     body: JSON.stringify({

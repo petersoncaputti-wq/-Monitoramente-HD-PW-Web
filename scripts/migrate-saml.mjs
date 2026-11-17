@@ -10,4 +10,6 @@ try {
     await pool.query(`grant select,insert,delete on public.app_saml_flows,public.app_saml_requests to ${identifier}`);
   }
   console.log('Estrutura SAML criada/verificada. Login permanece sujeito à configuração SAML_ENABLED.');
-} finally { await pool.end(); }
+} finally {
+  await pool.end();
+}

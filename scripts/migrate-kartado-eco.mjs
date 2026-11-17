@@ -11,4 +11,6 @@ try {
     await pool.query(`GRANT USAGE ON SEQUENCE public.kartado_eco_imports_id_seq TO ${identifier}`);
   }
   console.log('Armazenamento de importações Eco preparado.');
-} finally { await pool.end(); }
+} finally {
+  await pool.end();
+}

@@ -10,7 +10,9 @@ for (const [level] of silence) console[level] = () => {};
 // 1. Cache: TTL, limite de entradas e descarte do menos usado.
 let clock = 0;
 const cache = createBoundedCache({ max: 3, ttlMs: 1000, now: () => clock });
-cache.set('a', 1); cache.set('b', 2); cache.set('c', 3);
+cache.set('a', 1);
+cache.set('b', 2);
+cache.set('c', 3);
 assert.equal(cache.get('a').value, 1); // "a" passa a ser o mais recente
 cache.set('d', 4);
 assert.equal(cache.size, 3);
@@ -31,9 +33,15 @@ assert.equal(deduped.find((row) => row.computer === 'SRV1').used_gb, 11);
 // 3. Erros HTTP: validação vira 4xx clara; erro desconhecido vira 500 genérico.
 const app = express();
 app.use(express.json({ limit: '1kb' }));
-app.post('/http', () => { throw new HttpError(400, 'Data inválida: ontem'); });
-app.post('/pg/:code', (req) => { throw Object.assign(new Error('detalhe interno do banco'), { code: req.params.code }); });
-app.post('/boom', () => { throw new Error('segredo interno'); });
+app.post('/http', () => {
+  throw new HttpError(400, 'Data inválida: ontem');
+});
+app.post('/pg/:code', (req) => {
+  throw Object.assign(new Error('detalhe interno do banco'), { code: req.params.code });
+});
+app.post('/boom', () => {
+  throw new Error('segredo interno');
+});
 app.use(httpErrorHandler);
 const server = app.listen(0, '127.0.0.1');
 await new Promise((resolve) => server.once('listening', resolve));
@@ -58,4 +66,6 @@ try {
   for (const [level, original] of silence) console[level] = original;
 }
 
-console.log('Robustez: cache com limite/TTL/LRU, deduplicação da importação de storage e erros HTTP 400/409/413/500 sem vazamento: OK.');
+console.log(
+  'Robustez: cache com limite/TTL/LRU, deduplicação da importação de storage e erros HTTP 400/409/413/500 sem vazamento: OK.',
+);

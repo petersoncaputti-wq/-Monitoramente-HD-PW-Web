@@ -142,11 +142,7 @@ export async function readTicketsFromSupabase(_accessToken: string): Promise<Imp
   };
 }
 
-async function ticketsRequest<T>(
-  accessToken: string,
-  method: 'POST' | 'PATCH' | 'DELETE',
-  body: unknown,
-): Promise<T> {
+async function ticketsRequest<T>(accessToken: string, method: 'POST' | 'PATCH' | 'DELETE', body: unknown): Promise<T> {
   const response = await fetch('/api/tickets', {
     body: JSON.stringify(body),
     headers: {

@@ -91,11 +91,7 @@ body::before {
     height: 170px;
     width: 170px;
     border-radius: 44px;
-    background: linear-gradient(
-      180deg,
-      rgba(114, 210, 22, 0.18) 0%,
-      rgba(29, 160, 19, 0.08) 100%
-    );
+    background: linear-gradient(180deg, rgba(114, 210, 22, 0.18) 0%, rgba(29, 160, 19, 0.08) 100%);
     transform: rotate(18deg);
     pointer-events: none;
   }

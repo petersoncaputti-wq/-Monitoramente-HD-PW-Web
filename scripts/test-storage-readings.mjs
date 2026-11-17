@@ -7,23 +7,51 @@ const calls = [];
 let configuredToken = token;
 const app = express();
 app.use(express.json());
-app.use('/api/storage-readings', createStorageReadingsRouter({
-  getToken: () => configuredToken,
-  execute: async (...args) => { calls.push(args); },
-}));
+app.use(
+  '/api/storage-readings',
+  createStorageReadingsRouter({
+    getToken: () => configuredToken,
+    execute: async (...args) => {
+      calls.push(args);
+    },
+  }),
+);
 const server = app.listen(0, '127.0.0.1');
 await new Promise((resolve) => server.once('listening', resolve));
 const url = `http://127.0.0.1:${server.address().port}/api/storage-readings`;
-const reading = { Data: '2026-11-11', Hora: '14:30:00', Computador: 'pw-server', Unidade: 'E:', TotalGB: 100, UsadoGB: 70, LivreGB: 30, PercentualUsado: 70, PercentualLivre: 30 };
+const reading = {
+  Data: '2026-11-11',
+  Hora: '14:30:00',
+  Computador: 'pw-server',
+  Unidade: 'E:',
+  TotalGB: 100,
+  UsadoGB: 70,
+  LivreGB: 30,
+  PercentualUsado: 70,
+  PercentualLivre: 30,
+};
 async function send(body, credential = token) {
-  return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${credential}` }, body: JSON.stringify(body) });
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${credential}` },
+    body: JSON.stringify(body),
+  });
 }
 try {
   assert.equal((await send(reading, 'wrong')).status, 401);
   configuredToken = undefined;
   assert.equal((await send(reading)).status, 503);
   configuredToken = token;
-  for (const override of [{ Data: '2026-02-30' }, { Hora: '25:00:00' }, { TotalGB: '100' }, { LivreGB: -1 }, { PercentualUsado: 101 }, { UsadoGB: 20 }, { Unidade: 'E' }, { Computador: '' }]) {
+  for (const override of [
+    { Data: '2026-02-30' },
+    { Hora: '25:00:00' },
+    { TotalGB: '100' },
+    { LivreGB: -1 },
+    { PercentualUsado: 101 },
+    { UsadoGB: 20 },
+    { Unidade: 'E' },
+    { Computador: '' },
+  ]) {
     assert.equal((await send({ ...reading, ...override })).status, 400, JSON.stringify(override));
   }
   assert.equal(calls.length, 0);

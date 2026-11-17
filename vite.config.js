@@ -172,9 +172,7 @@ function sourceSyncPlugin() {
                             sync = null;
                         }
                         response.end(JSON.stringify({
-                            message: sync
-                                ? config.fallbackMessage
-                                : output || config.fallbackMessage,
+                            message: sync ? config.fallbackMessage : output || config.fallbackMessage,
                             sync: sync,
                         }));
                     });

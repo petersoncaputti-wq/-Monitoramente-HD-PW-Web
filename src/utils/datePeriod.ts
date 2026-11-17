@@ -17,9 +17,7 @@ function parseDate(value?: string): Date | null {
 function monthPeriod(anchor: Date, endAtToday: boolean) {
   const today = new Date();
   const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-  const end = endAtToday
-    ? today
-    : new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+  const end = endAtToday ? today : new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
   return { startDate: formatDate(start), endDate: formatDate(end) };
 }
 
@@ -27,19 +25,14 @@ export function getDefaultDatePeriod(maxDate?: string) {
   const today = new Date();
   const latestDate = parseDate(maxDate);
   const hasCurrentMonthData =
-    latestDate &&
-    latestDate.getFullYear() === today.getFullYear() &&
-    latestDate.getMonth() === today.getMonth();
+    latestDate && latestDate.getFullYear() === today.getFullYear() && latestDate.getMonth() === today.getMonth();
 
   return hasCurrentMonthData || !latestDate
     ? { ...monthPeriod(today, true), usedLatestAvailableMonth: false }
     : { ...monthPeriod(latestDate, false), usedLatestAvailableMonth: true };
 }
 
-export function getDatePeriodPreset(
-  preset: DatePeriodPreset,
-  range: { minDate?: string; maxDate?: string },
-) {
+export function getDatePeriodPreset(preset: DatePeriodPreset, range: { minDate?: string; maxDate?: string }) {
   const today = new Date();
 
   if (preset === 'all') {

@@ -47,9 +47,7 @@ function mapStorageReading(record: StorageReadingRecord): MonitoringRow {
   };
 }
 
-export async function readStorageReadingsFromSupabase(
-  _accessToken?: string,
-): Promise<ImportedWorkbookData> {
+export async function readStorageReadingsFromSupabase(_accessToken?: string): Promise<ImportedWorkbookData> {
   const response = await fetch('/api/data/storage', { credentials: 'same-origin' });
   if (!response.ok) throw new Error('Não foi possível carregar os dados de armazenamento.');
   const records = (await response.json()) as StorageReadingRecord[];

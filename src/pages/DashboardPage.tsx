@@ -20,11 +20,7 @@ import { KartadoPage } from '@/pages/KartadoPage';
 import { KartadoTicketsPage } from '@/pages/KartadoTicketsPage';
 import { KartadoEcoPage } from '@/pages/KartadoEcoPage';
 import { TotvsPage } from '@/pages/TotvsPage';
-import {
-  getDatePeriodPreset,
-  getDefaultDatePeriod,
-  type DatePeriodPreset,
-} from '@/utils/datePeriod';
+import { getDatePeriodPreset, getDefaultDatePeriod, type DatePeriodPreset } from '@/utils/datePeriod';
 import type {
   ImportedWorkbookData,
   E365UsageRow,
@@ -44,10 +40,7 @@ import {
   hasSupabaseProjectWiseUsersConfig,
   readProjectWisePortalUsersFromSupabase,
 } from '@/services/projectWiseUsersService';
-import {
-  hasSupabaseStorageConfig,
-  readStorageReadingsFromSupabase,
-} from '@/services/storageReadingsService';
+import { hasSupabaseStorageConfig, readStorageReadingsFromSupabase } from '@/services/storageReadingsService';
 import { importStorageCsvFile } from '@/services/storageImportService';
 import {
   createTicket,
@@ -111,11 +104,7 @@ function getRowsDateRange(rows: MonitoringRow[]) {
   };
 }
 
-function filterRowsByPeriod(
-  rows: MonitoringRow[],
-  startDateValue: string,
-  endDateValue: string,
-) {
+function filterRowsByPeriod(rows: MonitoringRow[], startDateValue: string, endDateValue: string) {
   const startDate = parseInputDate(startDateValue);
   const endDate = parseInputDate(endDateValue);
 
@@ -146,7 +135,16 @@ function filterRowsByPeriod(
   });
 }
 
-type DashboardTab = 'storage' | 'projectWiseUsers' | 'tickets' | 'kartadoAudit' | 'kartadoHealth' | 'kartadoEco' | 'kartadoTickets' | 'totvs' | 'settings';
+type DashboardTab =
+  | 'storage'
+  | 'projectWiseUsers'
+  | 'tickets'
+  | 'kartadoAudit'
+  | 'kartadoHealth'
+  | 'kartadoEco'
+  | 'kartadoTickets'
+  | 'totvs'
+  | 'settings';
 
 const DASHBOARD_ROUTES: Record<DashboardTab, string> = {
   totvs: '/totvs/chamados',
@@ -181,9 +179,7 @@ const LEGACY_DASHBOARD_ROUTES: Record<string, string> = {
 
 function getDashboardTab(pathname: string): DashboardTab | null {
   const normalizedPath = pathname.replace(/\/+$/, '') || '/';
-  const matchedRoute = Object.entries(DASHBOARD_ROUTES).find(
-    ([, route]) => route === normalizedPath,
-  );
+  const matchedRoute = Object.entries(DASHBOARD_ROUTES).find(([, route]) => route === normalizedPath);
   return (matchedRoute?.[0] as DashboardTab | undefined) ?? null;
 }
 
@@ -194,12 +190,7 @@ const AUTO_STORAGE_SOURCES = [
   'dados/armazenamento.xml',
 ];
 
-const AUTO_TICKET_SOURCES = [
-  'dados/chamados.xlsx',
-  'dados/chamados.xls',
-  'dados/chamados.csv',
-  'dados/chamados.xml',
-];
+const AUTO_TICKET_SOURCES = ['dados/chamados.xlsx', 'dados/chamados.xls', 'dados/chamados.csv', 'dados/chamados.xml'];
 
 const AUTO_PROJECT_WISE_PORTAL_USER_SOURCES = [
   'dados/usuarios-pw-portal.xlsx',
@@ -266,10 +257,7 @@ type ProjectWiseUsersImportStatus =
   | { state: 'error'; message: string };
 
 type TicketFormStatus =
-  | { state: 'idle' }
-  | { state: 'saving' }
-  | { state: 'success'; message: string }
-  | { state: 'error'; message: string };
+  { state: 'idle' } | { state: 'saving' } | { state: 'success'; message: string } | { state: 'error'; message: string };
 
 interface StorageSyncInfo {
   sourcePath: string;
@@ -293,9 +281,7 @@ interface StorageSyncResponse {
 }
 
 function getPublicUrl(path: string, cacheKey?: string): string {
-  const baseUrl = import.meta.env.BASE_URL.endsWith('/')
-    ? import.meta.env.BASE_URL
-    : `${import.meta.env.BASE_URL}/`;
+  const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 
   const url = `${baseUrl}${path}`;
 
@@ -412,9 +398,7 @@ async function syncLocalProjectWisePortalUsersSource(): Promise<StorageSyncInfo 
   const result = (await response.json().catch(() => null)) as StorageSyncResponse | null;
 
   if (!response.ok) {
-    throw new Error(
-      result?.error ?? 'Não foi possível atualizar a fonte de usuários do Portal Bentley.',
-    );
+    throw new Error(result?.error ?? 'Não foi possível atualizar a fonte de usuários do Portal Bentley.');
   }
 
   return result?.sync;
@@ -428,9 +412,7 @@ function isTicketRow(row: ImportedWorkbookData['rows'][number]): row is TicketRo
   return 'StatusdoSLA' in row && 'Tipodeticket' in row && 'Abertoem' in row;
 }
 
-function isProjectWiseWebUserRow(
-  row: ImportedWorkbookData['rows'][number],
-): row is ProjectWiseWebUserRow {
+function isProjectWiseWebUserRow(row: ImportedWorkbookData['rows'][number]): row is ProjectWiseWebUserRow {
   return 'Email' in row && 'LastLoginDate' in row && 'Locked' in row;
 }
 
@@ -441,31 +423,32 @@ export function DashboardPage() {
   const activeTab = getDashboardTab(location.pathname);
   const normalizedPath = location.pathname.replace(/\/+$/, '') || '/';
   const isHomePage = normalizedPath === '/';
-  const isProjectWisePage =
-    activeTab === 'storage' || activeTab === 'projectWiseUsers' || activeTab === 'tickets';
-  const isKartadoPage = activeTab === 'kartadoAudit' || activeTab === 'kartadoHealth' || activeTab === 'kartadoEco' || activeTab === 'kartadoTickets';
+  const isProjectWisePage = activeTab === 'storage' || activeTab === 'projectWiseUsers' || activeTab === 'tickets';
+  const isKartadoPage =
+    activeTab === 'kartadoAudit' ||
+    activeTab === 'kartadoHealth' ||
+    activeTab === 'kartadoEco' ||
+    activeTab === 'kartadoTickets';
   const [storageData, setStorageData] = useState<ImportedWorkbookData | null>(null);
   const [ticketsData, setTicketsData] = useState<ImportedWorkbookData | null>(null);
-  const [projectWisePortalUsersData, setProjectWisePortalUsersData] =
-    useState<ImportedWorkbookData | null>(null);
+  const [projectWisePortalUsersData, setProjectWisePortalUsersData] = useState<ImportedWorkbookData | null>(null);
   const [e365UsageRows, setE365UsageRows] = useState<E365UsageRow[]>([]);
-  const [autoStorageStatus, setAutoStorageStatus] =
-    useState<AutoStorageStatus>({ state: 'idle' });
-  const [autoTicketsStatus, setAutoTicketsStatus] =
-    useState<AutoStorageStatus>({ state: 'idle' });
-  const [autoProjectWiseUsersStatus, setAutoProjectWiseUsersStatus] =
-    useState<AutoStorageStatus>({ state: 'idle' });
-  const [autoProjectWisePortalUsersStatus, setAutoProjectWisePortalUsersStatus] =
-    useState<AutoStorageStatus>({ state: 'idle' });
+  const [autoStorageStatus, setAutoStorageStatus] = useState<AutoStorageStatus>({ state: 'idle' });
+  const [autoTicketsStatus, setAutoTicketsStatus] = useState<AutoStorageStatus>({ state: 'idle' });
+  const [autoProjectWiseUsersStatus, setAutoProjectWiseUsersStatus] = useState<AutoStorageStatus>({ state: 'idle' });
+  const [autoProjectWisePortalUsersStatus, setAutoProjectWisePortalUsersStatus] = useState<AutoStorageStatus>({
+    state: 'idle',
+  });
   const [storageCsvFiles, setStorageCsvFiles] = useState<File[]>([]);
-  const [storageCsvImportStatus, setStorageCsvImportStatus] =
-    useState<StorageCsvImportStatus>({ state: 'idle' });
+  const [storageCsvImportStatus, setStorageCsvImportStatus] = useState<StorageCsvImportStatus>({ state: 'idle' });
   const [projectWiseExplorerFile, setProjectWiseExplorerFile] = useState<File | null>(null);
   const [projectWisePortalFile, setProjectWisePortalFile] = useState<File | null>(null);
-  const [projectWiseExplorerImportStatus, setProjectWiseExplorerImportStatus] =
-    useState<ProjectWiseUsersImportStatus>({ state: 'idle' });
-  const [projectWisePortalImportStatus, setProjectWisePortalImportStatus] =
-    useState<ProjectWiseUsersImportStatus>({ state: 'idle' });
+  const [projectWiseExplorerImportStatus, setProjectWiseExplorerImportStatus] = useState<ProjectWiseUsersImportStatus>({
+    state: 'idle',
+  });
+  const [projectWisePortalImportStatus, setProjectWisePortalImportStatus] = useState<ProjectWiseUsersImportStatus>({
+    state: 'idle',
+  });
   const [ticketForm, setTicketForm] = useState<TicketInput>({
     openedAt: '',
     status: 'Novo',
@@ -480,18 +463,12 @@ export function DashboardPage() {
   const [ticketPage, setTicketPage] = useState(1);
   const [periodStartDate, setPeriodStartDate] = useState('');
   const [periodEndDate, setPeriodEndDate] = useState('');
-  const rows = useMemo(
-    () => (storageData?.rows.filter(isMonitoringRow) ?? []),
-    [storageData],
-  );
+  const rows = useMemo(() => storageData?.rows.filter(isMonitoringRow) ?? [], [storageData]);
   const projectWiseWebUserRows = useMemo(
     () => projectWisePortalUsersData?.rows.filter(isProjectWiseWebUserRow) ?? [],
     [projectWisePortalUsersData],
   );
-  const ticketRows = useMemo(
-    () => (ticketsData?.rows.filter(isTicketRow) ?? []),
-    [ticketsData],
-  );
+  const ticketRows = useMemo(() => ticketsData?.rows.filter(isTicketRow) ?? [], [ticketsData]);
   const ticketReasonOptions = useMemo(
     () => getTicketReasonOptions(ticketRows.map((row) => String(row.Motivo ?? ''))),
     [ticketRows],
@@ -507,8 +484,7 @@ export function DashboardPage() {
     const entry = Object.entries(row).find(([key]) => normalizeKey(key) === normalizedTarget);
     return String(entry?.[1] ?? '');
   };
-  const getTicketCaseNumber = (row: TicketRow) =>
-    getTicketValue(row, 'Caso n') || getTicketValue(row, 'Cason');
+  const getTicketCaseNumber = (row: TicketRow) => getTicketValue(row, 'Caso n') || getTicketValue(row, 'Cason');
   const normalizeTicketFilterValue = (value: unknown) =>
     String(value ?? '')
       .trim()
@@ -539,9 +515,7 @@ export function DashboardPage() {
     const counts = new Map<string, { count: number; requesterMatches: number; value: string }>();
 
     for (const row of ticketRows) {
-      const value =
-        getTicketValue(row, 'Organizaçãodobeneficiário') ||
-        getTicketValue(row, 'Organizaçãodosolicitante');
+      const value = getTicketValue(row, 'Organizaçãodobeneficiário') || getTicketValue(row, 'Organizaçãodosolicitante');
       const key = normalizeTicketFilterValue(value);
 
       if (!key) {
@@ -550,10 +524,7 @@ export function DashboardPage() {
 
       const current = counts.get(key);
       const requesterMatches =
-        selectedRequester &&
-        normalizeTicketFilterValue(row.Solicitante) === selectedRequester
-          ? 1
-          : 0;
+        selectedRequester && normalizeTicketFilterValue(row.Solicitante) === selectedRequester ? 1 : 0;
       counts.set(key, {
         count: (current?.count ?? 0) + 1,
         requesterMatches: (current?.requesterMatches ?? 0) + requesterMatches,
@@ -564,17 +535,15 @@ export function DashboardPage() {
     return [...counts.values()]
       .sort(
         (a, b) =>
-          b.requesterMatches - a.requesterMatches ||
-          b.count - a.count ||
-          a.value.localeCompare(b.value, 'pt-BR'),
+          b.requesterMatches - a.requesterMatches || b.count - a.count || a.value.localeCompare(b.value, 'pt-BR'),
       )
       .slice(0, 50);
   }, [ticketForm.requester, ticketRows]);
   const ticketStatusOptions = useMemo(
     () =>
-      Array.from(
-        new Set(ticketRows.map((row) => String(row.Status ?? '').trim()).filter(Boolean)),
-      ).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+      Array.from(new Set(ticketRows.map((row) => String(row.Status ?? '').trim()).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b, 'pt-BR'),
+      ),
     [ticketRows],
   );
   const filteredAdminTicketRows = useMemo(() => {
@@ -588,21 +557,14 @@ export function DashboardPage() {
     return ticketRows.filter((row) => {
       const rowMatchesGeneralSearch =
         !normalizedTerm ||
-        [
-          getTicketCaseNumber(row),
-          row.Status,
-          row.Solicitante,
-          row.Motivo,
-          row.Tipodeticket,
-          row.StatusdoSLA,
-        ].some((value) => normalizeTicketFilterValue(value).includes(normalizedTerm));
+        [getTicketCaseNumber(row), row.Status, row.Solicitante, row.Motivo, row.Tipodeticket, row.StatusdoSLA].some(
+          (value) => normalizeTicketFilterValue(value).includes(normalizedTerm),
+        );
 
       return (
         rowMatchesGeneralSearch &&
         (!normalizedColumnFilters.caseNumber ||
-          normalizeTicketFilterValue(getTicketCaseNumber(row)).includes(
-            normalizedColumnFilters.caseNumber,
-          )) &&
+          normalizeTicketFilterValue(getTicketCaseNumber(row)).includes(normalizedColumnFilters.caseNumber)) &&
         (!normalizedColumnFilters.status ||
           normalizeTicketFilterValue(row.Status) === normalizedColumnFilters.status) &&
         (!normalizedColumnFilters.requester ||
@@ -611,8 +573,7 @@ export function DashboardPage() {
     });
   }, [ticketRows, ticketSearchTerm, ticketColumnFilters]);
   const hasTicketFilters =
-    Boolean(ticketSearchTerm.trim()) ||
-    Object.values(ticketColumnFilters).some((value) => Boolean(value.trim()));
+    Boolean(ticketSearchTerm.trim()) || Object.values(ticketColumnFilters).some((value) => Boolean(value.trim()));
   const clearTicketFilters = () => {
     setTicketSearchTerm('');
     setTicketColumnFilters({
@@ -621,22 +582,15 @@ export function DashboardPage() {
       status: '',
     });
   };
-  const totalTicketPages = Math.max(
-    1,
-    Math.ceil(filteredAdminTicketRows.length / TICKETS_PAGE_SIZE),
-  );
+  const totalTicketPages = Math.max(1, Math.ceil(filteredAdminTicketRows.length / TICKETS_PAGE_SIZE));
   const visibleTicketPage = Math.min(ticketPage, totalTicketPages);
   const ticketPageStartIndex = (visibleTicketPage - 1) * TICKETS_PAGE_SIZE;
   const paginatedAdminTicketRows = filteredAdminTicketRows.slice(
     ticketPageStartIndex,
     ticketPageStartIndex + TICKETS_PAGE_SIZE,
   );
-  const firstTicketOnPage =
-    filteredAdminTicketRows.length === 0 ? 0 : ticketPageStartIndex + 1;
-  const lastTicketOnPage = Math.min(
-    ticketPageStartIndex + TICKETS_PAGE_SIZE,
-    filteredAdminTicketRows.length,
-  );
+  const firstTicketOnPage = filteredAdminTicketRows.length === 0 ? 0 : ticketPageStartIndex + 1;
+  const lastTicketOnPage = Math.min(ticketPageStartIndex + TICKETS_PAGE_SIZE, filteredAdminTicketRows.length);
 
   useEffect(() => {
     const requestedTab = getDashboardTab(location.pathname);
@@ -690,10 +644,7 @@ export function DashboardPage() {
     setTicketPage((currentPage) => Math.min(currentPage, totalTicketPages));
   }, [totalTicketPages]);
   const dateRange = useMemo(() => getRowsDateRange(rows), [rows]);
-  const defaultStoragePeriod = useMemo(
-    () => getDefaultDatePeriod(dateRange?.maxDate),
-    [dateRange?.maxDate],
-  );
+  const defaultStoragePeriod = useMemo(() => getDefaultDatePeriod(dateRange?.maxDate), [dateRange?.maxDate]);
   const isUsingLatestStorageMonth =
     defaultStoragePeriod.usedLatestAvailableMonth &&
     periodStartDate === defaultStoragePeriod.startDate &&
@@ -758,9 +709,7 @@ export function DashboardPage() {
         });
       } catch (error) {
         const message =
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível carregar os dados de armazenamento no Supabase.';
+          error instanceof Error ? error.message : 'Não foi possível carregar os dados de armazenamento no Supabase.';
 
         setAutoStorageStatus({ state: 'error', message });
       }
@@ -777,10 +726,7 @@ export function DashboardPage() {
       try {
         syncInfo = await syncLocalStorageSource();
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível sincronizar a fonte local.';
+        const message = error instanceof Error ? error.message : 'Não foi possível sincronizar a fonte local.';
 
         setAutoStorageStatus({ state: 'error', message });
         return;
@@ -824,9 +770,7 @@ export function DashboardPage() {
           : 'Não foi possível carregar a fonte automática de armazenamento.';
 
     setAutoStorageStatus(
-      EXTERNAL_STORAGE_SOURCE_URL || hasHeaderError(message)
-        ? { state: 'error', message }
-        : { state: 'missing' },
+      EXTERNAL_STORAGE_SOURCE_URL || hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' },
     );
   }
 
@@ -862,10 +806,7 @@ export function DashboardPage() {
     } catch (error) {
       setStorageCsvImportStatus({
         state: 'error',
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível importar o CSV de armazenamento.',
+        message: error instanceof Error ? error.message : 'Não foi possível importar o CSV de armazenamento.',
       });
     }
   }
@@ -934,11 +875,7 @@ export function DashboardPage() {
         throw new Error('Sessão expirada. Entre novamente para importar o arquivo.');
       }
 
-      const result = await importProjectWiseUsersFile(
-        validAccessToken,
-        'portal',
-        projectWisePortalFile,
-      );
+      const result = await importProjectWiseUsersFile(validAccessToken, 'portal', projectWisePortalFile);
 
       setProjectWisePortalImportStatus({
         state: 'success',
@@ -949,18 +886,12 @@ export function DashboardPage() {
     } catch (error) {
       setProjectWisePortalImportStatus({
         state: 'error',
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível importar os usuários do Portal Bentley.',
+        message: error instanceof Error ? error.message : 'Não foi possível importar os usuários do Portal Bentley.',
       });
     }
   }
 
-  function updateTicketForm<Field extends keyof TicketInput>(
-    field: Field,
-    value: TicketInput[Field],
-  ) {
+  function updateTicketForm<Field extends keyof TicketInput>(field: Field, value: TicketInput[Field]) {
     setTicketForm((current) => ({ ...current, [field]: value }));
     setTicketFormStatus({ state: 'idle' });
   }
@@ -1126,10 +1057,7 @@ export function DashboardPage() {
     }
   }
 
-  async function loadAutoTicketsSource(options?: {
-    accessTokenOverride?: string;
-    syncBeforeRead?: boolean;
-  }) {
+  async function loadAutoTicketsSource(options?: { accessTokenOverride?: string; syncBeforeRead?: boolean }) {
     setAutoTicketsStatus({ state: 'loading' });
 
     if (hasSupabaseTicketsConfig()) {
@@ -1156,10 +1084,7 @@ export function DashboardPage() {
       } catch (error) {
         setAutoTicketsStatus({
           state: 'error',
-          message:
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível carregar os chamados no Supabase.',
+          message: error instanceof Error ? error.message : 'Não foi possível carregar os chamados no Supabase.',
         });
       }
 
@@ -1175,9 +1100,7 @@ export function DashboardPage() {
         syncInfo = await syncLocalTicketsSource();
       } catch (error) {
         const message =
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível sincronizar a fonte local de chamados.';
+          error instanceof Error ? error.message : 'Não foi possível sincronizar a fonte local de chamados.';
 
         setAutoTicketsStatus({ state: 'error', message });
         return;
@@ -1210,13 +1133,9 @@ export function DashboardPage() {
     }
 
     const message =
-      lastError instanceof Error
-        ? lastError.message
-        : 'Não foi possível carregar a fonte automática de chamados.';
+      lastError instanceof Error ? lastError.message : 'Não foi possível carregar a fonte automática de chamados.';
 
-    setAutoTicketsStatus(
-      hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' },
-    );
+    setAutoTicketsStatus(hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' });
   }
 
   async function loadAutoProjectWiseUsersSource() {
@@ -1290,9 +1209,7 @@ export function DashboardPage() {
         syncInfo = await syncLocalProjectWisePortalUsersSource();
       } catch (error) {
         const message =
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível atualizar a fonte de usuários do Portal Bentley.';
+          error instanceof Error ? error.message : 'Não foi possível atualizar a fonte de usuários do Portal Bentley.';
 
         setAutoProjectWisePortalUsersStatus({ state: 'error', message });
         return;
@@ -1307,9 +1224,7 @@ export function DashboardPage() {
         const data = await readMonitoringWorkbookFromUrl(source.url, source.fileName);
 
         if (data.kind !== 'projectWiseWebUsers') {
-          throw new Error(
-            'A fonte encontrada não possui os cabeçalhos de usuários do Portal Bentley.',
-          );
+          throw new Error('A fonte encontrada não possui os cabeçalhos de usuários do Portal Bentley.');
         }
 
         applyProjectWisePortalUsersData(data);
@@ -1331,9 +1246,7 @@ export function DashboardPage() {
         ? lastError.message
         : 'Não foi possível carregar a fonte automática de usuários do Portal Bentley.';
 
-    setAutoProjectWisePortalUsersStatus(
-      hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' },
-    );
+    setAutoProjectWisePortalUsersStatus(hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' });
   }
 
   useEffect(() => {
@@ -1379,9 +1292,7 @@ export function DashboardPage() {
       <header className="w-full border-b border-brand-100 bg-white/95 shadow-soft backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-700">
-              Painel institucional
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-700">Painel institucional</p>
             <h1 className="mt-2 text-2xl font-semibold text-surface-900 md:text-3xl">
               Painel de indicadores de Sistemas de Engenharia
             </h1>
@@ -1420,37 +1331,73 @@ export function DashboardPage() {
       </header>
 
       <div className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <nav aria-label="Trilha de navegação" className="mt-1 flex flex-wrap items-center gap-2 text-sm text-surface-600">
+        <nav
+          aria-label="Trilha de navegação"
+          className="mt-1 flex flex-wrap items-center gap-2 text-sm text-surface-600"
+        >
           {isHomePage ? (
-            <span className="font-semibold text-surface-900" aria-current="page">Início</span>
+            <span className="font-semibold text-surface-900" aria-current="page">
+              Início
+            </span>
           ) : (
-            <NavLink to="/" className="font-medium transition hover:text-brand-700">Início</NavLink>
+            <NavLink to="/" className="font-medium transition hover:text-brand-700">
+              Início
+            </NavLink>
           )}
           {activeTab === 'settings' ? (
             <>
-              <span aria-hidden="true" className="text-brand-300">/</span>
+              <span aria-hidden="true" className="text-brand-300">
+                /
+              </span>
               <span className="font-semibold text-surface-900" aria-current="page">
                 Configurações
               </span>
             </>
           ) : activeTab === 'totvs' ? (
-            <><span aria-hidden="true" className="text-brand-300">/</span><span>MGI</span><span aria-hidden="true" className="text-brand-300">/</span><span className="font-semibold text-surface-900" aria-current="page">Chamados</span></>
+            <>
+              <span aria-hidden="true" className="text-brand-300">
+                /
+              </span>
+              <span>MGI</span>
+              <span aria-hidden="true" className="text-brand-300">
+                /
+              </span>
+              <span className="font-semibold text-surface-900" aria-current="page">
+                Chamados
+              </span>
+            </>
           ) : isKartadoPage ? (
             <>
-              <span aria-hidden="true" className="text-brand-300">/</span>
-              <NavLink to={DASHBOARD_ROUTES.kartadoAudit} className="font-medium text-surface-700 transition hover:text-brand-700">
+              <span aria-hidden="true" className="text-brand-300">
+                /
+              </span>
+              <NavLink
+                to={DASHBOARD_ROUTES.kartadoAudit}
+                className="font-medium text-surface-700 transition hover:text-brand-700"
+              >
                 Kartado
               </NavLink>
-              <span aria-hidden="true" className="text-brand-300">/</span>
-              <span className="font-semibold text-surface-900" aria-current="page">{activeTab ? DASHBOARD_TAB_LABELS[activeTab] : ''}</span>
+              <span aria-hidden="true" className="text-brand-300">
+                /
+              </span>
+              <span className="font-semibold text-surface-900" aria-current="page">
+                {activeTab ? DASHBOARD_TAB_LABELS[activeTab] : ''}
+              </span>
             </>
           ) : activeTab ? (
             <>
-              <span aria-hidden="true" className="text-brand-300">/</span>
-              <NavLink to={DASHBOARD_ROUTES.storage} className="font-medium text-surface-700 transition hover:text-brand-700">
+              <span aria-hidden="true" className="text-brand-300">
+                /
+              </span>
+              <NavLink
+                to={DASHBOARD_ROUTES.storage}
+                className="font-medium text-surface-700 transition hover:text-brand-700"
+              >
                 ProjectWise
               </NavLink>
-              <span aria-hidden="true" className="text-brand-300">/</span>
+              <span aria-hidden="true" className="text-brand-300">
+                /
+              </span>
               <span className="font-semibold text-surface-900" aria-current="page">
                 {DASHBOARD_TAB_LABELS[activeTab]}
               </span>
@@ -1459,51 +1406,97 @@ export function DashboardPage() {
         </nav>
 
         {isProjectWisePage ? (
-        <nav aria-label="Navegação do ProjectWise" className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
-          <NavLink
-            to={DASHBOARD_ROUTES.storage}
-            className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              isActive
-                ? 'bg-brand-700 text-white shadow-soft'
-                : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
-            }`}
+          <nav
+            aria-label="Navegação do ProjectWise"
+            className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft"
           >
-            Armazenamento
-          </NavLink>
-          <NavLink
-            to={DASHBOARD_ROUTES.projectWiseUsers}
-            className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              isActive
-                ? 'bg-brand-700 text-white shadow-soft'
-                : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
-            }`}
-          >
-            Usuários PW
-          </NavLink>
-          <NavLink
-            to={DASHBOARD_ROUTES.tickets}
-            className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-              isActive
-                ? 'bg-brand-700 text-white shadow-soft'
-                : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
-            }`}
-          >
-            Chamados
-          </NavLink>
-        </nav>
+            <NavLink
+              to={DASHBOARD_ROUTES.storage}
+              className={({ isActive }) =>
+                `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  isActive
+                    ? 'bg-brand-700 text-white shadow-soft'
+                    : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
+                }`
+              }
+            >
+              Armazenamento
+            </NavLink>
+            <NavLink
+              to={DASHBOARD_ROUTES.projectWiseUsers}
+              className={({ isActive }) =>
+                `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  isActive
+                    ? 'bg-brand-700 text-white shadow-soft'
+                    : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
+                }`
+              }
+            >
+              Usuários PW
+            </NavLink>
+            <NavLink
+              to={DASHBOARD_ROUTES.tickets}
+              className={({ isActive }) =>
+                `rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  isActive
+                    ? 'bg-brand-700 text-white shadow-soft'
+                    : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'
+                }`
+              }
+            >
+              Chamados
+            </NavLink>
+          </nav>
         ) : null}
 
         {isKartadoPage ? (
-          <nav aria-label="Navegação do Kartado" className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft">
-            <NavLink to={DASHBOARD_ROUTES.kartadoAudit} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Auditoria</NavLink>
-            <NavLink to={DASHBOARD_ROUTES.kartadoHealth} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Saúde</NavLink>
-            <NavLink to={DASHBOARD_ROUTES.kartadoEco} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Acompanhamento</NavLink>
-            <NavLink to={DASHBOARD_ROUTES.kartadoTickets} className={({ isActive }) => `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`}>Chamados</NavLink>
+          <nav
+            aria-label="Navegação do Kartado"
+            className="mt-4 flex flex-wrap gap-2 rounded-[24px] border border-brand-100 bg-white p-2 shadow-soft"
+          >
+            <NavLink
+              to={DASHBOARD_ROUTES.kartadoAudit}
+              className={({ isActive }) =>
+                `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`
+              }
+            >
+              Auditoria
+            </NavLink>
+            <NavLink
+              to={DASHBOARD_ROUTES.kartadoHealth}
+              className={({ isActive }) =>
+                `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`
+              }
+            >
+              Saúde
+            </NavLink>
+            <NavLink
+              to={DASHBOARD_ROUTES.kartadoEco}
+              className={({ isActive }) =>
+                `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`
+              }
+            >
+              Acompanhamento
+            </NavLink>
+            <NavLink
+              to={DASHBOARD_ROUTES.kartadoTickets}
+              className={({ isActive }) =>
+                `rounded-2xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'bg-brand-700 text-white shadow-soft' : 'text-surface-700 hover:bg-brand-50 hover:text-brand-700'}`
+              }
+            >
+              Chamados
+            </NavLink>
           </nav>
         ) : null}
 
         {isHomePage ? <EngineeringSystemsHomePage /> : null}
-        {activeTab === 'totvs' ? <TotvsPage canManage={profile?.role === 'admin' || (import.meta.env.DEV && import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')} /> : null}
+        {activeTab === 'totvs' ? (
+          <TotvsPage
+            canManage={
+              profile?.role === 'admin' || (import.meta.env.DEV && import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')
+            }
+          />
+        ) : null}
 
         {activeTab === 'kartadoAudit' ? <KartadoPage area="audit" /> : null}
         {activeTab === 'kartadoHealth' ? <KartadoPage area="health" /> : null}
@@ -1513,158 +1506,125 @@ export function DashboardPage() {
         {activeTab === 'storage' ? (
           <>
             {profile?.role === 'admin' ? (
-            <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                    Fonte de armazenamento
-                  </p>
-                  <p className="mt-2 text-sm text-surface-700">
-                    {autoStorageStatus.state === 'loading'
-                      ? 'Atualizando a leitura no Supabase...'
-                      : autoStorageStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoStorageStatus.fileName} em ${formatLoadedAt(autoStorageStatus.loadedAt)}. ${autoStorageStatus.rowsCount} registros lidos.`
-                        : autoStorageStatus.state === 'missing'
-                          ? 'Configure o Supabase ou mantenha uma fonte Excel em public/dados/armazenamento.xlsx.'
-                          : autoStorageStatus.state === 'error'
-                            ? autoStorageStatus.message
-                            : 'O painel vai tentar carregar os dados de armazenamento automaticamente.'}
-                  </p>
-                </div>
+              <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
+                      Fonte de armazenamento
+                    </p>
+                    <p className="mt-2 text-sm text-surface-700">
+                      {autoStorageStatus.state === 'loading'
+                        ? 'Atualizando a leitura no Supabase...'
+                        : autoStorageStatus.state === 'ready'
+                          ? `Fonte carregada: ${autoStorageStatus.fileName} em ${formatLoadedAt(autoStorageStatus.loadedAt)}. ${autoStorageStatus.rowsCount} registros lidos.`
+                          : autoStorageStatus.state === 'missing'
+                            ? 'Configure o Supabase ou mantenha uma fonte Excel em public/dados/armazenamento.xlsx.'
+                            : autoStorageStatus.state === 'error'
+                              ? autoStorageStatus.message
+                              : 'O painel vai tentar carregar os dados de armazenamento automaticamente.'}
+                    </p>
+                  </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void loadAutoStorageSource({ syncBeforeRead: true })}
-                    disabled={autoStorageStatus.state === 'loading'}
-                    className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {autoStorageStatus.state === 'loading'
-                      ? 'Atualizando...'
-                      : 'Atualizar dados'}
-                  </button>
-                </div>
-              </div>
-
-              {profile?.role === 'admin' ? (
-                <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <label className="block flex-1">
-                      <span className="text-sm font-semibold text-surface-700">
-                        Importar CSV diário
-                      </span>
-                      <input
-                        type="file"
-                        accept=".csv,text/csv"
-                        multiple
-                        onChange={(event) => {
-                          setStorageCsvFiles(Array.from(event.target.files ?? []));
-                          setStorageCsvImportStatus({ state: 'idle' });
-                        }}
-                        className="mt-2 w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-surface-700 file:mr-4 file:rounded-xl file:border-0 file:bg-brand-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                      />
-                    </label>
-
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => void importSelectedStorageCsv()}
-                      disabled={
-                        storageCsvFiles.length === 0 ||
-                        storageCsvImportStatus.state === 'importing'
-                      }
-                      className="inline-flex items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => void loadAutoStorageSource({ syncBeforeRead: true })}
+                      disabled={autoStorageStatus.state === 'loading'}
+                      className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {storageCsvImportStatus.state === 'importing'
-                        ? 'Importando...'
-                        : storageCsvFiles.length > 1
-                          ? 'Importar CSVs'
-                          : 'Importar CSV'}
+                      {autoStorageStatus.state === 'loading' ? 'Atualizando...' : 'Atualizar dados'}
                     </button>
                   </div>
-
-                  {storageCsvFiles.length > 0 ? (
-                    <p className="mt-3 text-xs text-surface-700">
-                      {storageCsvFiles.length} arquivo(s) selecionado(s).
-                    </p>
-                  ) : null}
-
-                  {storageCsvImportStatus.state === 'success' ||
-                  storageCsvImportStatus.state === 'error' ? (
-                    <p
-                      className={`mt-3 rounded-2xl border px-4 py-3 text-sm ${
-                        storageCsvImportStatus.state === 'error'
-                          ? 'border-red-100 bg-red-50 text-red-700'
-                          : 'border-brand-100 bg-white text-brand-700'
-                      }`}
-                    >
-                      {storageCsvImportStatus.message}
-                    </p>
-                  ) : null}
                 </div>
-              ) : null}
 
-              <SourceUpdateProgress
-                active={autoStorageStatus.state === 'loading'}
-                steps={STORAGE_UPDATE_STEPS}
-              />
+                {profile?.role === 'admin' ? (
+                  <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                      <label className="block flex-1">
+                        <span className="text-sm font-semibold text-surface-700">Importar CSV diário</span>
+                        <input
+                          type="file"
+                          accept=".csv,text/csv"
+                          multiple
+                          onChange={(event) => {
+                            setStorageCsvFiles(Array.from(event.target.files ?? []));
+                            setStorageCsvImportStatus({ state: 'idle' });
+                          }}
+                          className="mt-2 w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-surface-700 file:mr-4 file:rounded-xl file:border-0 file:bg-brand-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                        />
+                      </label>
 
-              {autoStorageStatus.state === 'ready' && autoStorageStatus.syncInfo ? (
-                <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Sincronização
-                    </p>
-                    <p className="mt-1">
-                      {formatTechnicalDate(autoStorageStatus.syncInfo.syncedAt)}
-                    </p>
+                      <button
+                        type="button"
+                        onClick={() => void importSelectedStorageCsv()}
+                        disabled={storageCsvFiles.length === 0 || storageCsvImportStatus.state === 'importing'}
+                        className="inline-flex items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {storageCsvImportStatus.state === 'importing'
+                          ? 'Importando...'
+                          : storageCsvFiles.length > 1
+                            ? 'Importar CSVs'
+                            : 'Importar CSV'}
+                      </button>
+                    </div>
+
+                    {storageCsvFiles.length > 0 ? (
+                      <p className="mt-3 text-xs text-surface-700">
+                        {storageCsvFiles.length} arquivo(s) selecionado(s).
+                      </p>
+                    ) : null}
+
+                    {storageCsvImportStatus.state === 'success' || storageCsvImportStatus.state === 'error' ? (
+                      <p
+                        className={`mt-3 rounded-2xl border px-4 py-3 text-sm ${
+                          storageCsvImportStatus.state === 'error'
+                            ? 'border-red-100 bg-red-50 text-red-700'
+                            : 'border-brand-100 bg-white text-brand-700'
+                        }`}
+                      >
+                        {storageCsvImportStatus.message}
+                      </p>
+                    ) : null}
                   </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Fonte alterada
-                    </p>
-                    <p className="mt-1">
-                      {formatTechnicalDate(autoStorageStatus.syncInfo.sourceModifiedAt)}
-                    </p>
+                ) : null}
+
+                <SourceUpdateProgress active={autoStorageStatus.state === 'loading'} steps={STORAGE_UPDATE_STEPS} />
+
+                {autoStorageStatus.state === 'ready' && autoStorageStatus.syncInfo ? (
+                  <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Sincronização</p>
+                      <p className="mt-1">{formatTechnicalDate(autoStorageStatus.syncInfo.syncedAt)}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Fonte alterada</p>
+                      <p className="mt-1">{formatTechnicalDate(autoStorageStatus.syncInfo.sourceModifiedAt)}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Linhas fonte/cópia</p>
+                      <p className="mt-1">
+                        {autoStorageStatus.syncInfo.sourceRowsCount} / {autoStorageStatus.syncInfo.destinationRowsCount}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Tamanho</p>
+                      <p className="mt-1">{formatBytes(autoStorageStatus.syncInfo.destinationSize)} bytes</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Assinatura</p>
+                      <p className="mt-1" title={autoStorageStatus.syncInfo.destinationHash}>
+                        {formatShortHash(autoStorageStatus.syncInfo.destinationHash)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Destino</p>
+                      <p className="mt-1 truncate" title={autoStorageStatus.syncInfo.destinationPath}>
+                        {autoStorageStatus.syncInfo.destinationPath}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Linhas fonte/cópia
-                    </p>
-                    <p className="mt-1">
-                      {autoStorageStatus.syncInfo.sourceRowsCount} /{' '}
-                      {autoStorageStatus.syncInfo.destinationRowsCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Tamanho
-                    </p>
-                    <p className="mt-1">
-                      {formatBytes(autoStorageStatus.syncInfo.destinationSize)} bytes
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Assinatura
-                    </p>
-                    <p
-                      className="mt-1"
-                      title={autoStorageStatus.syncInfo.destinationHash}
-                    >
-                      {formatShortHash(autoStorageStatus.syncInfo.destinationHash)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Destino
-                    </p>
-                    <p className="mt-1 truncate" title={autoStorageStatus.syncInfo.destinationPath}>
-                      {autoStorageStatus.syncInfo.destinationPath}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-            </section>
+                ) : null}
+              </section>
             ) : null}
 
             <section className="mt-6">
@@ -1698,277 +1658,225 @@ export function DashboardPage() {
         {activeTab === 'projectWiseUsers' ? (
           <>
             {profile?.role === 'admin' ? (
-            <>
-            <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                    Fonte E365 Usage Data
-                  </p>
-                  <p className="mt-2 text-sm text-surface-700">
-                    {autoProjectWiseUsersStatus.state === 'loading'
-                      ? 'Atualizando os dados de uso e faturamento E365...'
-                      : autoProjectWiseUsersStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} em ${formatLoadedAt(autoProjectWiseUsersStatus.loadedAt)}. ${autoProjectWiseUsersStatus.rowsCount} registros lidos.`
-                        : autoProjectWiseUsersStatus.state === 'missing'
-                          ? 'Importe o relatório E365 Usage Data.'
-                          : autoProjectWiseUsersStatus.state === 'error'
-                            ? autoProjectWiseUsersStatus.message
-                            : 'O painel vai carregar os dados E365 armazenados no banco.'}
-                  </p>
-                </div>
+              <>
+                <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
+                        Fonte E365 Usage Data
+                      </p>
+                      <p className="mt-2 text-sm text-surface-700">
+                        {autoProjectWiseUsersStatus.state === 'loading'
+                          ? 'Atualizando os dados de uso e faturamento E365...'
+                          : autoProjectWiseUsersStatus.state === 'ready'
+                            ? `Fonte carregada: ${autoProjectWiseUsersStatus.fileName} em ${formatLoadedAt(autoProjectWiseUsersStatus.loadedAt)}. ${autoProjectWiseUsersStatus.rowsCount} registros lidos.`
+                            : autoProjectWiseUsersStatus.state === 'missing'
+                              ? 'Importe o relatório E365 Usage Data.'
+                              : autoProjectWiseUsersStatus.state === 'error'
+                                ? autoProjectWiseUsersStatus.message
+                                : 'O painel vai carregar os dados E365 armazenados no banco.'}
+                      </p>
+                    </div>
 
-                {profile?.role === 'admin' ? (
-                  <div className="flex flex-col gap-3 sm:min-w-[360px]">
-                    <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-                      Arquivo E365 Usage Data
-                      <input
-                        type="file"
-                        accept=".csv,.xlsx,.xls"
-                        onChange={(event) => {
-                          setProjectWiseExplorerFile(event.target.files?.[0] ?? null);
-                          setProjectWiseExplorerImportStatus({ state: 'idle' });
-                        }}
-                        className="rounded-2xl border border-brand-100 bg-brand-50/40 px-3 py-2 text-sm text-surface-700 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => void importSelectedProjectWiseExplorerFile()}
-                      disabled={
-                        !projectWiseExplorerFile ||
-                        projectWiseExplorerImportStatus.state === 'importing'
-                      }
-                      className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {projectWiseExplorerImportStatus.state === 'importing'
-                        ? 'Importando...'
-                        : 'Importar E365'}
-                    </button>
-                    {e365UsageRows.length > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => void clearLatestE365Quarter()}
-                        disabled={projectWiseExplorerImportStatus.state === 'importing'}
-                        className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Limpar {formatE365Quarter(getLatestE365Quarter(e365UsageRows))}
-                      </button>
+                    {profile?.role === 'admin' ? (
+                      <div className="flex flex-col gap-3 sm:min-w-[360px]">
+                        <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
+                          Arquivo E365 Usage Data
+                          <input
+                            type="file"
+                            accept=".csv,.xlsx,.xls"
+                            onChange={(event) => {
+                              setProjectWiseExplorerFile(event.target.files?.[0] ?? null);
+                              setProjectWiseExplorerImportStatus({ state: 'idle' });
+                            }}
+                            className="rounded-2xl border border-brand-100 bg-brand-50/40 px-3 py-2 text-sm text-surface-700 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => void importSelectedProjectWiseExplorerFile()}
+                          disabled={!projectWiseExplorerFile || projectWiseExplorerImportStatus.state === 'importing'}
+                          className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {projectWiseExplorerImportStatus.state === 'importing' ? 'Importando...' : 'Importar E365'}
+                        </button>
+                        {e365UsageRows.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => void clearLatestE365Quarter()}
+                            disabled={projectWiseExplorerImportStatus.state === 'importing'}
+                            className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Limpar {formatE365Quarter(getLatestE365Quarter(e365UsageRows))}
+                          </button>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
-                ) : null}
-              </div>
 
-              <SourceUpdateProgress
-                active={
-                  autoProjectWiseUsersStatus.state === 'loading' ||
-                  projectWiseExplorerImportStatus.state === 'importing'
-                }
-                steps={PROJECT_WISE_USERS_UPDATE_STEPS}
-              />
+                  <SourceUpdateProgress
+                    active={
+                      autoProjectWiseUsersStatus.state === 'loading' ||
+                      projectWiseExplorerImportStatus.state === 'importing'
+                    }
+                    steps={PROJECT_WISE_USERS_UPDATE_STEPS}
+                  />
 
-              {projectWiseExplorerImportStatus.state === 'success' ||
-              projectWiseExplorerImportStatus.state === 'error' ? (
-                <p
-                  className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
-                    projectWiseExplorerImportStatus.state === 'success'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-rose-200 bg-rose-50 text-rose-700'
-                  }`}
-                >
-                  {projectWiseExplorerImportStatus.message}
-                </p>
-              ) : null}
-
-              {autoProjectWiseUsersStatus.state === 'ready' &&
-              autoProjectWiseUsersStatus.syncInfo ? (
-                <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Sincronização
-                    </p>
-                    <p className="mt-1">
-                      {formatTechnicalDate(autoProjectWiseUsersStatus.syncInfo.syncedAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Linhas fonte/cópia
-                    </p>
-                    <p className="mt-1">
-                      {autoProjectWiseUsersStatus.syncInfo.sourceRowsCount} /{' '}
-                      {autoProjectWiseUsersStatus.syncInfo.destinationRowsCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Tamanho
-                    </p>
-                    <p className="mt-1">
-                      {formatBytes(autoProjectWiseUsersStatus.syncInfo.destinationSize)} bytes
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Assinatura
-                    </p>
+                  {projectWiseExplorerImportStatus.state === 'success' ||
+                  projectWiseExplorerImportStatus.state === 'error' ? (
                     <p
-                      className="mt-1"
-                      title={autoProjectWiseUsersStatus.syncInfo.destinationHash}
+                      className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+                        projectWiseExplorerImportStatus.state === 'success'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : 'border-rose-200 bg-rose-50 text-rose-700'
+                      }`}
                     >
-                      {formatShortHash(autoProjectWiseUsersStatus.syncInfo.destinationHash)}
+                      {projectWiseExplorerImportStatus.message}
                     </p>
+                  ) : null}
+
+                  {autoProjectWiseUsersStatus.state === 'ready' && autoProjectWiseUsersStatus.syncInfo ? (
+                    <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Sincronização</p>
+                        <p className="mt-1">{formatTechnicalDate(autoProjectWiseUsersStatus.syncInfo.syncedAt)}</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Linhas fonte/cópia</p>
+                        <p className="mt-1">
+                          {autoProjectWiseUsersStatus.syncInfo.sourceRowsCount} /{' '}
+                          {autoProjectWiseUsersStatus.syncInfo.destinationRowsCount}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Tamanho</p>
+                        <p className="mt-1">{formatBytes(autoProjectWiseUsersStatus.syncInfo.destinationSize)} bytes</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Assinatura</p>
+                        <p className="mt-1" title={autoProjectWiseUsersStatus.syncInfo.destinationHash}>
+                          {formatShortHash(autoProjectWiseUsersStatus.syncInfo.destinationHash)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Destino</p>
+                        <p className="mt-1 truncate" title={autoProjectWiseUsersStatus.syncInfo.destinationPath}>
+                          {autoProjectWiseUsersStatus.syncInfo.destinationPath}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+
+                <section className="mt-4 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
+                        Fonte Portal Bentley
+                      </p>
+                      <p className="mt-2 text-sm text-surface-700">
+                        {autoProjectWisePortalUsersStatus.state === 'loading'
+                          ? 'Atualizando a leitura do CSV exportado do Portal Bentley...'
+                          : autoProjectWisePortalUsersStatus.state === 'ready'
+                            ? `Fonte carregada: ${autoProjectWisePortalUsersStatus.fileName} em ${formatLoadedAt(autoProjectWisePortalUsersStatus.loadedAt)}. ${autoProjectWisePortalUsersStatus.rowsCount} registros lidos.`
+                            : autoProjectWisePortalUsersStatus.state === 'missing'
+                              ? 'Configure PORTAL_USERS_SOURCE_PATH no .env.local ou coloque o Excel em public/dados/usuarios-pw-portal.xlsx.'
+                              : autoProjectWisePortalUsersStatus.state === 'error'
+                                ? autoProjectWisePortalUsersStatus.message
+                                : 'O painel vai tentar carregar a planilha do Portal Bentley automaticamente.'}
+                      </p>
+                    </div>
+
+                    {profile?.role === 'admin' ? (
+                      <div className="flex flex-col gap-3 sm:min-w-[360px]">
+                        <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
+                          Arquivo Portal Bentley
+                          <input
+                            type="file"
+                            accept=".csv,.xlsx,.xls"
+                            onChange={(event) => {
+                              setProjectWisePortalFile(event.target.files?.[0] ?? null);
+                              setProjectWisePortalImportStatus({ state: 'idle' });
+                            }}
+                            className="rounded-2xl border border-brand-100 bg-brand-50/40 px-3 py-2 text-sm text-surface-700 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => void importSelectedProjectWisePortalFile()}
+                          disabled={!projectWisePortalFile || projectWisePortalImportStatus.state === 'importing'}
+                          className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {projectWisePortalImportStatus.state === 'importing' ? 'Importando...' : 'Importar Portal'}
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Destino
-                    </p>
+
+                  <SourceUpdateProgress
+                    active={
+                      autoProjectWisePortalUsersStatus.state === 'loading' ||
+                      projectWisePortalImportStatus.state === 'importing'
+                    }
+                    steps={PORTAL_USERS_UPDATE_STEPS}
+                  />
+
+                  {projectWisePortalImportStatus.state === 'success' ||
+                  projectWisePortalImportStatus.state === 'error' ? (
                     <p
-                      className="mt-1 truncate"
-                      title={autoProjectWiseUsersStatus.syncInfo.destinationPath}
+                      className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+                        projectWisePortalImportStatus.state === 'success'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : 'border-rose-200 bg-rose-50 text-rose-700'
+                      }`}
                     >
-                      {autoProjectWiseUsersStatus.syncInfo.destinationPath}
+                      {projectWisePortalImportStatus.message}
                     </p>
-                  </div>
-                </div>
-              ) : null}
-            </section>
+                  ) : null}
 
-            <section className="mt-4 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                    Fonte Portal Bentley
-                  </p>
-                  <p className="mt-2 text-sm text-surface-700">
-                    {autoProjectWisePortalUsersStatus.state === 'loading'
-                      ? 'Atualizando a leitura do CSV exportado do Portal Bentley...'
-                      : autoProjectWisePortalUsersStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoProjectWisePortalUsersStatus.fileName} em ${formatLoadedAt(autoProjectWisePortalUsersStatus.loadedAt)}. ${autoProjectWisePortalUsersStatus.rowsCount} registros lidos.`
-                        : autoProjectWisePortalUsersStatus.state === 'missing'
-                          ? 'Configure PORTAL_USERS_SOURCE_PATH no .env.local ou coloque o Excel em public/dados/usuarios-pw-portal.xlsx.'
-                          : autoProjectWisePortalUsersStatus.state === 'error'
-                            ? autoProjectWisePortalUsersStatus.message
-                            : 'O painel vai tentar carregar a planilha do Portal Bentley automaticamente.'}
-                  </p>
-                </div>
-
-                {profile?.role === 'admin' ? (
-                  <div className="flex flex-col gap-3 sm:min-w-[360px]">
-                    <label className="flex flex-col gap-2 text-sm font-medium text-surface-700">
-                      Arquivo Portal Bentley
-                      <input
-                        type="file"
-                        accept=".csv,.xlsx,.xls"
-                        onChange={(event) => {
-                          setProjectWisePortalFile(event.target.files?.[0] ?? null);
-                          setProjectWisePortalImportStatus({ state: 'idle' });
-                        }}
-                        className="rounded-2xl border border-brand-100 bg-brand-50/40 px-3 py-2 text-sm text-surface-700 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => void importSelectedProjectWisePortalFile()}
-                      disabled={
-                        !projectWisePortalFile ||
-                        projectWisePortalImportStatus.state === 'importing'
-                      }
-                      className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {projectWisePortalImportStatus.state === 'importing'
-                        ? 'Importando...'
-                        : 'Importar Portal'}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
-              <SourceUpdateProgress
-                active={
-                  autoProjectWisePortalUsersStatus.state === 'loading' ||
-                  projectWisePortalImportStatus.state === 'importing'
-                }
-                steps={PORTAL_USERS_UPDATE_STEPS}
-              />
-
-              {projectWisePortalImportStatus.state === 'success' ||
-              projectWisePortalImportStatus.state === 'error' ? (
-                <p
-                  className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
-                    projectWisePortalImportStatus.state === 'success'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-rose-200 bg-rose-50 text-rose-700'
-                  }`}
-                >
-                  {projectWisePortalImportStatus.message}
-                </p>
-              ) : null}
-
-              {autoProjectWisePortalUsersStatus.state === 'ready' &&
-              autoProjectWisePortalUsersStatus.syncInfo ? (
-                <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Sincronização
-                    </p>
-                    <p className="mt-1">
-                      {formatTechnicalDate(autoProjectWisePortalUsersStatus.syncInfo.syncedAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Fonte alterada
-                    </p>
-                    <p className="mt-1">
-                      {formatTechnicalDate(
-                        autoProjectWisePortalUsersStatus.syncInfo.sourceModifiedAt,
-                      )}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Linhas fonte/cópia
-                    </p>
-                    <p className="mt-1">
-                      {autoProjectWisePortalUsersStatus.syncInfo.sourceRowsCount} /{' '}
-                      {autoProjectWisePortalUsersStatus.syncInfo.destinationRowsCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Tamanho
-                    </p>
-                    <p className="mt-1">
-                      {formatBytes(autoProjectWisePortalUsersStatus.syncInfo.destinationSize)} bytes
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Assinatura
-                    </p>
-                    <p
-                      className="mt-1"
-                      title={autoProjectWisePortalUsersStatus.syncInfo.destinationHash}
-                    >
-                      {formatShortHash(autoProjectWisePortalUsersStatus.syncInfo.destinationHash)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Destino
-                    </p>
-                    <p
-                      className="mt-1 truncate"
-                      title={autoProjectWisePortalUsersStatus.syncInfo.destinationPath}
-                    >
-                      {autoProjectWisePortalUsersStatus.syncInfo.destinationPath}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-            </section>
-            </>
+                  {autoProjectWisePortalUsersStatus.state === 'ready' && autoProjectWisePortalUsersStatus.syncInfo ? (
+                    <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Sincronização</p>
+                        <p className="mt-1">
+                          {formatTechnicalDate(autoProjectWisePortalUsersStatus.syncInfo.syncedAt)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Fonte alterada</p>
+                        <p className="mt-1">
+                          {formatTechnicalDate(autoProjectWisePortalUsersStatus.syncInfo.sourceModifiedAt)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Linhas fonte/cópia</p>
+                        <p className="mt-1">
+                          {autoProjectWisePortalUsersStatus.syncInfo.sourceRowsCount} /{' '}
+                          {autoProjectWisePortalUsersStatus.syncInfo.destinationRowsCount}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Tamanho</p>
+                        <p className="mt-1">
+                          {formatBytes(autoProjectWisePortalUsersStatus.syncInfo.destinationSize)} bytes
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Assinatura</p>
+                        <p className="mt-1" title={autoProjectWisePortalUsersStatus.syncInfo.destinationHash}>
+                          {formatShortHash(autoProjectWisePortalUsersStatus.syncInfo.destinationHash)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Destino</p>
+                        <p className="mt-1 truncate" title={autoProjectWisePortalUsersStatus.syncInfo.destinationPath}>
+                          {autoProjectWisePortalUsersStatus.syncInfo.destinationPath}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+              </>
             ) : null}
 
             <section className="mt-6">
@@ -2083,9 +1991,7 @@ export function DashboardPage() {
                     <input
                       list="ticket-organization-history"
                       value={ticketForm.beneficiaryOrganization ?? ''}
-                      onChange={(event) =>
-                        updateTicketForm('beneficiaryOrganization', event.target.value)
-                      }
+                      onChange={(event) => updateTicketForm('beneficiaryOrganization', event.target.value)}
                       placeholder="Digite ou selecione do histórico"
                       autoComplete="off"
                       className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
@@ -2159,7 +2065,6 @@ export function DashboardPage() {
                     {ticketFormStatus.message}
                   </p>
                 ) : null}
-
               </section>
             ) : null}
 
@@ -2170,12 +2075,8 @@ export function DashboardPage() {
             {profile?.role === 'admin' ? (
               <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
                 <div className="flex flex-col gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                    Lista de chamados
-                  </p>
-                  <p className="text-sm text-surface-700">
-                    Consulte, filtre e gerencie os chamados já cadastrados.
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Lista de chamados</p>
+                  <p className="text-sm text-surface-700">Consulte, filtre e gerencie os chamados já cadastrados.</p>
                 </div>
 
                 <div className="mt-6 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
@@ -2269,9 +2170,7 @@ export function DashboardPage() {
                     <tbody className="divide-y divide-brand-50">
                       {paginatedAdminTicketRows.map((row, index) => (
                         <tr key={`${row.__id ?? getTicketCaseNumber(row)}-${index}`}>
-                          <td className="px-4 py-3 font-medium text-surface-900">
-                            {getTicketCaseNumber(row) || '-'}
-                          </td>
+                          <td className="px-4 py-3 font-medium text-surface-900">{getTicketCaseNumber(row) || '-'}</td>
                           <td className="px-4 py-3 text-surface-700">{row.Status || '-'}</td>
                           <td className="px-4 py-3 text-surface-700">{row.Solicitante || '-'}</td>
                           <td className="px-4 py-3">
@@ -2306,8 +2205,7 @@ export function DashboardPage() {
                 </div>
                 <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm text-surface-700 sm:flex-row sm:items-center sm:justify-between">
                   <p>
-                    Exibindo {firstTicketOnPage}-{lastTicketOnPage} de{' '}
-                    {filteredAdminTicketRows.length} chamados
+                    Exibindo {firstTicketOnPage}-{lastTicketOnPage} de {filteredAdminTicketRows.length} chamados
                   </p>
                   <div className="flex items-center gap-2">
                     <button
@@ -2323,9 +2221,7 @@ export function DashboardPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() =>
-                        setTicketPage(Math.min(totalTicketPages, visibleTicketPage + 1))
-                      }
+                      onClick={() => setTicketPage(Math.min(totalTicketPages, visibleTicketPage + 1))}
                       disabled={visibleTicketPage === totalTicketPages}
                       className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-xs font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
@@ -2337,96 +2233,71 @@ export function DashboardPage() {
             ) : null}
 
             {profile?.role === 'admin' && !hasSupabaseTicketsConfig() ? (
-            <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                    Fonte de chamados
-                  </p>
-                  <p className="mt-2 text-sm text-surface-700">
-                    {autoTicketsStatus.state === 'loading'
-                      ? 'Atualizando a leitura da planilha de chamados...'
-                      : autoTicketsStatus.state === 'ready'
-                        ? `Fonte carregada: ${autoTicketsStatus.fileName} em ${formatLoadedAt(autoTicketsStatus.loadedAt)}. ${autoTicketsStatus.rowsCount} registros lidos.`
-                        : autoTicketsStatus.state === 'missing'
-                          ? 'Coloque a planilha de chamados em public/dados/chamados.xlsx.'
-                          : autoTicketsStatus.state === 'error'
-                            ? autoTicketsStatus.message
-                            : 'O painel vai tentar carregar a planilha de chamados automaticamente.'}
-                  </p>
+              <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Fonte de chamados</p>
+                    <p className="mt-2 text-sm text-surface-700">
+                      {autoTicketsStatus.state === 'loading'
+                        ? 'Atualizando a leitura da planilha de chamados...'
+                        : autoTicketsStatus.state === 'ready'
+                          ? `Fonte carregada: ${autoTicketsStatus.fileName} em ${formatLoadedAt(autoTicketsStatus.loadedAt)}. ${autoTicketsStatus.rowsCount} registros lidos.`
+                          : autoTicketsStatus.state === 'missing'
+                            ? 'Coloque a planilha de chamados em public/dados/chamados.xlsx.'
+                            : autoTicketsStatus.state === 'error'
+                              ? autoTicketsStatus.message
+                              : 'O painel vai tentar carregar a planilha de chamados automaticamente.'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void loadAutoTicketsSource({ syncBeforeRead: true })}
+                    disabled={autoTicketsStatus.state === 'loading'}
+                    className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {autoTicketsStatus.state === 'loading' ? 'Atualizando...' : 'Atualizar'}
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => void loadAutoTicketsSource({ syncBeforeRead: true })}
-                  disabled={autoTicketsStatus.state === 'loading'}
-                  className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {autoTicketsStatus.state === 'loading' ? 'Atualizando...' : 'Atualizar'}
-                </button>
-              </div>
+                <SourceUpdateProgress active={autoTicketsStatus.state === 'loading'} steps={TICKETS_UPDATE_STEPS} />
 
-              <SourceUpdateProgress
-                active={autoTicketsStatus.state === 'loading'}
-                steps={TICKETS_UPDATE_STEPS}
-              />
-
-              {autoTicketsStatus.state === 'ready' && autoTicketsStatus.syncInfo ? (
-                <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Sincronização
-                    </p>
-                    <p className="mt-1">
-                      {formatTechnicalDate(autoTicketsStatus.syncInfo.syncedAt)}
-                    </p>
+                {autoTicketsStatus.state === 'ready' && autoTicketsStatus.syncInfo ? (
+                  <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Sincronização</p>
+                      <p className="mt-1">{formatTechnicalDate(autoTicketsStatus.syncInfo.syncedAt)}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Fonte alterada</p>
+                      <p className="mt-1">{formatTechnicalDate(autoTicketsStatus.syncInfo.sourceModifiedAt)}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Linhas fonte/cópia</p>
+                      <p className="mt-1">
+                        {autoTicketsStatus.syncInfo.sourceRowsCount} / {autoTicketsStatus.syncInfo.destinationRowsCount}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Tamanho</p>
+                      <p className="mt-1">{formatBytes(autoTicketsStatus.syncInfo.destinationSize)} bytes</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Assinatura</p>
+                      <p className="mt-1" title={autoTicketsStatus.syncInfo.destinationHash}>
+                        {formatShortHash(autoTicketsStatus.syncInfo.destinationHash)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Destino</p>
+                      <p className="mt-1 truncate" title={autoTicketsStatus.syncInfo.destinationPath}>
+                        {autoTicketsStatus.syncInfo.destinationPath}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Fonte alterada
-                    </p>
-                    <p className="mt-1">
-                      {formatTechnicalDate(autoTicketsStatus.syncInfo.sourceModifiedAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Linhas fonte/cópia
-                    </p>
-                    <p className="mt-1">
-                      {autoTicketsStatus.syncInfo.sourceRowsCount} /{' '}
-                      {autoTicketsStatus.syncInfo.destinationRowsCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Tamanho
-                    </p>
-                    <p className="mt-1">
-                      {formatBytes(autoTicketsStatus.syncInfo.destinationSize)} bytes
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Assinatura
-                    </p>
-                    <p className="mt-1" title={autoTicketsStatus.syncInfo.destinationHash}>
-                      {formatShortHash(autoTicketsStatus.syncInfo.destinationHash)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">
-                      Destino
-                    </p>
-                    <p className="mt-1 truncate" title={autoTicketsStatus.syncInfo.destinationPath}>
-                      {autoTicketsStatus.syncInfo.destinationPath}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-            </section>
+                ) : null}
+              </section>
             ) : null}
-
           </>
         ) : null}
 
@@ -2435,4 +2306,3 @@ export function DashboardPage() {
     </main>
   );
 }
-

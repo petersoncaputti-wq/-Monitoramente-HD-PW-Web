@@ -10,18 +10,27 @@ export function LoginPage() {
   const [samlEnabled, setSamlEnabled] = useState(false);
   const [samlUnavailable, setSamlUnavailable] = useState(false);
   const samlErrorCode = new URLSearchParams(window.location.search).get('saml_error');
-  const samlError = samlErrorCode === 'access_denied'
-    ? 'Sua identidade corporativa ainda não está vinculada a um usuário ativo do painel. Acione o administrador.'
-    : samlErrorCode === 'login_failed'
-      ? 'Não foi possível concluir o login corporativo. Inicie uma nova tentativa neste painel.'
-      : '';
+  const samlError =
+    samlErrorCode === 'access_denied'
+      ? 'Sua identidade corporativa ainda não está vinculada a um usuário ativo do painel. Acione o administrador.'
+      : samlErrorCode === 'login_failed'
+        ? 'Não foi possível concluir o login corporativo. Inicie uma nova tentativa neste painel.'
+        : '';
 
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/auth/saml/config', { credentials: 'same-origin', signal: controller.signal })
-      .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
-      .then(config => { setSamlEnabled(config.enabled === true); setSamlUnavailable(config.unavailable === true); })
-      .catch(() => { if (!controller.signal.aborted) setSamlUnavailable(true); });
+      .then(async (response) => {
+        if (!response.ok) throw new Error();
+        return response.json();
+      })
+      .then((config) => {
+        setSamlEnabled(config.enabled === true);
+        setSamlUnavailable(config.unavailable === true);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSamlUnavailable(true);
+      });
     return () => controller.abort();
   }, []);
 
@@ -50,18 +59,37 @@ export function LoginPage() {
           />
         </div>
 
-        <h1 className="text-xl font-semibold text-surface-900">
-          Painel de indicadores de Sistemas de Engenharia
-        </h1>
+        <h1 className="text-xl font-semibold text-surface-900">Painel de indicadores de Sistemas de Engenharia</h1>
         <p className="mt-2 text-sm text-surface-600">Acesse com seu usuário autorizado.</p>
 
-        {samlEnabled ? <a href="/api/auth/saml/login" className="mt-6 flex w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-brand-800">Entrar com Microsoft</a> : null}
-        {samlEnabled ? <p className="mt-2 text-center text-xs text-surface-700">Conta corporativa · Microsoft Entra ID</p> : null}
-        {samlError ? <p role="alert" className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">{samlError}</p> : null}
-        {samlUnavailable ? <p role="status" className="mt-4 text-sm text-surface-700">Login corporativo indisponível. Utilize seu acesso local autorizado.</p> : null}
+        {samlEnabled ? (
+          <a
+            href="/api/auth/saml/login"
+            className="mt-6 flex w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-brand-800"
+          >
+            Entrar com Microsoft
+          </a>
+        ) : null}
+        {samlEnabled ? (
+          <p className="mt-2 text-center text-xs text-surface-700">Conta corporativa · Microsoft Entra ID</p>
+        ) : null}
+        {samlError ? (
+          <p role="alert" className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">
+            {samlError}
+          </p>
+        ) : null}
+        {samlUnavailable ? (
+          <p role="status" className="mt-4 text-sm text-surface-700">
+            Login corporativo indisponível. Utilize seu acesso local autorizado.
+          </p>
+        ) : null}
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          {samlEnabled ? <p className="border-t border-brand-100 pt-4 text-xs font-medium text-surface-700">Acesso local com e-mail e senha</p> : null}
+          {samlEnabled ? (
+            <p className="border-t border-brand-100 pt-4 text-xs font-medium text-surface-700">
+              Acesso local com e-mail e senha
+            </p>
+          ) : null}
           <label className="block">
             <span className="text-sm font-medium text-surface-700">E-mail</span>
             <input
@@ -85,9 +113,7 @@ export function LoginPage() {
           </label>
 
           {errorMessage ? (
-            <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {errorMessage}
-            </p>
+            <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</p>
           ) : null}
 
           <button

@@ -1,8 +1,4 @@
-import type {
-  ImportedWorkbookData,
-  ProjectWiseUserRow,
-  ProjectWiseWebUserRow,
-} from '@/types/monitoring';
+import type { ImportedWorkbookData, ProjectWiseUserRow, ProjectWiseWebUserRow } from '@/types/monitoring';
 
 interface ProjectWiseExplorerUserRecord {
   acao_executada: string | null;
@@ -88,10 +84,7 @@ export function hasSupabaseProjectWiseUsersConfig(): boolean {
   return true;
 }
 
-async function readAllRecords<T>(
-  _accessToken: string,
-  sourceKind: 'explorer' | 'portal',
-): Promise<T[]> {
+async function readAllRecords<T>(_accessToken: string, sourceKind: 'explorer' | 'portal'): Promise<T[]> {
   const response = await fetch(`/api/data/pw-users/${sourceKind}`, { credentials: 'same-origin' });
   if (!response.ok) throw new Error('Não foi possível carregar os usuários ProjectWise.');
   return response.json() as Promise<T[]>;
@@ -141,13 +134,8 @@ function mapPortalUser(record: ProjectWisePortalUserRecord): ProjectWiseWebUserR
   };
 }
 
-export async function readProjectWiseExplorerUsersFromSupabase(
-  accessToken: string,
-): Promise<ImportedWorkbookData> {
-  const records = await readAllRecords<ProjectWiseExplorerUserRecord>(
-    accessToken,
-    'explorer',
-  );
+export async function readProjectWiseExplorerUsersFromSupabase(accessToken: string): Promise<ImportedWorkbookData> {
+  const records = await readAllRecords<ProjectWiseExplorerUserRecord>(accessToken, 'explorer');
 
   return {
     fileName: 'Azure PostgreSQL - pw_explorer_users',
@@ -157,13 +145,8 @@ export async function readProjectWiseExplorerUsersFromSupabase(
   };
 }
 
-export async function readProjectWisePortalUsersFromSupabase(
-  accessToken: string,
-): Promise<ImportedWorkbookData> {
-  const records = await readAllRecords<ProjectWisePortalUserRecord>(
-    accessToken,
-    'portal',
-  );
+export async function readProjectWisePortalUsersFromSupabase(accessToken: string): Promise<ImportedWorkbookData> {
+  const records = await readAllRecords<ProjectWisePortalUserRecord>(accessToken, 'portal');
 
   return {
     fileName: 'Azure PostgreSQL - pw_portal_users',

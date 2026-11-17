@@ -15,47 +15,89 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.hostname === '127.0.0.1') return realFetch(input, init);
   upstreamCalls.push({ url: url.href, authorization: init.headers?.Authorization ?? init.headers?.authorization });
   if (url.origin !== KARTADO_BASE) throw new Error(`Requisição para origem não permitida: ${url.origin}`);
-  const json = body => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
-  if (url.pathname === '/token/login/') return json({ data: { token: SECRET_TOKEN, user: { username: 'conta-servico-teste' } } });
-  if (url.pathname === '/Company/') return json({ data: [{ id: 'c1', attributes: { uuid: '11111111-1111-1111-1111-111111111111', name: 'Concessão Teste', active: true } }], meta: { pagination: { count: 1, pages: 1 } } });
-  if (url.pathname === '/User/') return new Response(JSON.stringify({ detail: 'segredo-upstream /User/ interno' }), { status: 403 });
+  const json = (body) =>
+    new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  if (url.pathname === '/token/login/')
+    return json({ data: { token: SECRET_TOKEN, user: { username: 'conta-servico-teste' } } });
+  if (url.pathname === '/Company/')
+    return json({
+      data: [
+        {
+          id: 'c1',
+          attributes: { uuid: '11111111-1111-1111-1111-111111111111', name: 'Concessão Teste', active: true },
+        },
+      ],
+      meta: { pagination: { count: 1, pages: 1 } },
+    });
+  if (url.pathname === '/User/')
+    return new Response(JSON.stringify({ detail: 'segredo-upstream /User/ interno' }), { status: 403 });
   return new Response('{}', { status: 404 });
 };
 const loginCalls = () => upstreamCalls.filter((call) => new URL(call.url).pathname === '/token/login/').length;
 
-const silence = ['log', 'warn', 'error'].map(level => [level, console[level]]);
+const silence = ['log', 'warn', 'error'].map((level) => [level, console[level]]);
 for (const [level] of silence) console[level] = () => {};
 
 const { buildKartadoUrl, getToken } = await import('../server/services/kartado.service.mjs');
 const { kartadoRouter, publicKartadoError } = await import('../server/routes/kartado.mjs');
 
 // 0. Chamadas simultâneas com o cache vazio compartilham um único login.
-const tokens = await Promise.all(Array.from({ length: 5 }, () => getToken('conta-servico-teste', 'senha-servico-teste')));
+const tokens = await Promise.all(
+  Array.from({ length: 5 }, () => getToken('conta-servico-teste', 'senha-servico-teste')),
+);
 assert.equal(loginCalls(), 1, 'cinco chamadas simultâneas devem gerar um único login');
 assert.ok(tokens.every((auth) => auth.token === SECRET_TOKEN));
 
 // Mensagens públicas: nunca repassam detalhes do Kartado; 401/403 não viram 401.
-assert.deepEqual(publicKartadoError({ httpStatus: 403, message: '[403] /User/: detalhe' }), { status: 502, message: 'A integração Kartado não tem permissão para esta consulta.' });
+assert.deepEqual(publicKartadoError({ httpStatus: 403, message: '[403] /User/: detalhe' }), {
+  status: 502,
+  message: 'A integração Kartado não tem permissão para esta consulta.',
+});
 assert.equal(publicKartadoError({ httpStatus: 401 }).status, 502);
 assert.equal(publicKartadoError({ httpStatus: 429 }).status, 429);
 assert.equal(publicKartadoError({ httpStatus: 200, message: 'Resposta não-JSON' }).status, 502);
 assert.equal(publicKartadoError(new TypeError('fetch failed')).status, 502);
-assert.deepEqual(publicKartadoError({ httpStatus: 404, expose: true, message: 'Nenhuma concessão ativa disponível.' }), { status: 404, message: 'Nenhuma concessão ativa disponível.' });
+assert.deepEqual(
+  publicKartadoError({ httpStatus: 404, expose: true, message: 'Nenhuma concessão ativa disponível.' }),
+  { status: 404, message: 'Nenhuma concessão ativa disponível.' },
+);
 
 // 1. Montagem de URL: o token só pode seguir para a origem configurada.
-assert.equal(buildKartadoUrl(KARTADO_BASE, '/Reporting/', '?company=x&page=1'), `${KARTADO_BASE}/Reporting/?company=x&page=1`);
+assert.equal(
+  buildKartadoUrl(KARTADO_BASE, '/Reporting/', '?company=x&page=1'),
+  `${KARTADO_BASE}/Reporting/?company=x&page=1`,
+);
 assert.equal(buildKartadoUrl('https://kartado.test/api', '/Company/'), 'https://kartado.test/api/Company/');
-for (const hostile of ['.evil.example/x', '@evil.example/x', 'evil', '', '/\\evil.example', '/a\nb', null, undefined, 42]) {
-  assert.throws(() => buildKartadoUrl(KARTADO_BASE, hostile), error => error.httpStatus === 400, `caminho aceito indevidamente: ${JSON.stringify(hostile)}`);
+for (const hostile of [
+  '.evil.example/x',
+  '@evil.example/x',
+  'evil',
+  '',
+  '/\\evil.example',
+  '/a\nb',
+  null,
+  undefined,
+  42,
+]) {
+  assert.throws(
+    () => buildKartadoUrl(KARTADO_BASE, hostile),
+    (error) => error.httpStatus === 400,
+    `caminho aceito indevidamente: ${JSON.stringify(hostile)}`,
+  );
 }
 
 const app = express();
 app.use(express.json());
 app.use('/api/v1/kartado', kartadoRouter);
 const server = app.listen(0, '127.0.0.1');
-await new Promise(resolve => server.once('listening', resolve));
+await new Promise((resolve) => server.once('listening', resolve));
 const base = `http://127.0.0.1:${server.address().port}/api/v1/kartado`;
-const post = (path, body = {}) => realFetch(`${base}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const post = (path, body = {}) =>
+  realFetch(`${base}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 
 try {
   // 2. Rotas de depuração removidas não existem mais e não chamam o Kartado.
@@ -108,7 +150,11 @@ try {
   assert.equal(upstreamCalls.length, 0, 'resposta em cache não consulta o Kartado');
 
   // 6. /dashboard grava e reaproveita o cache sem sobrescrever res.json.
-  const firstDashboard = await post('/dashboard', { companyUuid: COMPANY, companyName: 'Concessão Teste', summaryOnly: true });
+  const firstDashboard = await post('/dashboard', {
+    companyUuid: COMPANY,
+    companyName: 'Concessão Teste',
+    summaryOnly: true,
+  });
   assert.equal(firstDashboard.status, 200, await firstDashboard.clone().text());
   assert.equal((await firstDashboard.json()).success, true);
   upstreamCalls.length = 0;
@@ -120,4 +166,6 @@ try {
   for (const [level, original] of silence) console[level] = original;
 }
 
-console.log('Kartado router: rotas de depuração removidas, URL restrita à origem, sem vazamento de token ou detalhes, login único, caches de /health e /dashboard: OK.');
+console.log(
+  'Kartado router: rotas de depuração removidas, URL restrita à origem, sem vazamento de token ou detalhes, login único, caches de /health e /dashboard: OK.',
+);

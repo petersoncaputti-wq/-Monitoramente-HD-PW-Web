@@ -11,12 +11,7 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const envPath = resolve(rootDir, '.env.local');
 const destinationPath = resolve(rootDir, 'public', 'dados', 'usuarios-pw-portal.xlsx');
 const defaultSourceCandidates = [
-  resolve(
-    process.env.USERPROFILE ?? '',
-    'OneDrive - Grupo Ecorodovias',
-    'Área de Trabalho',
-    'Usuários_PW_WEB.xlsx',
-  ),
+  resolve(process.env.USERPROFILE ?? '', 'OneDrive - Grupo Ecorodovias', 'Área de Trabalho', 'Usuários_PW_WEB.xlsx'),
 ];
 
 function readEnvFile(path) {
@@ -80,7 +75,9 @@ function inspectWorkbook(path) {
 }
 
 function normalizeHeader(value) {
-  const compactHeader = String(value ?? '').trim().replace(/\s+/g, '');
+  const compactHeader = String(value ?? '')
+    .trim()
+    .replace(/\s+/g, '');
   const aliasKey = compactHeader
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -113,9 +110,7 @@ function writeNormalizedPortalWorkbook(sourcePath, targetPath) {
     defval: '',
   });
   const normalizedRows = rows.map((row) =>
-    Object.fromEntries(
-      Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]),
-    ),
+    Object.fromEntries(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value])),
   );
   const outputWorkbook = XLSX.utils.book_new();
   const outputWorksheet = XLSX.utils.json_to_sheet(normalizedRows);
@@ -156,9 +151,7 @@ if (!statSync(resolvedSourcePath).isFile()) {
 const extension = extname(resolvedSourcePath).toLowerCase();
 
 if (!['.xlsx', '.xls', '.csv'].includes(extension)) {
-  console.error(
-    `[portal-users-sync] Formato não suportado: ${extension}. Use .xlsx, .xls ou .csv.`,
-  );
+  console.error(`[portal-users-sync] Formato não suportado: ${extension}. Use .xlsx, .xls ou .csv.`);
   process.exit(1);
 }
 

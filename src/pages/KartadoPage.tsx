@@ -22,7 +22,12 @@ import {
 type KartadoTab = 'overview' | 'users' | 'reportings' | 'inventory' | 'assets' | 'alerts' | 'tickets';
 type KartadoArea = 'audit' | 'health';
 
-function UnitModal({ title, onClose, header, children }: {
+function UnitModal({
+  title,
+  onClose,
+  header,
+  children,
+}: {
   title: string;
   onClose: () => void;
   header: ReactNode;
@@ -43,19 +48,40 @@ function UnitModal({ title, onClose, header, children }: {
   }, []);
 
   return createPortal(
-    <dialog ref={dialogRef} aria-labelledby="kartado-unit-title" onCancel={(event) => { event.preventDefault(); onClose(); }}
-      className="m-auto h-[100dvh] max-h-none w-full max-w-none overflow-hidden border-0 bg-white p-0 text-surface-900 shadow-2xl backdrop:bg-surface-900/60 sm:h-[92dvh] sm:max-h-[92dvh] sm:w-[94vw] sm:rounded-3xl">
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="kartado-unit-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      className="m-auto h-[100dvh] max-h-none w-full max-w-none overflow-hidden border-0 bg-white p-0 text-surface-900 shadow-2xl backdrop:bg-surface-900/60 sm:h-[92dvh] sm:max-h-[92dvh] sm:w-[94vw] sm:rounded-3xl"
+    >
       <div className="flex h-full min-h-0 flex-col">
         <header className="shrink-0 border-b border-brand-100 bg-white p-4 sm:px-6">
           <div className="mb-4 flex items-start justify-between gap-4">
-            <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wider text-brand-700">Detalhes da unidade</p><h2 id="kartado-unit-title" className="mt-1 break-words text-lg font-semibold sm:text-2xl">{title}</h2></div>
-            <button autoFocus type="button" onClick={onClose} aria-label="Fechar detalhes da unidade" className="shrink-0 rounded-xl border border-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">Fechar <span aria-hidden="true">×</span></button>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-brand-700">Detalhes da unidade</p>
+              <h2 id="kartado-unit-title" className="mt-1 break-words text-lg font-semibold sm:text-2xl">
+                {title}
+              </h2>
+            </div>
+            <button
+              autoFocus
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar detalhes da unidade"
+              className="shrink-0 rounded-xl border border-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+            >
+              Fechar <span aria-hidden="true">×</span>
+            </button>
           </div>
           {header}
         </header>
         <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4 sm:p-6">{children}</div>
       </div>
-    </dialog>, document.body,
+    </dialog>,
+    document.body,
   );
 }
 
@@ -71,10 +97,7 @@ const tabs: Array<{ id: KartadoTab; label: string }> = [
 
 const numberFormatter = new Intl.NumberFormat('pt-BR');
 const PAGE_SIZE_OPTIONS = [20, 40, 80, 160, 200] as const;
-const INACTIVE_UNITS = [
-  'Sisobras Ecovias Noroeste Paulista',
-  'Sisobras Ecovias Raposo Castello',
-] as const;
+const INACTIVE_UNITS = ['Sisobras Ecovias Noroeste Paulista', 'Sisobras Ecovias Raposo Castello'] as const;
 
 function formatNumber(value: number) {
   return numberFormatter.format(Number.isFinite(value) ? value : 0);
@@ -129,12 +152,20 @@ function ChartCard({ title, description, data }: { title: string; description: s
     <article className="rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
       <h3 className="text-base font-semibold text-surface-900">{title}</h3>
       <p className="mt-1 text-xs leading-5 text-surface-600">{description}</p>
-      <div className="mt-5"><BarChart data={data} /></div>
+      <div className="mt-5">
+        <BarChart data={data} />
+      </div>
     </article>
   );
 }
 
-function Pagination({ page, pageSize, total, onPageChange, onPageSizeChange }: {
+function Pagination({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  onPageSizeChange,
+}: {
   page: number;
   pageSize: number;
   total: number;
@@ -148,23 +179,53 @@ function Pagination({ page, pageSize, total, onPageChange, onPageSizeChange }: {
 
   return (
     <div className="flex flex-col gap-3 border-t border-brand-100 pt-4 text-sm text-surface-700 sm:flex-row sm:items-center sm:justify-between">
-      <span>Exibindo {formatNumber(first)}–{formatNumber(last)} de {formatNumber(total)}</span>
+      <span>
+        Exibindo {formatNumber(first)}–{formatNumber(last)} de {formatNumber(total)}
+      </span>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-2">
           <span className="text-xs">Por página</span>
-          <select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))} className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm">
-            {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+          <select
+            value={pageSize}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm"
+          >
+            {PAGE_SIZE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </select>
         </label>
-        <button type="button" disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)} className="rounded-xl border border-brand-100 px-3 py-2 font-semibold text-brand-700 disabled:opacity-40">Anterior</button>
-        <span className="min-w-20 text-center text-xs">{safePage} de {totalPages}</span>
-        <button type="button" disabled={safePage >= totalPages} onClick={() => onPageChange(safePage + 1)} className="rounded-xl border border-brand-100 px-3 py-2 font-semibold text-brand-700 disabled:opacity-40">Próxima</button>
+        <button
+          type="button"
+          disabled={safePage <= 1}
+          onClick={() => onPageChange(safePage - 1)}
+          className="rounded-xl border border-brand-100 px-3 py-2 font-semibold text-brand-700 disabled:opacity-40"
+        >
+          Anterior
+        </button>
+        <span className="min-w-20 text-center text-xs">
+          {safePage} de {totalPages}
+        </span>
+        <button
+          type="button"
+          disabled={safePage >= totalPages}
+          onClick={() => onPageChange(safePage + 1)}
+          className="rounded-xl border border-brand-100 px-3 py-2 font-semibold text-brand-700 disabled:opacity-40"
+        >
+          Próxima
+        </button>
       </div>
     </div>
   );
 }
 
-function AlertDetails({ alert, users, reportings }: {
+function AlertDetails({
+  alert,
+  users,
+  reportings,
+}: {
   alert: KartadoAlert;
   users: KartadoUser[];
   reportings: KartadoReporting[];
@@ -185,29 +246,55 @@ function AlertDetails({ alert, users, reportings }: {
       return users.filter((user) => !user.email);
     }
     if (alert.id === 'users-expiring') {
-      return users.filter((user) => user.expirationDate && user.expirationDate >= today && user.expirationDate <= in30Date);
+      return users.filter(
+        (user) => user.expirationDate && user.expirationDate >= today && user.expirationDate <= in30Date,
+      );
     }
     return [];
   }, [alert.id, in30Date, today, users]);
 
   const affectedReportings = useMemo(() => {
     if (alert.id !== 'open') return [];
-    const openStatuses = ['aberto', 'open', 'pendente', 'pending', 'em andamento', 'in progress', 'novo', 'new', 'aguardando'];
+    const openStatuses = [
+      'aberto',
+      'open',
+      'pendente',
+      'pending',
+      'em andamento',
+      'in progress',
+      'novo',
+      'new',
+      'aguardando',
+    ];
     return reportings.filter((item) =>
-      openStatuses.some((status) => String(item.status || '').toLocaleLowerCase('pt-BR').includes(status)),
+      openStatuses.some((status) =>
+        String(item.status || '')
+          .toLocaleLowerCase('pt-BR')
+          .includes(status),
+      ),
     );
   }, [alert.id, reportings]);
 
   const isUserAlert = alert.id.startsWith('users-');
   const hasDetails = isUserAlert ? affectedUsers.length > 0 : affectedReportings.length > 0;
   const term = search.trim().toLocaleLowerCase('pt-BR');
-  const filteredUsers = affectedUsers.filter((user) =>
-    !term || [user.fullName, user.username, user.email, user.expirationDate]
-      .some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(term)),
+  const filteredUsers = affectedUsers.filter(
+    (user) =>
+      !term ||
+      [user.fullName, user.username, user.email, user.expirationDate].some((value) =>
+        String(value || '')
+          .toLocaleLowerCase('pt-BR')
+          .includes(term),
+      ),
   );
-  const filteredReportings = affectedReportings.filter((item) =>
-    !term || [item.number, item.roadName, item.km, item.occurrenceType, item.status, item.foundAt]
-      .some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(term)),
+  const filteredReportings = affectedReportings.filter(
+    (item) =>
+      !term ||
+      [item.number, item.roadName, item.km, item.occurrenceType, item.status, item.foundAt].some((value) =>
+        String(value || '')
+          .toLocaleLowerCase('pt-BR')
+          .includes(term),
+      ),
   );
   const records = isUserAlert ? filteredUsers : filteredReportings;
   const visible = records.slice((page - 1) * pageSize, page * pageSize);
@@ -218,27 +305,86 @@ function AlertDetails({ alert, users, reportings }: {
 
   return (
     <div className="mt-4 border-t border-brand-100 pt-4">
-      <button type="button" onClick={() => setOpen((current) => !current)} className="rounded-xl border border-brand-200 bg-white px-4 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50" aria-expanded={open}>
-        {open ? 'Recolher detalhes' : `Ver ${formatNumber(records.length)} ${isUserAlert ? 'usuário(s)' : 'apontamento(s)'}`}
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="rounded-xl border border-brand-200 bg-white px-4 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+        aria-expanded={open}
+      >
+        {open
+          ? 'Recolher detalhes'
+          : `Ver ${formatNumber(records.length)} ${isUserAlert ? 'usuário(s)' : 'apontamento(s)'}`}
       </button>
       {open ? (
         <div className="mt-4 rounded-2xl border border-brand-100 bg-white p-4">
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={isUserAlert ? 'Buscar por nome, usuário ou e-mail' : 'Buscar por número, rodovia, km, tipo ou status'} className="w-full rounded-xl border border-brand-100 px-4 py-3 text-sm" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={
+              isUserAlert ? 'Buscar por nome, usuário ou e-mail' : 'Buscar por número, rodovia, km, tipo ou status'
+            }
+            className="w-full rounded-xl border border-brand-100 px-4 py-3 text-sm"
+          />
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600">
-                {isUserAlert ? <tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">E-mail</th><th className="p-3">Expiração</th></tr> : <tr><th className="p-3">Número</th><th className="p-3">Rodovia</th><th className="p-3">Km</th><th className="p-3">Tipo</th><th className="p-3">Status</th><th className="p-3">Data</th></tr>}
+                {isUserAlert ? (
+                  <tr>
+                    <th className="p-3">Nome</th>
+                    <th className="p-3">Usuário</th>
+                    <th className="p-3">E-mail</th>
+                    <th className="p-3">Expiração</th>
+                  </tr>
+                ) : (
+                  <tr>
+                    <th className="p-3">Número</th>
+                    <th className="p-3">Rodovia</th>
+                    <th className="p-3">Km</th>
+                    <th className="p-3">Tipo</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Data</th>
+                  </tr>
+                )}
               </thead>
               <tbody>
                 {isUserAlert
-                  ? (visible as KartadoUser[]).map((user, index) => <tr key={user.id || `${user.username}-${index}`} className="border-b border-brand-50"><td className="p-3 font-medium text-surface-900">{user.fullName || '—'}</td><td className="p-3">{user.username || '—'}</td><td className="p-3">{user.email || '—'}</td><td className="p-3">{user.expirationDate || '—'}</td></tr>)
-                  : (visible as KartadoReporting[]).map((item, index) => <tr key={item.id || `${item.number}-${index}`} className="border-b border-brand-50"><td className="p-3">{item.number || '—'}</td><td className="p-3">{item.roadName || '—'}</td><td className="p-3">{item.km ?? '—'}</td><td className="p-3">{item.occurrenceType || '—'}</td><td className="p-3">{item.status || '—'}</td><td className="p-3">{item.foundAt || item.createdAt || '—'}</td></tr>)}
+                  ? (visible as KartadoUser[]).map((user, index) => (
+                      <tr key={user.id || `${user.username}-${index}`} className="border-b border-brand-50">
+                        <td className="p-3 font-medium text-surface-900">{user.fullName || '—'}</td>
+                        <td className="p-3">{user.username || '—'}</td>
+                        <td className="p-3">{user.email || '—'}</td>
+                        <td className="p-3">{user.expirationDate || '—'}</td>
+                      </tr>
+                    ))
+                  : (visible as KartadoReporting[]).map((item, index) => (
+                      <tr key={item.id || `${item.number}-${index}`} className="border-b border-brand-50">
+                        <td className="p-3">{item.number || '—'}</td>
+                        <td className="p-3">{item.roadName || '—'}</td>
+                        <td className="p-3">{item.km ?? '—'}</td>
+                        <td className="p-3">{item.occurrenceType || '—'}</td>
+                        <td className="p-3">{item.status || '—'}</td>
+                        <td className="p-3">{item.foundAt || item.createdAt || '—'}</td>
+                      </tr>
+                    ))}
               </tbody>
             </table>
           </div>
-          {!records.length ? <p className="py-5 text-center text-sm text-surface-600">Nenhum registro corresponde à busca.</p> : null}
-          <Pagination page={page} pageSize={pageSize} total={records.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
-          {!isUserAlert && Number(alert.count || 0) > affectedReportings.length ? <p className="mt-3 text-xs text-amber-700">A lista apresenta os registros carregados na amostra atual; o total informado pela API é {formatNumber(Number(alert.count || 0))}.</p> : null}
+          {!records.length ? (
+            <p className="py-5 text-center text-sm text-surface-600">Nenhum registro corresponde à busca.</p>
+          ) : null}
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={records.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+          {!isUserAlert && Number(alert.count || 0) > affectedReportings.length ? (
+            <p className="mt-3 text-xs text-amber-700">
+              A lista apresenta os registros carregados na amostra atual; o total informado pela API é{' '}
+              {formatNumber(Number(alert.count || 0))}.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -261,21 +407,51 @@ function HealthGauge({ score }: { score: number }) {
   return (
     <svg width="84" height="84" viewBox="0 0 84 84" aria-label={`Score ${score} de 100`}>
       <circle cx="42" cy="42" r={radius} fill="none" stroke="#e5efe9" strokeWidth="8" />
-      <circle cx="42" cy="42" r={radius} fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={`${dash} ${circumference - dash}`} strokeLinecap="round" transform="rotate(-90 42 42)" className={status.color} />
-      <text x="42" y="47" textAnchor="middle" className="fill-current text-base font-bold">{score}</text>
+      <circle
+        cx="42"
+        cy="42"
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="8"
+        strokeDasharray={`${dash} ${circumference - dash}`}
+        strokeLinecap="round"
+        transform="rotate(-90 42 42)"
+        className={status.color}
+      />
+      <text x="42" y="47" textAnchor="middle" className="fill-current text-base font-bold">
+        {score}
+      </text>
     </svg>
   );
 }
 
-function HealthPillar({ label, score, detail, available = true }: { label: string; score: number; detail: string; available?: boolean }) {
+function HealthPillar({
+  label,
+  score,
+  detail,
+  available = true,
+}: {
+  label: string;
+  score: number;
+  detail: string;
+  available?: boolean;
+}) {
   const status = healthStatus(score);
   return (
     <div className={`rounded-2xl border border-brand-100 p-4 ${available ? 'bg-white' : 'bg-surface-50 opacity-70'}`}>
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold text-surface-900">{label}</span>
-        <span className={`font-semibold tabular-nums ${available ? status.color : 'text-surface-500'}`}>{available ? `${score}/100` : '—'}</span>
+        <span className={`font-semibold tabular-nums ${available ? status.color : 'text-surface-500'}`}>
+          {available ? `${score}/100` : '—'}
+        </span>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-brand-50"><div className={`h-full rounded-full ${available ? status.bar : 'bg-surface-300'}`} style={{ width: available ? `${score}%` : '0%' }} /></div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-brand-50">
+        <div
+          className={`h-full rounded-full ${available ? status.bar : 'bg-surface-300'}`}
+          style={{ width: available ? `${score}%` : '0%' }}
+        />
+      </div>
       <p className="mt-2 text-xs leading-5 text-surface-600">{detail}</p>
     </div>
   );
@@ -297,32 +473,87 @@ function HealthUnitDetails({ unit }: { unit: KartadoConcessionDashboard }) {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Detalhamento da unidade</p>
           <h4 className="mt-1 text-xl font-semibold text-surface-900">{unit.company.name}</h4>
-          <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${status.background} ${status.color}`}>{status.label}</span>
+          <span
+            className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${status.background} ${status.color}`}
+          >
+            {status.label}
+          </span>
         </div>
       </div>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <HealthPillar label="Dias de uso no mês" score={daysScore} detail={`${formatNumber(Number(summary.diasUsados || 0))} de ${formatNumber(Number(summary.diasUteisDecorridos || 0))} dias úteis com atividade.`} />
-        <HealthPillar label="Atividade nos últimos 15 dias" score={days15Score} detail={`${formatNumber(Number(summary.dias15Usados || 0))} de ${formatNumber(Number(summary.diasUteisJanela || 0))} dias úteis com atividade.`} />
-        <HealthPillar label="Apontamentos com foto" score={photosScore} detail={`${formatNumber(Number(summary.apontamentosFotoComFoto || 0))} apontamentos com foto; ${formatNumber(Number(unit.photos15d?.totalPhotos || 0))} fotos encontradas.`} available={summary.pctFotosHistorico !== null || summary.pctFotosNaAmostra !== null} />
-        <HealthPillar label="Programações" score={programmingScore} detail={programmingAvailable ? `${formatNumber(Number(summary.programacaoConcluidas || 0))} concluídas, ${formatNumber(Number(summary.programacaoEmAndamento || 0))} em andamento e ${formatNumber(Number(summary.programacaoAtrasadas || 0))} atrasadas.` : 'Sem programações disponíveis para o período.'} available={programmingAvailable} />
+        <HealthPillar
+          label="Dias de uso no mês"
+          score={daysScore}
+          detail={`${formatNumber(Number(summary.diasUsados || 0))} de ${formatNumber(Number(summary.diasUteisDecorridos || 0))} dias úteis com atividade.`}
+        />
+        <HealthPillar
+          label="Atividade nos últimos 15 dias"
+          score={days15Score}
+          detail={`${formatNumber(Number(summary.dias15Usados || 0))} de ${formatNumber(Number(summary.diasUteisJanela || 0))} dias úteis com atividade.`}
+        />
+        <HealthPillar
+          label="Apontamentos com foto"
+          score={photosScore}
+          detail={`${formatNumber(Number(summary.apontamentosFotoComFoto || 0))} apontamentos com foto; ${formatNumber(Number(unit.photos15d?.totalPhotos || 0))} fotos encontradas.`}
+          available={summary.pctFotosHistorico !== null || summary.pctFotosNaAmostra !== null}
+        />
+        <HealthPillar
+          label="Programações"
+          score={programmingScore}
+          detail={
+            programmingAvailable
+              ? `${formatNumber(Number(summary.programacaoConcluidas || 0))} concluídas, ${formatNumber(Number(summary.programacaoEmAndamento || 0))} em andamento e ${formatNumber(Number(summary.programacaoAtrasadas || 0))} atrasadas.`
+              : 'Sem programações disponíveis para o período.'
+          }
+          available={programmingAvailable}
+        />
       </div>
     </div>
   );
 }
 
-function KartadoHealthPanel({ units, loading, completed, total }: { units: KartadoConcessionDashboard[]; loading: boolean; completed: number; total: number }) {
+function KartadoHealthPanel({
+  units,
+  loading,
+  completed,
+  total,
+}: {
+  units: KartadoConcessionDashboard[];
+  loading: boolean;
+  completed: number;
+  total: number;
+}) {
   const [selectedUuid, setSelectedUuid] = useState('');
   const [explanationOpen, setExplanationOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'healthy' | 'attention' | 'critical'>('all');
   const [order, setOrder] = useState<'score' | 'volume' | 'name'>('score');
-  const globalRanking = [...units].sort((a, b) => Number(b.summary.saudeScore || 0) - Number(a.summary.saudeScore || 0));
-  const ranked = units.filter((unit) => {
-    const score = Number(unit.summary.saudeScore || 0);
-    return filter === 'all' || (filter === 'healthy' && score >= 75) || (filter === 'attention' && score >= 45 && score < 75) || (filter === 'critical' && score < 45);
-  }).sort((a, b) => order === 'name' ? a.company.name.localeCompare(b.company.name, 'pt-BR') : order === 'volume' ? Number(b.summary.apontamentosTotal || 0) - Number(a.summary.apontamentosTotal || 0) : Number(b.summary.saudeScore || 0) - Number(a.summary.saudeScore || 0));
-  const average = units.length ? Math.round(units.reduce((sum, unit) => sum + Number(unit.summary.saudeScore || 0), 0) / units.length) : 0;
+  const globalRanking = [...units].sort(
+    (a, b) => Number(b.summary.saudeScore || 0) - Number(a.summary.saudeScore || 0),
+  );
+  const ranked = units
+    .filter((unit) => {
+      const score = Number(unit.summary.saudeScore || 0);
+      return (
+        filter === 'all' ||
+        (filter === 'healthy' && score >= 75) ||
+        (filter === 'attention' && score >= 45 && score < 75) ||
+        (filter === 'critical' && score < 45)
+      );
+    })
+    .sort((a, b) =>
+      order === 'name'
+        ? a.company.name.localeCompare(b.company.name, 'pt-BR')
+        : order === 'volume'
+          ? Number(b.summary.apontamentosTotal || 0) - Number(a.summary.apontamentosTotal || 0)
+          : Number(b.summary.saudeScore || 0) - Number(a.summary.saudeScore || 0),
+    );
+  const average = units.length
+    ? Math.round(units.reduce((sum, unit) => sum + Number(unit.summary.saudeScore || 0), 0) / units.length)
+    : 0;
   const healthy = units.filter((unit) => Number(unit.summary.saudeScore || 0) >= 75).length;
-  const attention = units.filter((unit) => Number(unit.summary.saudeScore || 0) >= 45 && Number(unit.summary.saudeScore || 0) < 75).length;
+  const attention = units.filter(
+    (unit) => Number(unit.summary.saudeScore || 0) >= 45 && Number(unit.summary.saudeScore || 0) < 75,
+  ).length;
   const critical = units.filter((unit) => Number(unit.summary.saudeScore || 0) < 45).length;
 
   return (
@@ -347,10 +578,9 @@ function KartadoHealthPanel({ units, loading, completed, total }: { units: Karta
         {explanationOpen ? (
           <div className="border-t border-brand-100 px-5 py-5">
             <p className="max-w-4xl text-sm leading-6 text-surface-700">
-              O Score de Saúde indica como cada unidade utiliza o Kartado no dia a dia. A nota
-              considera frequência de registros, atividade recente, evidências fotográficas e
-              execução das programações. Quanto mais próxima de 100, mais contínuo e completo é o
-              uso da plataforma.
+              O Score de Saúde indica como cada unidade utiliza o Kartado no dia a dia. A nota considera frequência de
+              registros, atividade recente, evidências fotográficas e execução das programações. Quanto mais próxima de
+              100, mais contínuo e completo é o uso da plataforma.
             </p>
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {[
@@ -371,15 +601,18 @@ function KartadoHealthPanel({ units, loading, completed, total }: { units: Karta
               <span className="rounded-full bg-red-50 px-3 py-2 text-red-700">0–44 · Crítico</span>
             </div>
             <p className="mt-4 text-xs leading-5 text-surface-600">
-              Pilares sem dados disponíveis são desconsiderados da média, em vez de receber nota
-              zero. Quando a unidade não possui apontamentos, o score final é zero. O indicador
-              avalia o uso operacional da plataforma; não representa disponibilidade técnica,
-              desempenho contratual ou avaliação individual de pessoas.
+              Pilares sem dados disponíveis são desconsiderados da média, em vez de receber nota zero. Quando a unidade
+              não possui apontamentos, o score final é zero. O indicador avalia o uso operacional da plataforma; não
+              representa disponibilidade técnica, desempenho contratual ou avaliação individual de pessoas.
             </p>
           </div>
         ) : null}
       </div>
-      {loading ? <div className="rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-700">Calculando saúde das unidades: {completed} de {total} concluídas.</div> : null}
+      {loading ? (
+        <div className="rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-700">
+          Calculando saúde das unidades: {completed} de {total} concluídas.
+        </div>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Score médio" value={`${average}/100`} />
         <MetricCard label="Saudáveis" value={healthy} />
@@ -387,20 +620,92 @@ function KartadoHealthPanel({ units, loading, completed, total }: { units: Karta
         <MetricCard label="Críticas" value={critical} />
       </div>
       <div className="grid gap-5 xl:grid-cols-2">
-        <ChartCard title="Score por unidade" description="Visão gerencial comparativa da saúde operacional." data={globalRanking.map((unit) => ({ label: unit.company.name, value: Number(unit.summary.saudeScore || 0) }))} />
-        <ChartCard title="Volume por unidade" description="Quantidade de apontamentos para comparação com o score." data={[...units].sort((a, b) => Number(b.summary.apontamentosTotal || 0) - Number(a.summary.apontamentosTotal || 0)).map((unit) => ({ label: unit.company.name, value: Number(unit.summary.apontamentosTotal || 0) }))} />
+        <ChartCard
+          title="Score por unidade"
+          description="Visão gerencial comparativa da saúde operacional."
+          data={globalRanking.map((unit) => ({
+            label: unit.company.name,
+            value: Number(unit.summary.saudeScore || 0),
+          }))}
+        />
+        <ChartCard
+          title="Volume por unidade"
+          description="Quantidade de apontamentos para comparação com o score."
+          data={[...units]
+            .sort((a, b) => Number(b.summary.apontamentosTotal || 0) - Number(a.summary.apontamentosTotal || 0))
+            .map((unit) => ({ label: unit.company.name, value: Number(unit.summary.apontamentosTotal || 0) }))}
+        />
       </div>
       <div className="rounded-[28px] border border-brand-100 bg-white p-5 shadow-soft">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h3 className="text-lg font-semibold text-surface-900">Ranking e diagnóstico</h3><p className="mt-1 text-sm text-surface-700">Compare as unidades e selecione uma para analisar os quatro pilares.</p></div><div className="flex flex-wrap gap-2"><select value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)} className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm"><option value="all">Todas as situações</option><option value="healthy">Saudáveis</option><option value="attention">Atenção</option><option value="critical">Críticas</option></select><select value={order} onChange={(event) => setOrder(event.target.value as typeof order)} className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm"><option value="score">Ordenar por score</option><option value="volume">Ordenar por volume</option><option value="name">Ordenar por nome</option></select></div></div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-surface-900">Ranking e diagnóstico</h3>
+            <p className="mt-1 text-sm text-surface-700">
+              Compare as unidades e selecione uma para analisar os quatro pilares.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as typeof filter)}
+              className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm"
+            >
+              <option value="all">Todas as situações</option>
+              <option value="healthy">Saudáveis</option>
+              <option value="attention">Atenção</option>
+              <option value="critical">Críticas</option>
+            </select>
+            <select
+              value={order}
+              onChange={(event) => setOrder(event.target.value as typeof order)}
+              className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm"
+            >
+              <option value="score">Ordenar por score</option>
+              <option value="volume">Ordenar por volume</option>
+              <option value="name">Ordenar por nome</option>
+            </select>
+          </div>
+        </div>
         <div className="mt-5 space-y-3">
           {ranked.map((unit) => {
             const score = Number(unit.summary.saudeScore || 0);
             const status = healthStatus(score);
             const expanded = selectedUuid === unit.company.uuid;
             const globalRank = globalRanking.findIndex((item) => item.company.uuid === unit.company.uuid) + 1;
-            return <div key={unit.company.uuid}><button type="button" aria-expanded={expanded} onClick={() => setSelectedUuid((current) => current === unit.company.uuid ? '' : unit.company.uuid)} className={`grid w-full gap-3 border p-4 text-left transition sm:grid-cols-[44px_1fr_100px] sm:items-center ${expanded ? 'rounded-t-2xl border-brand-700 bg-brand-50' : 'rounded-2xl border-brand-100 hover:bg-brand-50/50'}`}><span className="text-center text-lg font-semibold text-surface-500">#{globalRank}</span><div><span className="font-semibold text-surface-900">{unit.company.name}</span><p className="mt-1 text-xs text-surface-600">{formatNumber(Number(unit.summary.apontamentosTotal || 0))} apontamentos</p><div className="mt-2 h-2 overflow-hidden rounded-full bg-brand-50"><div className={`h-full rounded-full ${status.bar}`} style={{ width: `${score}%` }} /></div></div><div className="text-right"><span className={`text-xl font-bold ${status.color}`}>{score}</span><span className={`block text-xs ${status.color}`}>{expanded ? 'Recolher detalhes' : status.label}</span></div></button>{expanded ? <HealthUnitDetails unit={unit} /> : null}</div>;
+            return (
+              <div key={unit.company.uuid}>
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  onClick={() => setSelectedUuid((current) => (current === unit.company.uuid ? '' : unit.company.uuid))}
+                  className={`grid w-full gap-3 border p-4 text-left transition sm:grid-cols-[44px_1fr_100px] sm:items-center ${expanded ? 'rounded-t-2xl border-brand-700 bg-brand-50' : 'rounded-2xl border-brand-100 hover:bg-brand-50/50'}`}
+                >
+                  <span className="text-center text-lg font-semibold text-surface-500">#{globalRank}</span>
+                  <div>
+                    <span className="font-semibold text-surface-900">{unit.company.name}</span>
+                    <p className="mt-1 text-xs text-surface-600">
+                      {formatNumber(Number(unit.summary.apontamentosTotal || 0))} apontamentos
+                    </p>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-brand-50">
+                      <div className={`h-full rounded-full ${status.bar}`} style={{ width: `${score}%` }} />
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-xl font-bold ${status.color}`}>{score}</span>
+                    <span className={`block text-xs ${status.color}`}>
+                      {expanded ? 'Recolher detalhes' : status.label}
+                    </span>
+                  </div>
+                </button>
+                {expanded ? <HealthUnitDetails unit={unit} /> : null}
+              </div>
+            );
           })}
-          {!ranked.length ? <p className="py-8 text-center text-sm text-surface-600">Nenhuma unidade corresponde ao filtro selecionado.</p> : null}
+          {!ranked.length ? (
+            <p className="py-8 text-center text-sm text-surface-600">
+              Nenhuma unidade corresponde ao filtro selecionado.
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
@@ -408,7 +713,6 @@ function KartadoHealthPanel({ units, loading, completed, total }: { units: Karta
 }
 
 function riskLabel(user: KartadoUser) {
-
   return user.riskLevel === 'danger'
     ? 'Crítico'
     : user.riskLevel === 'warning'
@@ -492,9 +796,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
   }, []);
 
   const selected = useMemo<KartadoConcessionDashboard | null>(
-    () => filteredConcession?.company.uuid === selectedUuid
-      ? filteredConcession
-      : concessions[selectedUuid] || null,
+    () => (filteredConcession?.company.uuid === selectedUuid ? filteredConcession : concessions[selectedUuid] || null),
     [concessions, filteredConcession, selectedUuid],
   );
 
@@ -571,9 +873,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
 
   async function openHealthArea() {
     if (healthLoading || !companies.length) return;
-    const pending = companies.filter(
-      (company) => !healthConcessions[company.uuid || company.id || ''],
-    );
+    const pending = companies.filter((company) => !healthConcessions[company.uuid || company.id || '']);
     setHealthCompleted(companies.length - pending.length);
     if (!pending.length) return;
 
@@ -610,25 +910,26 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     if (!term || remoteUsers) return source;
     return source.filter((user) =>
       [user.fullName, user.username, user.email].some((value) =>
-        String(value || '').toLocaleLowerCase('pt-BR').includes(term),
+        String(value || '')
+          .toLocaleLowerCase('pt-BR')
+          .includes(term),
       ),
     );
   }, [remoteUsers, search, selected]);
 
-  const alerts = selected?.alerts || [
-    ...(selected?.users.alertas || []),
-    ...(selected?.reportings.alerts || []),
-  ];
+  const alerts = selected?.alerts || [...(selected?.users.alertas || []), ...(selected?.reportings.alerts || [])];
   const paginatedUsers = users.slice((usersPage - 1) * usersPageSize, usersPage * usersPageSize);
-  const originOptions = [...new Set([
-    ...(concessions[selectedUuid]?.reportings.items || []),
-    ...(selected?.reportings.items || []),
-  ].map(item => item.origin).filter((value): value is string => typeof value === 'string' && !!value.trim()))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const originOptions = [
+    ...new Set(
+      [...(concessions[selectedUuid]?.reportings.items || []), ...(selected?.reportings.items || [])]
+        .map((item) => item.origin)
+        .filter((value): value is string => typeof value === 'string' && !!value.trim()),
+    ),
+  ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
   useEffect(() => {
     setUsersPage(1);
   }, [search, selectedUuid, usersPageSize]);
-
 
   async function searchRemote() {
     if (!selected || !search.trim()) return;
@@ -643,7 +944,9 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     }
   }
 
-  function openTab(nextTab: KartadoTab) { setTab(nextTab); }
+  function openTab(nextTab: KartadoTab) {
+    setTab(nextTab);
+  }
 
   function withReportings(
     concession: KartadoConcessionDashboard,
@@ -702,7 +1005,6 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
     setReportingsError('');
   }
 
-
   return (
     <section className="mt-6 space-y-5">
       <div className="rounded-[28px] border border-brand-100 bg-white px-6 py-7 shadow-soft md:px-8">
@@ -710,7 +1012,9 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Sistema Kartado</p>
             <h2 className="mt-3 text-2xl font-semibold text-surface-900 md:text-3xl">Painel de auditoria</h2>
-            <p className="mt-2 text-sm text-surface-700">Dados do Kartado por unidade. A consulta de apontamentos informa seu período e atualização.</p>
+            <p className="mt-2 text-sm text-surface-700">
+              Dados do Kartado por unidade. A consulta de apontamentos informa seu período e atualização.
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
@@ -726,28 +1030,38 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
         {companies.length ? (
           <div className="mt-5">
             <div className="flex items-center justify-between gap-4 text-sm text-surface-700">
-              <span>{completedCount} de {companies.length} unidades carregadas</span>
+              <span>
+                {completedCount} de {companies.length} unidades carregadas
+              </span>
               {Object.keys(failedCompanies).length ? (
-                <span className="font-semibold text-red-700">{Object.keys(failedCompanies).length} indisponível(is)</span>
+                <span className="font-semibold text-red-700">
+                  {Object.keys(failedCompanies).length} indisponível(is)
+                </span>
               ) : null}
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-brand-50">
-              <div className="h-full rounded-full bg-brand-700 transition-all" style={{ width: `${Math.round((completedCount / companies.length) * 100)}%` }} />
+              <div
+                className="h-full rounded-full bg-brand-700 transition-all"
+                style={{ width: `${Math.round((completedCount / companies.length) * 100)}%` }}
+              />
             </div>
           </div>
         ) : null}
-        {error ? <p className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
+        {error ? (
+          <p className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>
+        ) : null}
       </div>
 
       {area === 'health' ? (
         <KartadoHealthPanel
-          units={companies.map((company) => healthConcessions[company.uuid || company.id || '']).filter((unit): unit is KartadoConcessionDashboard => Boolean(unit))}
+          units={companies
+            .map((company) => healthConcessions[company.uuid || company.id || ''])
+            .filter((unit): unit is KartadoConcessionDashboard => Boolean(unit))}
           loading={healthLoading}
           completed={healthCompleted}
           total={companies.length}
         />
       ) : null}
-
 
       {area === 'audit' && companies.length ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -795,7 +1109,11 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 >
                   <span className="block font-semibold text-surface-900">{company.name}</span>
                   <span className={`mt-2 block text-xs ${failure ? 'text-red-700' : 'text-surface-600'}`}>
-                    {isPending ? 'Carregando...' : failure ? 'Indisponível — clique para tentar novamente' : `${formatNumber(Number(concession.summary.usuariosAtivos || 0))} usuários · ${formatNumber(Number(concession.summary.apontamentosTotal || 0))} apontamentos`}
+                    {isPending
+                      ? 'Carregando...'
+                      : failure
+                        ? 'Indisponível — clique para tentar novamente'
+                        : `${formatNumber(Number(concession.summary.usuariosAtivos || 0))} usuários · ${formatNumber(Number(concession.summary.apontamentosTotal || 0))} apontamentos`}
                   </span>
                 </button>
               );
@@ -808,8 +1126,12 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 className="cursor-not-allowed rounded-2xl border border-surface-200 bg-surface-50 p-4 text-left"
               >
                 <span className="block font-semibold text-surface-600">{name}</span>
-                <span className="mt-2 inline-block rounded-full bg-surface-200 px-2 py-1 text-xs font-semibold text-surface-600">Desativado</span>
-                <span className="mt-2 block text-xs text-surface-600">Obs.: Desativado devido à nova ferramenta Kartado - Obras.</span>
+                <span className="mt-2 inline-block rounded-full bg-surface-200 px-2 py-1 text-xs font-semibold text-surface-600">
+                  Desativado
+                </span>
+                <span className="mt-2 block text-xs text-surface-600">
+                  Obs.: Desativado devido à nova ferramenta Kartado - Obras.
+                </span>
               </button>
             ))}
           </div>
@@ -817,63 +1139,149 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
       ) : null}
 
       {area === 'audit' && selected && unitModalOpen ? (
-        <UnitModal title={selected.company.name} onClose={() => setUnitModalOpen(false)} header={<>
-          <label className="mb-3 flex flex-col gap-1 text-xs font-medium text-surface-700 sm:max-w-md">
-            Trocar unidade
-            <select value={selectedUuid} disabled={loading || reportingsLoading || searching} onChange={(event) => {
-              const company = companies.find((item) => (item.uuid || item.id || '') === event.target.value);
-              if (company) void selectCompany(company);
-            }} className="min-w-0 rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm disabled:opacity-50">
-              {companies.map((company) => {
-                const uuid = company.uuid || company.id || '';
-                return <option key={uuid} value={uuid} disabled={!concessions[uuid]}>{company.name}</option>;
-              })}
-            </select>
-          </label>
-          <nav className="flex gap-2 overflow-x-auto" aria-label="Navegação Kartado">
-            {tabs.map((item) => (
-              <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined} onClick={() => void openTab(item.id)} className={`shrink-0 rounded-2xl px-4 py-3 text-sm font-semibold ${tab === item.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </>}>
-          {error ? <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
+        <UnitModal
+          title={selected.company.name}
+          onClose={() => setUnitModalOpen(false)}
+          header={
+            <>
+              <label className="mb-3 flex flex-col gap-1 text-xs font-medium text-surface-700 sm:max-w-md">
+                Trocar unidade
+                <select
+                  value={selectedUuid}
+                  disabled={loading || reportingsLoading || searching}
+                  onChange={(event) => {
+                    const company = companies.find((item) => (item.uuid || item.id || '') === event.target.value);
+                    if (company) void selectCompany(company);
+                  }}
+                  className="min-w-0 rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm disabled:opacity-50"
+                >
+                  {companies.map((company) => {
+                    const uuid = company.uuid || company.id || '';
+                    return (
+                      <option key={uuid} value={uuid} disabled={!concessions[uuid]}>
+                        {company.name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <nav className="flex gap-2 overflow-x-auto" aria-label="Navegação Kartado">
+                {tabs.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-current={tab === item.id ? 'page' : undefined}
+                    onClick={() => void openTab(item.id)}
+                    className={`shrink-0 rounded-2xl px-4 py-3 text-sm font-semibold ${tab === item.id ? 'bg-brand-700 text-white' : 'text-surface-700 hover:bg-brand-50'}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+            </>
+          }
+        >
+          {error ? (
+            <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
           {loading && !detailedCompanies.has(selectedUuid) ? (
             <p role="status" className="mb-4 rounded-2xl bg-brand-50 p-4 text-sm font-medium text-brand-700">
               Carregando dados completos de {selected.company.name}...
             </p>
           ) : null}
 
-          {tab !== 'reportings' && tab !== 'inventory' && tab !== 'assets' ? <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-semibold text-surface-900">Filtrar apontamentos por data e origem</h3>
-              <p className="text-xs text-surface-600">Combine a origem com a data em que o apontamento foi encontrado para atualizar totais, gráficos, lista e alertas da unidade selecionada.</p>
+          {tab !== 'reportings' && tab !== 'inventory' && tab !== 'assets' ? (
+            <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold text-surface-900">Filtrar apontamentos por data e origem</h3>
+                <p className="text-xs text-surface-600">
+                  Combine a origem com a data em que o apontamento foi encontrado para atualizar totais, gráficos, lista
+                  e alertas da unidade selecionada.
+                </p>
+              </div>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
+                  De
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    max={dateTo || undefined}
+                    onChange={(event) => setDateFrom(event.target.value)}
+                    className="rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900"
+                  />
+                </label>
+                <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
+                  Até
+                  <input
+                    type="date"
+                    value={dateTo}
+                    min={dateFrom || undefined}
+                    onChange={(event) => setDateTo(event.target.value)}
+                    className="rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900"
+                  />
+                </label>
+                <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
+                  Origem
+                  <input
+                    list="kartado-origins"
+                    value={origin}
+                    onChange={(event) => setOrigin(event.target.value)}
+                    placeholder="Todas as origens"
+                    aria-describedby="kartado-origin-help"
+                    className="min-w-0 rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900"
+                  />
+                  <datalist id="kartado-origins">
+                    {originOptions.map((value) => (
+                      <option key={value} value={value} />
+                    ))}
+                  </datalist>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void applyReportingFilters()}
+                  disabled={reportingsLoading || (!dateFrom && !dateTo && !origin.trim())}
+                  className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {reportingsLoading ? 'Consultando...' : 'Aplicar filtros'}
+                </button>
+                {appliedFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearReportingFilters}
+                    disabled={reportingsLoading}
+                    className="rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 disabled:opacity-50"
+                  >
+                    Limpar
+                  </button>
+                ) : null}
+              </div>
+              <p id="kartado-origin-help" className="mt-3 text-xs text-surface-600">
+                Selecione uma sugestão ou informe a origem como registrada no Kartado. As sugestões vêm dos registros
+                carregados; deixe vazio para consultar todas.
+              </p>
+              {appliedFilters ? (
+                <p className="mt-3 text-xs font-medium text-brand-700">
+                  Filtros aplicados: {appliedFilters.from || 'início da base'} até{' '}
+                  {appliedFilters.to || 'sem data final'} · Origem: {appliedFilters.origin || 'Todas'}.
+                </p>
+              ) : null}
+              {selected.reportings.items.length < Number(selected.reportings.counts.totalApi || 0) ? (
+                <p className="mt-3 text-xs text-surface-600">
+                  Consulta parcial: {formatNumber(selected.reportings.items.length)} de{' '}
+                  {formatNumber(Number(selected.reportings.counts.totalApi))} apontamentos. Gráficos e alertas de
+                  apontamentos consideram apenas os registros carregados. Refine o período e a origem para reduzir o
+                  resultado.
+                </p>
+              ) : null}
+              {reportingsError ? (
+                <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {reportingsError}
+                </p>
+              ) : null}
             </div>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-              <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
-                De
-                <input type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => setDateFrom(event.target.value)} className="rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900" />
-              </label>
-              <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
-                Até
-                <input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900" />
-              </label>
-              <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-surface-700">
-                Origem
-                <input list="kartado-origins" value={origin} onChange={(event) => setOrigin(event.target.value)} placeholder="Todas as origens" aria-describedby="kartado-origin-help" className="min-w-0 rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-surface-900" />
-                <datalist id="kartado-origins">{originOptions.map(value => <option key={value} value={value} />)}</datalist>
-              </label>
-              <button type="button" onClick={() => void applyReportingFilters()} disabled={reportingsLoading || (!dateFrom && !dateTo && !origin.trim())} className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                {reportingsLoading ? 'Consultando...' : 'Aplicar filtros'}
-              </button>
-              {appliedFilters ? <button type="button" onClick={clearReportingFilters} disabled={reportingsLoading} className="rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 disabled:opacity-50">Limpar</button> : null}
-            </div>
-            <p id="kartado-origin-help" className="mt-3 text-xs text-surface-600">Selecione uma sugestão ou informe a origem como registrada no Kartado. As sugestões vêm dos registros carregados; deixe vazio para consultar todas.</p>
-            {appliedFilters ? <p className="mt-3 text-xs font-medium text-brand-700">Filtros aplicados: {appliedFilters.from || 'início da base'} até {appliedFilters.to || 'sem data final'} · Origem: {appliedFilters.origin || 'Todas'}.</p> : null}
-            {selected.reportings.items.length < Number(selected.reportings.counts.totalApi || 0) ? <p className="mt-3 text-xs text-surface-600">Consulta parcial: {formatNumber(selected.reportings.items.length)} de {formatNumber(Number(selected.reportings.counts.totalApi))} apontamentos. Gráficos e alertas de apontamentos consideram apenas os registros carregados. Refine o período e a origem para reduzir o resultado.</p> : null}
-            {reportingsError ? <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reportingsError}</p> : null}
-          </div> : null}
+          ) : null}
 
           {tab === 'tickets' ? <KartadoTicketsPage key={selected.company.uuid} unit={selected.company} /> : null}
           {tab === 'overview' ? (
@@ -882,10 +1290,39 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 <MetricCard label="Concessão" value={selected.company.name} />
                 <MetricCard label="Usuários" value={Number(selected.summary.usuariosAtivos || 0)} />
                 <MetricCard label="Apontamentos" value={Number(selected.summary.apontamentosTotal || 0)} />
-                <MetricCard label={appliedFilters ? 'Saúde geral' : 'Saúde'} value={`${Number(selected.summary.saudeScore || 0)}/100`} />
+                <MetricCard
+                  label={appliedFilters ? 'Saúde geral' : 'Saúde'}
+                  value={`${Number(selected.summary.saudeScore || 0)}/100`}
+                />
               </div>
-              {!appliedFilters ? <div className="grid gap-4 sm:grid-cols-2"><button type="button" className="text-left" onClick={() => openTab('inventory')}><MetricCard label="Inventário" value={selected.summary.inventarioRegistrosTotal == null ? 'Indisponível' : Number(selected.summary.inventarioRegistrosTotal)} /></button><button type="button" className="text-left" onClick={() => openTab('assets')}><MetricCard label="Ativos cadastrados" value={selected.summary.ativosTotal == null ? 'Indisponível' : Number(selected.summary.ativosTotal)} /></button></div> : null}
-              <KartadoUnitMap key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={reportingMapCache} />
+              {!appliedFilters ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <button type="button" className="text-left" onClick={() => openTab('inventory')}>
+                    <MetricCard
+                      label="Inventário"
+                      value={
+                        selected.summary.inventarioRegistrosTotal == null
+                          ? 'Indisponível'
+                          : Number(selected.summary.inventarioRegistrosTotal)
+                      }
+                    />
+                  </button>
+                  <button type="button" className="text-left" onClick={() => openTab('assets')}>
+                    <MetricCard
+                      label="Ativos cadastrados"
+                      value={
+                        selected.summary.ativosTotal == null ? 'Indisponível' : Number(selected.summary.ativosTotal)
+                      }
+                    />
+                  </button>
+                </div>
+              ) : null}
+              <KartadoUnitMap
+                key={selectedUuid}
+                company={selectedUuid}
+                name={selected.company.name}
+                cache={reportingMapCache}
+              />
               <div className="grid gap-5 xl:grid-cols-2">
                 <ChartCard
                   title="Perfil dos usuários"
@@ -913,7 +1350,8 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 />
               </div>
               <p className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-surface-700">
-                A API do Kartado não disponibiliza o histórico de login dos usuários; por isso, o painel não calcula inatividade por último acesso.
+                A API do Kartado não disponibiliza o histórico de login dos usuários; por isso, o painel não calcula
+                inatividade por último acesso.
               </p>
             </div>
           ) : null}
@@ -921,25 +1359,102 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
           {tab === 'users' ? (
             <div className="mt-5">
               <div className="flex flex-col gap-3 sm:flex-row">
-                <input value={search} onChange={(event) => { setSearch(event.target.value); setRemoteUsers(null); }} placeholder="Buscar por nome, usuário ou e-mail" className="min-w-0 flex-1 rounded-2xl border border-brand-100 px-4 py-3 text-sm" />
-                <button type="button" onClick={() => void searchRemote()} disabled={!search.trim() || searching} className="rounded-2xl border border-brand-200 px-4 py-3 text-sm font-semibold text-brand-700 disabled:opacity-50">{searching ? 'Buscando...' : 'Buscar na API'}</button>
+                <input
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setRemoteUsers(null);
+                  }}
+                  placeholder="Buscar por nome, usuário ou e-mail"
+                  className="min-w-0 flex-1 rounded-2xl border border-brand-100 px-4 py-3 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => void searchRemote()}
+                  disabled={!search.trim() || searching}
+                  className="rounded-2xl border border-brand-200 px-4 py-3 text-sm font-semibold text-brand-700 disabled:opacity-50"
+                >
+                  {searching ? 'Buscando...' : 'Buscar na API'}
+                </button>
               </div>
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600"><tr><th className="p-3">Risco</th><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">E-mail</th><th className="p-3">Expiração</th></tr></thead>
-                  <tbody>{paginatedUsers.map((user, index) => <tr key={user.id || index} className="border-b border-brand-50"><td className="p-3">{riskLabel(user)}</td><td className="p-3 font-medium text-surface-900">{user.fullName || '—'}</td><td className="p-3">{user.username || '—'}</td><td className="p-3">{user.email || '—'}</td><td className="p-3">{user.expirationDate || '—'}</td></tr>)}</tbody>
+                  <thead className="border-b border-brand-100 text-xs uppercase tracking-wide text-surface-600">
+                    <tr>
+                      <th className="p-3">Risco</th>
+                      <th className="p-3">Nome</th>
+                      <th className="p-3">Usuário</th>
+                      <th className="p-3">E-mail</th>
+                      <th className="p-3">Expiração</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedUsers.map((user, index) => (
+                      <tr key={user.id || index} className="border-b border-brand-50">
+                        <td className="p-3">{riskLabel(user)}</td>
+                        <td className="p-3 font-medium text-surface-900">{user.fullName || '—'}</td>
+                        <td className="p-3">{user.username || '—'}</td>
+                        <td className="p-3">{user.email || '—'}</td>
+                        <td className="p-3">{user.expirationDate || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
-              <Pagination page={usersPage} pageSize={usersPageSize} total={users.length} onPageChange={setUsersPage} onPageSizeChange={setUsersPageSize} />
+              <Pagination
+                page={usersPage}
+                pageSize={usersPageSize}
+                total={users.length}
+                onPageChange={setUsersPage}
+                onPageSizeChange={setUsersPageSize}
+              />
             </div>
           ) : null}
 
-          {tab === 'reportings' ? <KartadoUnitReportings key={selectedUuid} company={selectedUuid} name={selected.company.name} /> : null}
-          {tab === 'inventory' ? <KartadoUnitReportings key={`${selectedUuid}:inventory`} company={selectedUuid} name={selected.company.name} kind="inventory" /> : null}
-          {tab === 'assets' ? <KartadoInventory key={selectedUuid} company={selectedUuid} name={selected.company.name} cache={inventoryCache} /> : null}
+          {tab === 'reportings' ? (
+            <KartadoUnitReportings key={selectedUuid} company={selectedUuid} name={selected.company.name} />
+          ) : null}
+          {tab === 'inventory' ? (
+            <KartadoUnitReportings
+              key={`${selectedUuid}:inventory`}
+              company={selectedUuid}
+              name={selected.company.name}
+              kind="inventory"
+            />
+          ) : null}
+          {tab === 'assets' ? (
+            <KartadoInventory
+              key={selectedUuid}
+              company={selectedUuid}
+              name={selected.company.name}
+              cache={inventoryCache}
+            />
+          ) : null}
 
           {tab === 'alerts' ? (
-            <div className="mt-5 grid gap-3">{alerts.length ? alerts.map((alert) => <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4"><div className="flex justify-between gap-4"><h3 className="font-semibold text-surface-900">{alert.title}</h3><span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span></div>{alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}{alert.action ? <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p> : null}<AlertDetails alert={alert} users={selected.users.users || []} reportings={selected.reportings.items || []} /></article>) : <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>}</div>
+            <div className="mt-5 grid gap-3">
+              {alerts.length ? (
+                alerts.map((alert) => (
+                  <article key={alert.id} className="rounded-2xl border border-brand-100 bg-brand-50/50 p-4">
+                    <div className="flex justify-between gap-4">
+                      <h3 className="font-semibold text-surface-900">{alert.title}</h3>
+                      <span className="text-sm font-semibold text-brand-700">{alert.count ?? ''}</span>
+                    </div>
+                    {alert.desc ? <p className="mt-2 text-sm text-surface-700">{alert.desc}</p> : null}
+                    {alert.action ? (
+                      <p className="mt-2 text-xs font-medium text-brand-700">Ação: {alert.action}</p>
+                    ) : null}
+                    <AlertDetails
+                      alert={alert}
+                      users={selected.users.users || []}
+                      reportings={selected.reportings.items || []}
+                    />
+                  </article>
+                ))
+              ) : (
+                <p className="p-4 text-sm text-surface-700">Nenhum alerta para esta concessão.</p>
+              )}
+            </div>
           ) : null}
         </UnitModal>
       ) : null}

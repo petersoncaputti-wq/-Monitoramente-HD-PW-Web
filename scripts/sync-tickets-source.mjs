@@ -11,12 +11,7 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const envPath = resolve(rootDir, '.env.local');
 const destinationPath = resolve(rootDir, 'public', 'dados', 'chamados.xlsx');
 const defaultSourceCandidates = [
-  resolve(
-    process.env.USERPROFILE ?? '',
-    'OneDrive - Grupo Ecorodovias',
-    'Área de Trabalho',
-    'Analise Chamados.xlsx',
-  ),
+  resolve(process.env.USERPROFILE ?? '', 'OneDrive - Grupo Ecorodovias', 'Área de Trabalho', 'Analise Chamados.xlsx'),
 ];
 
 function readEnvFile(path) {
@@ -107,9 +102,7 @@ if (!statSync(resolvedSourcePath).isFile()) {
 const extension = extname(resolvedSourcePath).toLowerCase();
 
 if (!['.xlsx', '.xls', '.csv', '.xml'].includes(extension)) {
-  console.error(
-    `[tickets-sync] Formato não suportado: ${extension}. Use .xlsx, .xls, .csv ou .xml.`,
-  );
+  console.error(`[tickets-sync] Formato não suportado: ${extension}. Use .xlsx, .xls, .csv ou .xml.`);
   process.exit(1);
 }
 

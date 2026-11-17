@@ -1,13 +1,6 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  statSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,15 +65,7 @@ function parsePowerShellJson(stdout) {
 try {
   const result = spawnSync(
     'powershell',
-    [
-      '-NoProfile',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-File',
-      powerShellScriptPath,
-      '-OutputPath',
-      tempCsvPath,
-    ],
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', powerShellScriptPath, '-OutputPath', tempCsvPath],
     {
       cwd: rootDir,
       encoding: 'utf8',
@@ -149,4 +134,3 @@ try {
     recursive: true,
   });
 }
-

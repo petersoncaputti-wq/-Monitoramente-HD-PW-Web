@@ -1,14 +1,7 @@
 import { createHash } from 'node:crypto';
 import * as XLSX from 'xlsx';
 
-const REQUIRED_HEADERS = [
-  'ProductID',
-  'Product',
-  'ImsID',
-  'UniquePersona',
-  'UsageQuarter',
-  'Net',
-];
+const REQUIRED_HEADERS = ['ProductID', 'Product', 'ImsID', 'UniquePersona', 'UsageQuarter', 'Net'];
 
 function asText(value) {
   return String(value ?? '').trim();
@@ -18,9 +11,8 @@ function asAmount(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   const text = asText(value);
   if (!text) return null;
-  const normalized = text.includes(',') && text.includes('.')
-    ? text.replace(/\./g, '').replace(',', '.')
-    : text.replace(',', '.');
+  const normalized =
+    text.includes(',') && text.includes('.') ? text.replace(/\./g, '').replace(',', '.') : text.replace(',', '.');
   const amount = Number(normalized);
   return Number.isFinite(amount) ? amount : null;
 }
@@ -46,10 +38,7 @@ export function readE365Rows(buffer) {
 export function assertE365Headers(rows) {
   const headers = new Set(Object.keys(rows[0] ?? {}).map(asText));
   const isApplicationUsageExport =
-    headers.has('ProductName') &&
-    headers.has('Email') &&
-    headers.has('TotalMinutes') &&
-    !headers.has('Net');
+    headers.has('ProductName') && headers.has('Email') && headers.has('TotalMinutes') && !headers.has('Net');
 
   if (isApplicationUsageExport) {
     throw new Error(

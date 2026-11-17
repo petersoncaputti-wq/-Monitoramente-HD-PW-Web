@@ -24,10 +24,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function importStorageCsvFile(
-  accessToken: string,
-  file: File,
-): Promise<StorageImportResult> {
+export async function importStorageCsvFile(accessToken: string, file: File): Promise<StorageImportResult> {
   const content = await file.text();
   const response = await fetch('/api/storage-import', {
     body: JSON.stringify({

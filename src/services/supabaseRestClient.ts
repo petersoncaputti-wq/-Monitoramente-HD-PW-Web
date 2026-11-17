@@ -108,11 +108,7 @@ export async function listUserProfiles(_accessToken: string): Promise<UserProfil
   return parseResponse<UserProfile[]>(await request('/api/admin-users'));
 }
 
-export async function updateUserRole(
-  _accessToken: string,
-  userId: string,
-  role: AppRole,
-): Promise<UserProfile> {
+export async function updateUserRole(_accessToken: string, userId: string, role: AppRole): Promise<UserProfile> {
   return parseResponse<UserProfile>(
     await request('/api/admin-users', {
       body: JSON.stringify({ id: userId, role }),
@@ -121,10 +117,7 @@ export async function updateUserRole(
   );
 }
 
-export async function updateMyProfile(
-  _accessToken: string,
-  fullName: string,
-): Promise<UserProfile> {
+export async function updateMyProfile(_accessToken: string, fullName: string): Promise<UserProfile> {
   return parseResponse<UserProfile>(
     await request('/api/auth/me', {
       body: JSON.stringify({ fullName }),
@@ -133,11 +126,7 @@ export async function updateMyProfile(
   );
 }
 
-export async function updateMyPassword(
-  _accessToken: string,
-  currentPassword: string,
-  password: string,
-): Promise<void> {
+export async function updateMyPassword(_accessToken: string, currentPassword: string, password: string): Promise<void> {
   return parseResponse<void>(
     await request('/api/auth/password', {
       body: JSON.stringify({ currentPassword, password }),
