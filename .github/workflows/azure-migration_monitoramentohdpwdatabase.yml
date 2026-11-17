@@ -60,6 +60,34 @@ jobs:
         env:
           VITE_TEAMS_AGENT_URL: "https://teams.microsoft.com/l/app/?source=agent-details-page&sharedAppResource=TaosSharedApp&titleId=T_2a558888-08cb-4cfa-dc1d-4089d17e6e39"
 
+      # Pacote enxuto (dist, server, api, dependências de produção): ~48 MB
+      # em vez da pasta inteira com dependências de desenvolvimento.
+      - name: Prepare deploy package
+        run: node scripts/prepare-deploy.mjs
+
+      # O pacote precisa subir sozinho antes de ir para produção.
+      - name: Smoke test deploy package
+        working-directory: deploy
+        env:
+          PORT: '18080'
+          NODE_ENV: production
+          DB_HOST: 127.0.0.1
+          DB_NAME: smoke
+          DB_USER: smoke
+          DB_PASSWORD: smoke
+          DB_SSL: 'false'
+        run: |
+          npm start > smoke.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:18080/api/auth/saml/config && curl -sf -o /dev/null http://127.0.0.1:18080/; then
+              echo "Pacote sobe corretamente."; kill %1; rm -f smoke.log; exit 0
+            fi
+            sleep 1
+          done
+          cat smoke.log
+          echo "::error::O pacote de deploy não subiu localmente."
+          exit 1
+
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         if: github.ref == 'refs/heads/azure-migration'
@@ -67,24 +95,27 @@ jobs:
         with:
           app-name: 'monitoramentohdpwdatabase'
           slot-name: 'Production'
-          package: .
+          package: deploy
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C9D0CCD4C1644AFC8D0C641B43C80A09 }}
 
       # Confirma que o painel voltou e conversa com o banco (/api/health).
-      # Falha visível na aba Actions se o deploy deixou o painel fora do ar.
+      # O App Service pode levar alguns minutos para reiniciar: espera até 12 min.
       - name: Verify deployment health
         if: github.ref == 'refs/heads/azure-migration'
         env:
           APP_URL: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
         run: |
-          for attempt in $(seq 1 20); do
+          started=$(date +%s)
+          for attempt in $(seq 1 48); do
             status=$(curl -s -o health.json -w '%{http_code}' --max-time 20 "$APP_URL/api/health" || true)
+            elapsed=$(( $(date +%s) - started ))
             if [ "$status" = "200" ]; then
-              echo "Painel saudável na tentativa $attempt: $(cat health.json)"
+              echo "Painel saudável após ${elapsed}s (tentativa $attempt): $(cat health.json)"
+              echo "::notice::Painel voltou ${elapsed}s após o deploy."
               exit 0
             fi
-            echo "Tentativa $attempt: HTTP $status; aguardando o App Service reiniciar..."
+            echo "Tentativa $attempt (${elapsed}s): HTTP $status; aguardando o App Service reiniciar..."
             sleep 15
           done
-          echo "::error::O painel não respondeu 200 em /api/health após o deploy."
+          echo "::error::O painel não respondeu 200 em /api/health 12 minutos após o deploy."
           exit 1

@@ -15,3 +15,6 @@ output/
 # Artefatos gerados
 *.log
 *.tsbuildinfo
+
+# Pacote de deploy gerado por scripts/prepare-deploy.mjs
+deploy/
