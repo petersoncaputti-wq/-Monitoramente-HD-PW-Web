@@ -13,6 +13,7 @@ import importsRouter from './routes/imports.mjs';
 import storageReadingsRouter from './routes/storage-readings.mjs';
 import { kartadoRouter } from './routes/kartado.mjs';
 import { requireUser } from './auth.mjs';
+import { httpErrorHandler } from './http-error.mjs';
 import totvsRouter from './routes/totvs.mjs';
 import ecoRouter from './routes/kartado-eco.mjs';
 import auditRouter from './routes/kartado-audit.mjs';
@@ -92,10 +93,7 @@ if (existsSync(distPath)) {
   app.use((_request, response) => response.sendFile(resolve(distPath, 'index.html')));
 }
 
-app.use((error, _request, response, _next) => {
-  console.error(error);
-  response.status(500).json({ error: 'Erro interno do servidor.' });
-});
+app.use(httpErrorHandler);
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`Servidor iniciado na porta ${port}.`);

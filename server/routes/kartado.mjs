@@ -16,8 +16,36 @@ import {
   loadAllCompanies, listPhotosForCompany,
 } from '../services/kartado.service.mjs';
 import { buildConcessaoDashboard, buildMultiDashboard, buildReportingMetrics } from '../services/kartado-analytics.service.mjs';
+import { createBoundedCache } from '../services/bounded-cache.mjs';
 
 export const kartadoRouter = Router();
+
+const UUID_LIKE = /^[0-9a-f-]{36}$/i;
+
+// Mensagens públicas por status: detalhes do Kartado (caminhos, corpos de
+// erro) ficam só no log do servidor. Erros marcados com `expose` são nossos
+// e podem ser mostrados como estão.
+const UPSTREAM_MESSAGES = {
+  404: 'Registro não encontrado no Kartado.',
+  429: 'O Kartado limitou as consultas. Aguarde alguns instantes e tente novamente.',
+  504: 'O Kartado demorou a responder. Tente novamente.',
+};
+export function publicKartadoError(err) {
+  if (err?.expose) return { status: err.httpStatus, message: err.message };
+  const upstream = Number.isInteger(err?.httpStatus) ? err.httpStatus : 0;
+  // 401/403 do Kartado não podem chegar ao navegador como 401: isso
+  // significaria sessão do painel expirada.
+  if (upstream === 401 || upstream === 403) return { status: 502, message: 'A integração Kartado não tem permissão para esta consulta.' };
+  if (UPSTREAM_MESSAGES[upstream]) return { status: upstream, message: UPSTREAM_MESSAGES[upstream] };
+  return { status: 502, message: 'Falha ao consultar o Kartado. Tente novamente.' };
+}
+function sendKartadoError(res, err, context, extra = {}) {
+  const { status, message } = publicKartadoError(err);
+  console.error(`[Kartado/${context}]`, { status: err?.httpStatus ?? null, detail: err?.message ?? String(err) });
+  const retry = Number(err?.retryAfter);
+  if (Number.isFinite(retry) && retry > 0) res.set('Retry-After', String(Math.ceil(retry)));
+  return res.status(status).json({ success: false, error: message, ...extra });
+}
 
 const SOURCE = { source: 'api.kartado.com.br — tempo real — somente usuários ativos' };
 
@@ -51,7 +79,7 @@ kartadoRouter.post('/companies', async (req, res) => {
     const companies = await listCompanies(token);
     res.json({ success: true, ...SOURCE, auth: { latencyMs, user: user?.username }, companies, count: companies.length });
   } catch (err) {
-    res.status(err.httpStatus || 500).json({ success: false, error: err.message });
+    sendKartadoError(res, err, req.path.slice(1));
   }
 });
 
@@ -84,7 +112,7 @@ kartadoRouter.post('/search', async (req, res) => {
     });
     res.json({ success: true, ...SOURCE, auth: { latencyMs: authMs }, query, companyUuid, total: data.totalCount, returned: users.length, users });
   } catch (err) {
-    res.status(err.httpStatus || 500).json({ success: false, error: err.message });
+    sendKartadoError(res, err, req.path.slice(1));
   }
 });
 
@@ -121,7 +149,8 @@ kartadoRouter.post('/reportings', async (req, res) => {
         origin,
         maxPages: 2,
       });
-      data.warning = `Consulta reduzida para 25 registros: ${initialError.message}`;
+      console.warn('[Kartado/reportings] consulta reduzida para 25 registros:', initialError?.message);
+      data.warning = 'Consulta reduzida para 25 registros após falha na consulta completa.';
     }
     const metrics = buildReportingMetrics(data.reportings, data.totalCount, null, data.isFirstPage);
     res.json({
@@ -137,7 +166,7 @@ kartadoRouter.post('/reportings', async (req, res) => {
         : `${data.reportings.length} apontamentos retornados para o período ${foundAtAfter || '*'} → ${foundAtBefore || '*'}`,
     });
   } catch (err) {
-    res.status(err.httpStatus || 500).json({ success: false, error: err.message });
+    sendKartadoError(res, err, req.path.slice(1));
   }
 });
 
@@ -146,8 +175,10 @@ kartadoRouter.post('/reportings', async (req, res) => {
 // Body: { username, password, companyUuid?, pageSize? }
 // ─────────────────────────────────────────────────────────────────────────────
 const DASHBOARD_CACHE_TTL_MS = Number(process.env.KARTADO_CACHE_TTL_MS || 10 * 60 * 1000);
-const dashboardCache = new Map();
-const healthCache = new Map();
+const dashboardCache = createBoundedCache({ max: 100, ttlMs: DASHBOARD_CACHE_TTL_MS });
+const healthCache = createBoundedCache({ max: 100, ttlMs: DASHBOARD_CACHE_TTL_MS });
+// Consultas em andamento: cada entrada sai ao terminar, então o tamanho é
+// limitado pelas requisições simultâneas (e o companyUuid é validado).
 const healthInFlight = new Map();
 
 async function loadHealthDashboard(company, credentials) {
@@ -189,10 +220,12 @@ kartadoRouter.post('/health', async (req, res) => {
   const credentials = requireCreds(req, res);
   if (!credentials) return;
   const { companyUuid, companyName, force = false } = req.body || {};
-  if (!companyUuid) return res.status(400).json({ success: false, error: 'companyUuid é obrigatório.' });
+  if (typeof companyUuid !== 'string' || !UUID_LIKE.test(companyUuid)) {
+    return res.status(400).json({ success: false, error: 'companyUuid inválido.' });
+  }
   const cached = healthCache.get(companyUuid);
-  if (!force && cached && cached.expiresAt > Date.now()) {
-    return res.json({ success: true, dashboard: cached.dashboard, cache: { hit: true, expiresAt: cached.expiresAt } });
+  if (!force && cached) {
+    return res.json({ success: true, dashboard: cached.value, cache: { hit: true, expiresAt: cached.expiresAt } });
   }
   try {
     let pending = healthInFlight.get(companyUuid);
@@ -209,10 +242,10 @@ kartadoRouter.post('/health', async (req, res) => {
       });
     }
     const dashboard = await pending;
-    healthCache.set(companyUuid, { dashboard, expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS });
-    return res.json({ success: true, dashboard, cache: { hit: false, expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS } });
+    const entry = healthCache.set(companyUuid, dashboard);
+    return res.json({ success: true, dashboard, cache: { hit: false, expiresAt: entry.expiresAt } });
   } catch (error) {
-    return res.status(error.httpStatus || 500).json({ success: false, error: error.message });
+    return sendKartadoError(res, error, 'health');
   }
 });
 
@@ -221,25 +254,12 @@ kartadoRouter.post('/dashboard', (req, res, next) => {
   const cacheKey = `${companyUuid}:${summaryOnly ? 'summary' : 'full'}`;
   const cached = dashboardCache.get(cacheKey);
 
-  if (!force && cached && cached.expiresAt > Date.now()) {
-    return res.json({ ...cached.payload, cache: { hit: true, expiresAt: cached.expiresAt } });
+  if (!force && cached) {
+    return res.json({ ...cached.value, cache: { hit: true, expiresAt: cached.expiresAt } });
   }
 
-  if (cached) dashboardCache.delete(cacheKey);
-  const sendJson = res.json.bind(res);
-  res.json = (payload) => {
-    if (payload?.success && payload?.dashboard) {
-      dashboardCache.set(cacheKey, {
-        payload,
-        expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS,
-      });
-      if (dashboardCache.size > 100) {
-        const oldestKey = dashboardCache.keys().next().value;
-        if (oldestKey) dashboardCache.delete(oldestKey);
-      }
-    }
-    return sendJson(payload);
-  };
+  // O handler seguinte grava no cache explicitamente ao concluir com sucesso.
+  res.locals.dashboardCacheKey = cacheKey;
   next();
 });
 
@@ -309,12 +329,12 @@ kartadoRouter.post('/dashboard', async (req, res) => {
             add('2', 'info', `${companies.length} concessões — selecione uma`);
             return res.json({ success: false, requiresCompany: true, companies, log, auth: { latencyMs: auth.latencyMs }, ...SOURCE });
           } else {
-            throw { step: 'companies', httpStatus: 403, message: 'Nenhuma concessão ativa disponível.' };
+            throw { step: 'companies', httpStatus: 404, expose: true, message: 'Nenhuma concessão ativa disponível.' };
           }
         }
       } catch (e) {
         if (e.step === 'companies') throw e;
-        add('2', 'warn', `GET /Company/ falhou: ${e.message}`);
+        add('2', 'warn', `GET /Company/ falhou: ${publicKartadoError(e).message}`);
         throw { ...e, recommendation: 'Forneça companyUuid no body.' };
       }
     }
@@ -372,7 +392,7 @@ kartadoRouter.post('/dashboard', async (req, res) => {
     const dash = buildConcessaoDashboard(selected, ud, rd, invd, jobd, firmd, rMesd, photosd);
     add('4', 'ok', `${dash.summary.usuariosAtivos} usuários ativos | ${dash.summary.apontamentosTotal} apontamentos | ${dash.summary.alertasTotal} alertas`);
 
-    return res.json({
+    const payload = {
       success: true, ...SOURCE, fetchedAt: new Date().toISOString(),
       auth: { latencyMs: auth.latencyMs }, company: selected, companies,
       pagination: {
@@ -380,10 +400,13 @@ kartadoRouter.post('/dashboard', async (req, res) => {
         reportings: { returned: rd.reportings.length, totalApi: rd.totalCount,      totalPages: rd.totalPages },
       },
       dashboard: dash, summaryOnly, log,
-    });
+    };
+    if (res.locals.dashboardCacheKey) dashboardCache.set(res.locals.dashboardCacheKey, payload);
+    return res.json(payload);
   } catch (err) {
-    add(err.step || 'error', 'err', err.message);
-    return res.status((err.httpStatus || 500) < 500 ? 400 : 500).json({ success: false, error: err.message, recommendation: err.recommendation || null, log, ...SOURCE });
+    const { message } = publicKartadoError(err);
+    add(err.step || 'error', 'err', message);
+    return sendKartadoError(res, err, 'dashboard', { recommendation: err.recommendation || null, log, ...SOURCE });
   }
 });
 
@@ -433,121 +456,9 @@ kartadoRouter.post('/multi', async (req, res) => {
       dashboard, log,
     });
   } catch (err) {
-    add(err.step || 'error', 'err', err.message);
-    return res.status((err.httpStatus || 500) < 500 ? 400 : 500).json({ success: false, error: err.message, log, ...SOURCE });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /health  — índice de saúde por unidade (concessão)
-// Body: { username, password, pageSize? }
-// ─────────────────────────────────────────────────────────────────────────────
-function calcHealthScore(concessao) {
-  const u = concessao.users?.counts  || {};
-  const s = concessao.summary        || {};
-  const total = u.returned || 1;
-
-  // Penalizações baseadas em proporção de usuários problemáticos
-  const pctExpirados = (u.expirados     || 0) / total;
-  const pctSemEmail  = (u.semEmail      || 0) / total;
-  const pctSemTos    = (u.semTos        || 0) / total;
-
-  // Cada dimensão é uma nota de 0-100
-  const dimExpirados = Math.max(0, 100 - Math.round(pctExpirados * 200));  // 50%+ = zero
-  const dimEmail     = Math.max(0, 100 - Math.round(pctSemEmail  * 150));  // 67%+ = zero
-  const dimTos       = Math.max(0, 100 - Math.round(pctSemTos    * 100));  // 100% = zero
-
-  // Penalidade por alertas críticos
-  const criticos = s.alertasCriticos || 0;
-  const dimAlerts = Math.max(0, 100 - criticos * 15);
-
-  // Média ponderada: expiração tem mais peso
-  const score = Math.round(
-    dimExpirados * 0.35 +
-    dimEmail     * 0.20 +
-    dimTos       * 0.15 +
-    dimAlerts    * 0.30
-  );
-
-  const status = score >= 80 ? 'ok' : score >= 60 ? 'warning' : 'danger';
-
-  return {
-    score,
-    status,
-    dimensions: {
-      expirados: { score: dimExpirados, count: u.expirados || 0, pct: Math.round(pctExpirados * 100) },
-      semEmail:  { score: dimEmail,     count: u.semEmail  || 0, pct: Math.round(pctSemEmail  * 100) },
-      semTos:    { score: dimTos,       count: u.semTos    || 0, pct: Math.round(pctSemTos    * 100) },
-      alertas:   { score: dimAlerts,    criticos, atencao: s.alertasAtencao || 0 },
-    },
-    topRisks: (concessao.users?.alertas || [])
-      .filter(a => a.severity === 'danger' || a.severity === 'warning')
-      .slice(0, 3)
-      .map(a => ({ severity: a.severity, title: a.title, count: a.count })),
-  };
-}
-
-kartadoRouter.post('/health', async (req, res) => {
-  const creds = requireCreds(req, res);
-  if (!creds) return;
-
-  const { pageSize = 100 } = req.body;
-  const { log, add } = makeLogger('health');
-
-  try {
-    add('auth', 'run', 'POST /token/login/');
-    const auth = await getToken(creds.username, creds.password);
-    add('auth', 'ok', `Autenticado — ${auth.user?.username || creds.username}`, auth.latencyMs);
-
-    add('companies', 'run', 'GET /Company/ — listando concessões');
-    const companies = await listCompanies(auth.token);
-    add('companies', 'ok', `${companies.length} concessão(ões)`);
-
-    if (!companies.length) {
-      return res.status(403).json({ success: false, error: 'Nenhuma concessão ativa disponível.', log, ...SOURCE });
-    }
-
-    const ps = Math.min(parseInt(pageSize) || 100, 100);
-    add('load', 'run', `Carregando dados de ${companies.length} unidade(s)…`);
-    const raw = await loadAllCompanies(auth.token, companies, { pageSize: ps });
-    add('load', 'ok', `Dados carregados`);
-
-    const { concessoes } = buildMultiDashboard(raw);
-
-    const units = concessoes.map(c => ({
-      company: { uuid: c.company?.uuid, name: c.company?.name },
-      usuarios: {
-        total:         c.summary.usuariosAtivos,
-        retornados:    c.summary.usuariosRetornados,
-        expirados:     c.users?.counts?.expirados     || 0,
-        semEmail:      c.users?.counts?.semEmail      || 0,
-        semTos:        c.users?.counts?.semTos        || 0,
-        expirandoEm30: c.users?.counts?.expirandoEm30 || 0,
-      },
-      apontamentos: {
-        total:   c.summary.apontamentosTotal,
-        alertas: (c.reportings?.alerts || []).length,
-      },
-      alertas: {
-        total:    c.summary.alertasTotal,
-        criticos: c.summary.alertasCriticos,
-        atencao:  c.summary.alertasAtencao,
-      },
-      health: calcHealthScore(c),
-    }));
-
-    const overall = Math.round(units.reduce((s, u) => s + u.health.score, 0) / (units.length || 1));
-    const overallStatus = overall >= 80 ? 'ok' : overall >= 60 ? 'warning' : 'danger';
-
-    return res.json({
-      success: true, ...SOURCE, fetchedAt: new Date().toISOString(),
-      overall: { score: overall, status: overallStatus, units: units.length },
-      units,
-      log,
-    });
-  } catch (err) {
-    add(err.step || 'error', 'err', err.message);
-    return res.status((err.httpStatus || 500) < 500 ? 400 : 500).json({ success: false, error: err.message, log, ...SOURCE });
+    const { message } = publicKartadoError(err);
+    add(err.step || 'error', 'err', message);
+    return sendKartadoError(res, err, 'multi', { log, ...SOURCE });
   }
 });
 

@@ -18,6 +18,28 @@ import {
 } from '../../api/e365-import.mjs';
 import { requireAdmin, requireUser } from '../auth.mjs';
 import { query, withTransaction } from '../db.mjs';
+import { badRequest } from '../http-error.mjs';
+
+// Erros de leitura do arquivo são do usuário (400), não do servidor.
+function parseUpload(parse) {
+  try {
+    return parse();
+  } catch (error) {
+    throw badRequest(error instanceof Error && error.message ? error.message : 'Arquivo inválido.');
+  }
+}
+
+// O mesmo arquivo pode repetir uma leitura (mesmo horário, computador e unidade).
+// No mesmo INSERT isso quebraria o ON CONFLICT; mantém a última ocorrência.
+export function dedupeStorageRows(rows) {
+  const byKey = new Map();
+  for (const row of rows) {
+    const key = `${row.observed_at}|${row.computer}|${row.unit}`;
+    byKey.delete(key);
+    byKey.set(key, row);
+  }
+  return [...byKey.values()];
+}
 
 const router = Router();
 router.use(requireUser, requireAdmin);
@@ -47,13 +69,14 @@ router.post('/storage', async (request, response) => {
     response.status(400).json({ error: 'Selecione um arquivo CSV válido.' });
     return;
   }
-  const rows = parseStorageCsv(content);
+  const parsedRows = parseUpload(() => parseStorageCsv(content));
+  const rows = dedupeStorageRows(parsedRows);
   const fileHash = getStorageHash(content);
   const result = await withTransaction(async (client) => {
     const imported = await client.query(
       `insert into storage_imports (file_name,file_hash,rows_read,rows_imported,status)
        values ($1,$2,$3,0,'completed') returning id`,
-      [fileName, fileHash, rows.length],
+      [fileName, fileHash, parsedRows.length],
     );
     const importId = imported.rows[0].id;
     const mapped = rows.map((row) => ({ ...row, import_id: importId }));
@@ -72,7 +95,7 @@ router.post('/storage', async (request, response) => {
        percent_used=excluded.percent_used, percent_free=excluded.percent_free, updated_at=now()`,
     );
     await client.query('update storage_imports set rows_imported=$1 where id=$2', [rows.length, importId]);
-    return { fileHash, fileName, importId, rowsImported: rows.length, rowsRead: rows.length };
+    return { fileHash, fileName, importId, rowsImported: rows.length, rowsRead: parsedRows.length };
   });
   response.json(result);
 });
@@ -86,12 +109,12 @@ router.post('/pw-users', async (request, response) => {
     return;
   }
   const buffer = Buffer.from(contentBase64, 'base64');
-  const rows = readWorkbookRows(buffer);
+  const rows = parseUpload(() => readWorkbookRows(buffer));
   if (!rows.length) {
     response.status(400).json({ error: 'Nenhuma linha foi encontrada no arquivo.' });
     return;
   }
-  assertRequiredHeaders(rows, sourceKind);
+  parseUpload(() => assertRequiredHeaders(rows, sourceKind));
   const fileHash = getWorkbookHash(buffer);
   const result = await withTransaction(async (client) => {
     const imported = await client.query(
@@ -124,7 +147,7 @@ router.post('/e365', async (request, response) => {
   }
 
   const buffer = Buffer.from(contentBase64, 'base64');
-  const rows = readE365Rows(buffer);
+  const rows = parseUpload(() => readE365Rows(buffer));
   if (!rows.length) {
     response.status(400).json({ error: 'Nenhuma linha E365 foi encontrada no arquivo.' });
     return;

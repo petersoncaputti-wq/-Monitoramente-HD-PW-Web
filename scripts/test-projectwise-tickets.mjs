@@ -15,11 +15,11 @@ await db.exec(migration);
 assert.equal((await db.query("select requester from tickets where case_number='LEGACY'")).rows[0].requester, 'Original');
 assert.equal((await db.query("select column_name from information_schema.columns where table_name='tickets' and column_name='priority'")).rows.length, 0);
 // Execute the real route handlers against PostgreSQL, with authentication supplied by the test.
-const source = (await readFile(new URL('../server/routes/tickets.mjs', import.meta.url), 'utf8'))
-  .replace(/^import .*;\r?\n/gm, '').replace('export default router;', 'return router;');
+const { createTicketsRouter } = await import('../server/routes/tickets.mjs');
+const { httpErrorHandler } = await import('../server/http-error.mjs');
 const authenticate = (req, res, next) => { req.user = { id: null }; next(); };
-const router = new Function('Router', 'requireAdmin', 'requireUser', 'query', source)(express.Router, authenticate, authenticate, (sql, args) => db.query(sql, args));
-const app = express(); app.use(express.json()); app.use('/tickets', router);
+const router = createTicketsRouter({ execute: (sql, args) => db.query(sql, args), authenticate, admin: authenticate });
+const app = express(); app.use(express.json()); app.use('/tickets', router); app.use(httpErrorHandler);
 const server = app.listen(0, '127.0.0.1');
 await new Promise(resolve => server.once('listening', resolve));
 const url = `http://127.0.0.1:${server.address().port}/tickets`;
@@ -40,6 +40,16 @@ try {
   assert.equal(final.status, 'Fechado');
   assert.equal(final.requested_for, 'Equipe');
   assert.ok(final.closed_at);
+  // Validation errors are client errors (400) with a clear message, never 500.
+  const invalidDate = await send('POST', { ...body, caseNumber: 'PW-002', openedAt: 'ontem' });
+  assert.equal(invalidDate.status, 400);
+  assert.match((await invalidDate.json()).error, /Data inválida/);
+  assert.equal((await send('POST', { ...body, caseNumber: 'PW-003', openedAt: '' })).status, 400);
+  assert.equal((await send('POST', { ...body, caseNumber: 'PW-004', closedAt: '2026-11-10T00:00:00Z' })).status, 400);
+  assert.equal((await send('PATCH', { ...body, id: 'nao-e-uuid' })).status, 400);
+  assert.equal((await send('DELETE', { id: 'nao-e-uuid' })).status, 400);
+  const duplicate = await send('POST', body);
+  assert.equal(duplicate.status, 409, 'número de chamado duplicado deve ser 409');
   assert.equal((await send('DELETE', { id: row.id })).status, 200);
-  console.log('ProjectWise: migration preserves tickets, is repeatable, and CRUD works without priority.');
+  console.log('ProjectWise: migration preserves tickets, is repeatable, CRUD works without priority, and validation returns 400/409.');
 } finally { await new Promise(resolve => server.close(resolve)); await db.close(); }

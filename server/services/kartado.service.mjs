@@ -189,6 +189,10 @@ async function fetchPages(token, path, params, maxPages = 0) {
 const _tokenCache = new Map(); // username → { token, user, expiresAt }
 const TOKEN_TTL_MS = 6 * 24 * 60 * 60 * 1000; // 6 dias (1 dia de margem)
 
+// Logins em andamento: com o cache vazio, N concessões carregadas em paralelo
+// compartilham um único POST /token/login/ em vez de fazer N logins.
+const _loginInFlight = new Map(); // username → Promise
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export async function getToken(username, password) {
   const cached = _tokenCache.get(username);
@@ -196,6 +200,15 @@ export async function getToken(username, password) {
     console.log(`[Auth] cache hit — ${username} (expira em ${Math.round((cached.expiresAt - Date.now()) / 3_600_000)}h)`);
     return { token: cached.token, user: cached.user, latencyMs: 0, fromCache: true };
   }
+  let pending = _loginInFlight.get(username);
+  if (!pending) {
+    pending = login(username, password).finally(() => _loginInFlight.delete(username));
+    _loginInFlight.set(username, pending);
+  }
+  return pending;
+}
+
+async function login(username, password) {
   const t0 = Date.now();
   const { ok, status, body } = await safeFetch(`${BASE}/token/login/`, {
     method:  'POST',

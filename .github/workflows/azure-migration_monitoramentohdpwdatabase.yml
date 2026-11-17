@@ -41,6 +41,9 @@ jobs:
       - name: Test authentication and user administration
         run: npm run test:auth
 
+      - name: Test error handling, caches and imports
+        run: npm run test:robustness
+
       - name: Test audit reporting integration
         run: npm run test:kartado-audit
 
