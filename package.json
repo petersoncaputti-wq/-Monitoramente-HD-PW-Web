@@ -20,6 +20,7 @@
     "test:kartado-router": "node scripts/test-kartado-router.mjs",
     "test:auth": "node scripts/test-auth.mjs",
     "test:robustness": "node scripts/test-robustness.mjs",
+    "test:platform": "node scripts/test-platform.mjs",
     "test:kartado-inventory": "node scripts/test-kartado-inventory.mjs && node scripts/test-kartado-reporting-details.mjs && node scripts/test-kartado-reporting-map.mjs",
     "db:migrate-kartado-inventory": "node --env-file=.env.local scripts/migrate-kartado-inventory.mjs",
     "db:migrate-kartado-audit": "node --env-file=.env.local scripts/migrate-kartado-audit.mjs",
@@ -70,7 +71,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.2",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

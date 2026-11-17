@@ -44,6 +44,9 @@ jobs:
       - name: Test error handling, caches and imports
         run: npm run test:robustness
 
+      - name: Test platform security (CSP, body limits, xlsx, env)
+        run: npm run test:platform
+
       - name: Test audit reporting integration
         run: npm run test:kartado-audit
 
