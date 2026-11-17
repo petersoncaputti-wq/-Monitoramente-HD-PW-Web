@@ -14,6 +14,8 @@
     "typecheck": "tsc -b",
     "check:syntax": "node scripts/check-server-syntax.mjs",
     "lint": "eslint .",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
     "check": "npm run check:syntax && npm run lint && npm run typecheck && npm test",
     "sanitize:package-links": "node scripts/sanitize-package-links.mjs",
     "test:package-links": "node scripts/test-package-links.mjs",
