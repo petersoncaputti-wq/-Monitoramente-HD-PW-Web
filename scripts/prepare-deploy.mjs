@@ -1,6 +1,6 @@
 // Monta o pacote enxuto publicado no Azure App Service, em deploy/.
 // Contém só o que o servidor usa em produção: o frontend compilado (dist/),
-// o servidor (server/, api/), o modelo da importação Eco lido em runtime e as
+// o servidor (server/), o modelo da importação Eco lido em runtime e as
 // dependências de produção. Antes, o deploy enviava a pasta inteira, com
 // todas as dependências de desenvolvimento, e o App Service levava ~6 min
 // para voltar a cada deploy.
@@ -17,7 +17,6 @@ const target = join(root, 'deploy');
 const RUNTIME_PATHS = [
   'dist',
   'server',
-  'api',
   'src/data/kartado-eco/acompanhamento.json',
   'package-lock.json',
   // Dependências guardadas no repositório (ex.: xlsx). O App Service roda

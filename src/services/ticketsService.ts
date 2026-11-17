@@ -56,10 +56,6 @@ const TICKET_HEADERS = [
   'Solicitadopara',
 ];
 
-export function hasSupabaseTicketsConfig(): boolean {
-  return true;
-}
-
 function formatTicketDate(value: string | null): string {
   if (!value) {
     return '';
@@ -130,7 +126,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function readTicketsFromSupabase(_accessToken: string): Promise<ImportedWorkbookData> {
+export async function readTicketsFromDatabase(_accessToken: string): Promise<ImportedWorkbookData> {
   const response = await fetch('/api/data/tickets', { credentials: 'same-origin' });
   const records = await parseResponse<TicketRecord[]>(response);
 

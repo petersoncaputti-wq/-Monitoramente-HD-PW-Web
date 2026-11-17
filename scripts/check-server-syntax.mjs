@@ -1,4 +1,4 @@
-// Verifica a sintaxe de todo o código JavaScript do servidor (server/, api/,
+// Verifica a sintaxe de todo o código JavaScript do servidor (server/,
 // scripts/) com o próprio Node (node --check), sem dependências externas.
 // O frontend TypeScript é verificado pelo `tsc -b`.
 import { execFileSync } from 'node:child_process';
@@ -18,7 +18,7 @@ function* files(directory) {
 
 const failures = [];
 let checked = 0;
-for (const directory of ['server', 'api', 'scripts']) {
+for (const directory of ['server', 'scripts']) {
   for (const file of files(join(root, directory))) {
     checked++;
     try {

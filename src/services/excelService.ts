@@ -79,26 +79,3 @@ export async function readMonitoringWorkbook(file: File): Promise<ImportedWorkbo
   const buffer = await file.arrayBuffer();
   return parseWorkbookBuffer(buffer, file.name);
 }
-
-export async function readMonitoringWorkbookFromUrl(url: string, fileName?: string): Promise<ImportedWorkbookData> {
-  const response = await fetch(url, {
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Fonte não encontrada: ${url}`);
-  }
-
-  const contentType = response.headers.get('content-type') ?? '';
-
-  if (contentType.includes('text/html')) {
-    throw new Error(
-      'A URL configurada abriu uma pagina HTML. Use um link direto de download da planilha ou uma fonte sem login.',
-    );
-  }
-
-  const buffer = await response.arrayBuffer();
-  const sourceName = fileName ?? decodeURIComponent(url.split('/').pop() ?? 'fonte externa');
-
-  return parseWorkbookBuffer(buffer, sourceName);
-}

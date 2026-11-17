@@ -7,7 +7,7 @@ import {
   updateAdminUser,
   updateMyPassword,
   updateMyProfile,
-} from '@/services/supabaseRestClient';
+} from '@/services/apiClient';
 import type { AppRole, UserProfile } from '@/types/auth';
 
 interface UserFormState {

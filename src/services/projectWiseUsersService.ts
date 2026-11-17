@@ -80,10 +80,6 @@ const PORTAL_HEADERS = [
   'MFA',
 ];
 
-export function hasSupabaseProjectWiseUsersConfig(): boolean {
-  return true;
-}
-
 async function readAllRecords<T>(_accessToken: string, sourceKind: 'explorer' | 'portal'): Promise<T[]> {
   const response = await fetch(`/api/data/pw-users/${sourceKind}`, { credentials: 'same-origin' });
   if (!response.ok) throw new Error('Não foi possível carregar os usuários ProjectWise.');
@@ -134,7 +130,7 @@ function mapPortalUser(record: ProjectWisePortalUserRecord): ProjectWiseWebUserR
   };
 }
 
-export async function readProjectWiseExplorerUsersFromSupabase(accessToken: string): Promise<ImportedWorkbookData> {
+export async function readProjectWiseExplorerUsersFromDatabase(accessToken: string): Promise<ImportedWorkbookData> {
   const records = await readAllRecords<ProjectWiseExplorerUserRecord>(accessToken, 'explorer');
 
   return {
@@ -145,7 +141,7 @@ export async function readProjectWiseExplorerUsersFromSupabase(accessToken: stri
   };
 }
 
-export async function readProjectWisePortalUsersFromSupabase(accessToken: string): Promise<ImportedWorkbookData> {
+export async function readProjectWisePortalUsersFromDatabase(accessToken: string): Promise<ImportedWorkbookData> {
   const records = await readAllRecords<ProjectWisePortalUserRecord>(accessToken, 'portal');
 
   return {

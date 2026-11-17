@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { getContentHash as getStorageHash, parseStorageCsv } from '../../api/storage-import.mjs';
+import { getContentHash as getStorageHash, parseStorageCsv } from '../parsers/storage-csv.mjs';
 import {
   assertRequiredHeaders,
   getContentHash as getWorkbookHash,
   mapExplorerRow,
   mapPortalRow,
   readWorkbookRows,
-} from '../../api/pw-users-import.mjs';
-import { assertE365Headers, getE365ContentHash, mapE365Row, readE365Rows } from '../../api/e365-import.mjs';
+} from '../parsers/pw-users-workbook.mjs';
+import { assertE365Headers, getE365ContentHash, mapE365Row, readE365Rows } from '../parsers/e365-usage.mjs';
 import { requireAdmin, requireUser } from '../auth.mjs';
 import { query, withTransaction } from '../db.mjs';
 import { badRequest } from '../http-error.mjs';

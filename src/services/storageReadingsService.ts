@@ -24,10 +24,6 @@ const STORAGE_HEADERS = [
   'PercentualLivre',
 ];
 
-export function hasSupabaseStorageConfig(): boolean {
-  return true;
-}
-
 function normalizeTime(value: string): string {
   const [hours = '00', minutes = '00', seconds = '00'] = value.split(':');
   return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${seconds.padStart(2, '0')}`;
@@ -47,7 +43,7 @@ function mapStorageReading(record: StorageReadingRecord): MonitoringRow {
   };
 }
 
-export async function readStorageReadingsFromSupabase(_accessToken?: string): Promise<ImportedWorkbookData> {
+export async function readStorageReadingsFromDatabase(_accessToken?: string): Promise<ImportedWorkbookData> {
   const response = await fetch('/api/data/storage', { credentials: 'same-origin' });
   if (!response.ok) throw new Error('Não foi possível carregar os dados de armazenamento.');
   const records = (await response.json()) as StorageReadingRecord[];

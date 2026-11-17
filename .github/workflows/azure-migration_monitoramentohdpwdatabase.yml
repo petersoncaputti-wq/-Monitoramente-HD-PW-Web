@@ -68,7 +68,7 @@ jobs:
         env:
           VITE_TEAMS_AGENT_URL: 'https://teams.microsoft.com/l/app/?source=agent-details-page&sharedAppResource=TaosSharedApp&titleId=T_2a558888-08cb-4cfa-dc1d-4089d17e6e39'
 
-      # Pacote enxuto (dist, server, api, dependências de produção): ~48 MB
+      # Pacote enxuto (dist, server, vendor, dependências de produção): ~48 MB
       # em vez da pasta inteira com dependências de desenvolvimento.
       - name: Prepare deploy package
         run: node scripts/prepare-deploy.mjs

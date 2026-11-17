@@ -1,3 +1,4 @@
+// Leitura dos relatórios de uso E365 (CSV/XLS/XLSX).
 import { createHash } from 'node:crypto';
 import * as XLSX from 'xlsx';
 

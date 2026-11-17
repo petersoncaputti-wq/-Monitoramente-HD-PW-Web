@@ -34,19 +34,15 @@ import {
   readE365UsageFromDatabase,
 } from '@/services/e365UsagePersistenceService';
 import { formatE365Quarter } from '@/utils/e365UsageKpis';
-import { readMonitoringWorkbookFromUrl } from '@/services/excelService';
+
 import { importProjectWiseUsersFile } from '@/services/projectWiseUsersImportService';
-import {
-  hasSupabaseProjectWiseUsersConfig,
-  readProjectWisePortalUsersFromSupabase,
-} from '@/services/projectWiseUsersService';
-import { hasSupabaseStorageConfig, readStorageReadingsFromSupabase } from '@/services/storageReadingsService';
+import { readProjectWisePortalUsersFromDatabase } from '@/services/projectWiseUsersService';
+import { readStorageReadingsFromDatabase } from '@/services/storageReadingsService';
 import { importStorageCsvFile } from '@/services/storageImportService';
 import {
   createTicket,
   deleteTicket,
-  hasSupabaseTicketsConfig,
-  readTicketsFromSupabase,
+  readTicketsFromDatabase,
   updateTicket,
   type TicketInput,
 } from '@/services/ticketsService';
@@ -183,36 +179,13 @@ function getDashboardTab(pathname: string): DashboardTab | null {
   return (matchedRoute?.[0] as DashboardTab | undefined) ?? null;
 }
 
-const AUTO_STORAGE_SOURCES = [
-  'dados/armazenamento.xlsx',
-  'dados/armazenamento.xls',
-  'dados/armazenamento.csv',
-  'dados/armazenamento.xml',
-];
-
-const AUTO_TICKET_SOURCES = ['dados/chamados.xlsx', 'dados/chamados.xls', 'dados/chamados.csv', 'dados/chamados.xml'];
-
-const AUTO_PROJECT_WISE_PORTAL_USER_SOURCES = [
-  'dados/usuarios-pw-portal.xlsx',
-  'dados/usuarios-pw-portal.xls',
-  'dados/usuarios-pw-portal.csv',
-];
-
-const EXTERNAL_STORAGE_SOURCE_URL = import.meta.env.VITE_STORAGE_SOURCE_URL?.trim();
 const IS_E365_LOCAL_PREVIEW = import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true';
 
 const STORAGE_UPDATE_STEPS = [
-  'Conectando ao Supabase',
+  'Conectando ao banco de dados',
   'Lendo registros de armazenamento',
   'Validando linhas retornadas',
   'Recarregando indicadores',
-];
-
-const TICKETS_UPDATE_STEPS = [
-  'Lendo planilha de chamados no OneDrive',
-  'Copiando fonte para a pasta publica',
-  'Validando linhas da planilha',
-  'Recarregando indicadores de chamados',
 ];
 
 const PROJECT_WISE_USERS_UPDATE_STEPS = [
@@ -239,7 +212,6 @@ type AutoStorageStatus =
       fileName: string;
       loadedAt: Date;
       rowsCount: number;
-      syncInfo?: StorageSyncInfo;
     }
   | { state: 'missing' }
   | { state: 'error'; message: string };
@@ -259,75 +231,6 @@ type ProjectWiseUsersImportStatus =
 type TicketFormStatus =
   { state: 'idle' } | { state: 'saving' } | { state: 'success'; message: string } | { state: 'error'; message: string };
 
-interface StorageSyncInfo {
-  sourcePath: string;
-  destinationPath: string;
-  sourceSize: number;
-  destinationSize: number;
-  sourceHash: string;
-  destinationHash: string;
-  sourceRowsCount: number;
-  destinationRowsCount: number;
-  sourceSheetName: string | null;
-  destinationSheetName: string | null;
-  sourceModifiedAt: string;
-  destinationModifiedAt: string;
-  syncedAt: string;
-}
-
-interface StorageSyncResponse {
-  error?: string;
-  sync?: StorageSyncInfo;
-}
-
-function getPublicUrl(path: string, cacheKey?: string): string {
-  const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
-
-  const url = `${baseUrl}${path}`;
-
-  if (!cacheKey) {
-    return url;
-  }
-
-  return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheKey)}`;
-}
-
-function getAutoStorageSources(options?: { cacheKey?: string; localOnly?: boolean }) {
-  const localSources = AUTO_STORAGE_SOURCES.map((source) => ({
-    url: getPublicUrl(source, options?.cacheKey),
-    fileName: source,
-  }));
-
-  if (options?.localOnly || !EXTERNAL_STORAGE_SOURCE_URL) {
-    return localSources;
-  }
-
-  return [
-    {
-      url: EXTERNAL_STORAGE_SOURCE_URL,
-      fileName: 'OneDrive - armazenamento',
-    },
-    ...localSources,
-  ];
-}
-
-function formatTechnicalDate(value: string | Date) {
-  const date = typeof value === 'string' ? new Date(value) : value;
-
-  if (Number.isNaN(date.getTime())) {
-    return typeof value === 'string' ? value : '-';
-  }
-
-  return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-}
-
 function formatLoadedAt(date: Date) {
   const formattedDate = date.toLocaleDateString('pt-BR');
   const formattedTime = date.toLocaleTimeString('pt-BR', {
@@ -336,72 +239,6 @@ function formatLoadedAt(date: Date) {
   });
 
   return `${formattedDate} às ${formattedTime}`;
-}
-
-function formatBytes(value: number) {
-  return new Intl.NumberFormat('pt-BR').format(value);
-}
-
-function formatShortHash(value: string) {
-  return value ? value.slice(0, 10) : '-';
-}
-
-function hasHeaderError(message: string) {
-  return message.includes('cabeçalhos') || message.includes('cabecalhos');
-}
-
-async function syncLocalStorageSource(): Promise<StorageSyncInfo | undefined> {
-  const response = await fetch('/api/sync-storage', {
-    method: 'POST',
-  });
-
-  if (response.status === 404) {
-    return undefined;
-  }
-
-  const result = (await response.json().catch(() => null)) as StorageSyncResponse | null;
-
-  if (!response.ok) {
-    throw new Error(result?.error ?? 'Não foi possível sincronizar a fonte local.');
-  }
-
-  return result?.sync;
-}
-
-async function syncLocalTicketsSource(): Promise<StorageSyncInfo | undefined> {
-  const response = await fetch('/api/sync-tickets', {
-    method: 'POST',
-  });
-
-  if (response.status === 404) {
-    return undefined;
-  }
-
-  const result = (await response.json().catch(() => null)) as StorageSyncResponse | null;
-
-  if (!response.ok) {
-    throw new Error(result?.error ?? 'Não foi possível sincronizar a fonte local de chamados.');
-  }
-
-  return result?.sync;
-}
-
-async function syncLocalProjectWisePortalUsersSource(): Promise<StorageSyncInfo | undefined> {
-  const response = await fetch('/api/sync-portal-users', {
-    method: 'POST',
-  });
-
-  if (response.status === 404) {
-    return undefined;
-  }
-
-  const result = (await response.json().catch(() => null)) as StorageSyncResponse | null;
-
-  if (!response.ok) {
-    throw new Error(result?.error ?? 'Não foi possível atualizar a fonte de usuários do Portal Bentley.');
-  }
-
-  return result?.sync;
 }
 
 function isMonitoringRow(row: ImportedWorkbookData['rows'][number]): row is MonitoringRow {
@@ -452,7 +289,6 @@ export function DashboardPage() {
   const [projectWisePortalUsersData, setProjectWisePortalUsersData] = useState<ImportedWorkbookData | null>(null);
   const [e365UsageRows, setE365UsageRows] = useState<E365UsageRow[]>([]);
   const [autoStorageStatus, setAutoStorageStatus] = useState<AutoStorageStatus>({ state: 'idle' });
-  const [autoTicketsStatus, setAutoTicketsStatus] = useState<AutoStorageStatus>({ state: 'idle' });
   const [autoProjectWiseUsersStatus, setAutoProjectWiseUsersStatus] = useState<AutoStorageStatus>({ state: 'idle' });
   const [autoProjectWisePortalUsersStatus, setAutoProjectWisePortalUsersStatus] = useState<AutoStorageStatus>({
     state: 'idle',
@@ -691,93 +527,32 @@ export function DashboardPage() {
     setProjectWisePortalUsersData(data);
   }
 
-  async function loadAutoStorageSource(options?: { syncBeforeRead?: boolean }) {
+  async function loadAutoStorageSource() {
     setAutoStorageStatus({ state: 'loading' });
 
-    if (hasSupabaseStorageConfig()) {
-      if (!accessToken) {
-        setAutoStorageStatus({
-          state: 'error',
-          message: 'Sessão autenticada indisponível para ler os dados de armazenamento.',
-        });
-        return;
-      }
-
-      try {
-        const data = await readStorageReadingsFromSupabase(accessToken ?? undefined);
-
-        applyStorageData(data, false);
-        setAutoStorageStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-        });
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Não foi possível carregar os dados de armazenamento no Supabase.';
-
-        setAutoStorageStatus({ state: 'error', message });
-      }
-
+    if (!accessToken) {
+      setAutoStorageStatus({
+        state: 'error',
+        message: 'Sessão autenticada indisponível para ler os dados de armazenamento.',
+      });
       return;
     }
 
-    let lastError: unknown = null;
-    let externalSourceError: unknown = null;
-    let syncInfo: StorageSyncInfo | undefined;
-    const localCacheKey = String(Date.now());
+    try {
+      const data = await readStorageReadingsFromDatabase(accessToken ?? undefined);
 
-    if (options?.syncBeforeRead) {
-      try {
-        syncInfo = await syncLocalStorageSource();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Não foi possível sincronizar a fonte local.';
+      applyStorageData(data, false);
+      setAutoStorageStatus({
+        state: 'ready',
+        fileName: data.fileName,
+        loadedAt: new Date(),
+        rowsCount: data.rows.length,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível carregar os dados de armazenamento.';
 
-        setAutoStorageStatus({ state: 'error', message });
-        return;
-      }
+      setAutoStorageStatus({ state: 'error', message });
     }
-
-    for (const source of getAutoStorageSources({
-      cacheKey: localCacheKey,
-      localOnly: options?.syncBeforeRead,
-    })) {
-      try {
-        const data = await readMonitoringWorkbookFromUrl(source.url, source.fileName);
-
-        if (data.kind !== 'storage') {
-          throw new Error('A fonte encontrada não possui os cabeçalhos de armazenamento.');
-        }
-
-        applyStorageData(data, false);
-        setAutoStorageStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-          syncInfo,
-        });
-        return;
-      } catch (error) {
-        if (EXTERNAL_STORAGE_SOURCE_URL && source.url === EXTERNAL_STORAGE_SOURCE_URL) {
-          externalSourceError = error;
-        }
-
-        lastError = error;
-      }
-    }
-
-    const message =
-      externalSourceError instanceof Error
-        ? externalSourceError.message
-        : lastError instanceof Error
-          ? lastError.message
-          : 'Não foi possível carregar a fonte automática de armazenamento.';
-
-    setAutoStorageStatus(
-      EXTERNAL_STORAGE_SOURCE_URL || hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' },
-    );
   }
 
   async function importSelectedStorageCsv() {
@@ -1063,85 +838,16 @@ export function DashboardPage() {
     }
   }
 
-  async function loadAutoTicketsSource(options?: { accessTokenOverride?: string; syncBeforeRead?: boolean }) {
-    setAutoTicketsStatus({ state: 'loading' });
+  async function loadAutoTicketsSource(options?: { accessTokenOverride?: string }) {
+    const ticketsAccessToken = options?.accessTokenOverride ?? accessToken;
+    if (!ticketsAccessToken) return;
 
-    if (hasSupabaseTicketsConfig()) {
-      const ticketsAccessToken = options?.accessTokenOverride ?? accessToken;
-
-      if (!ticketsAccessToken) {
-        setAutoTicketsStatus({
-          state: 'error',
-          message: 'Sessão autenticada indisponível para ler os chamados.',
-        });
-        return;
-      }
-
-      try {
-        const data = await readTicketsFromSupabase(ticketsAccessToken);
-
-        applyTicketsData(data);
-        setAutoTicketsStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-        });
-      } catch (error) {
-        setAutoTicketsStatus({
-          state: 'error',
-          message: error instanceof Error ? error.message : 'Não foi possível carregar os chamados no Supabase.',
-        });
-      }
-
-      return;
+    try {
+      applyTicketsData(await readTicketsFromDatabase(ticketsAccessToken));
+    } catch (error) {
+      // O status desta carga não tem painel próprio na tela; registra para diagnóstico.
+      console.error('Não foi possível carregar os chamados.', error);
     }
-
-    let lastError: unknown = null;
-    let syncInfo: StorageSyncInfo | undefined;
-    const localCacheKey = String(Date.now());
-
-    if (options?.syncBeforeRead) {
-      try {
-        syncInfo = await syncLocalTicketsSource();
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Não foi possível sincronizar a fonte local de chamados.';
-
-        setAutoTicketsStatus({ state: 'error', message });
-        return;
-      }
-    }
-
-    for (const source of AUTO_TICKET_SOURCES.map((ticketSource) => ({
-      fileName: ticketSource,
-      url: getPublicUrl(ticketSource, localCacheKey),
-    }))) {
-      try {
-        const data = await readMonitoringWorkbookFromUrl(source.url, source.fileName);
-
-        if (data.kind !== 'tickets') {
-          throw new Error('A fonte encontrada não possui os cabeçalhos de chamados.');
-        }
-
-        applyTicketsData(data);
-        setAutoTicketsStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-          syncInfo,
-        });
-        return;
-      } catch (error) {
-        lastError = error;
-      }
-    }
-
-    const message =
-      lastError instanceof Error ? lastError.message : 'Não foi possível carregar a fonte automática de chamados.';
-
-    setAutoTicketsStatus(hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' });
   }
 
   async function loadAutoProjectWiseUsersSource() {
@@ -1172,97 +878,34 @@ export function DashboardPage() {
     }
   }
 
-  async function loadAutoProjectWisePortalUsersSource(options?: { syncBeforeRead?: boolean }) {
+  async function loadAutoProjectWisePortalUsersSource() {
     setAutoProjectWisePortalUsersStatus({ state: 'loading' });
 
-    if (hasSupabaseProjectWiseUsersConfig()) {
-      if (!accessToken) {
-        setAutoProjectWisePortalUsersStatus({
-          state: 'error',
-          message: 'Sessão autenticada indisponível para ler os usuários do Portal Bentley.',
-        });
-        return;
-      }
-
-      try {
-        const data = await readProjectWisePortalUsersFromSupabase(accessToken);
-
-        applyProjectWisePortalUsersData(data);
-        setAutoProjectWisePortalUsersStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-        });
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível carregar os usuários do Portal Bentley no Supabase.';
-
-        setAutoProjectWisePortalUsersStatus({ state: 'error', message });
-      }
-
+    if (!accessToken) {
+      setAutoProjectWisePortalUsersStatus({
+        state: 'error',
+        message: 'Sessão autenticada indisponível para ler os usuários do Portal Bentley.',
+      });
       return;
     }
 
-    let lastError: unknown = null;
-    let syncInfo: StorageSyncInfo | undefined;
-    const localCacheKey = String(Date.now());
+    try {
+      const data = await readProjectWisePortalUsersFromDatabase(accessToken);
 
-    if (options?.syncBeforeRead) {
-      try {
-        syncInfo = await syncLocalProjectWisePortalUsersSource();
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Não foi possível atualizar a fonte de usuários do Portal Bentley.';
+      applyProjectWisePortalUsersData(data);
+      setAutoProjectWisePortalUsersStatus({
+        state: 'ready',
+        fileName: data.fileName,
+        loadedAt: new Date(),
+        rowsCount: data.rows.length,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Não foi possível carregar os usuários do Portal Bentley.';
 
-        setAutoProjectWisePortalUsersStatus({ state: 'error', message });
-        return;
-      }
+      setAutoProjectWisePortalUsersStatus({ state: 'error', message });
     }
-
-    for (const source of AUTO_PROJECT_WISE_PORTAL_USER_SOURCES.map((portalSource) => ({
-      fileName: portalSource,
-      url: getPublicUrl(portalSource, localCacheKey),
-    }))) {
-      try {
-        const data = await readMonitoringWorkbookFromUrl(source.url, source.fileName);
-
-        if (data.kind !== 'projectWiseWebUsers') {
-          throw new Error('A fonte encontrada não possui os cabeçalhos de usuários do Portal Bentley.');
-        }
-
-        applyProjectWisePortalUsersData(data);
-        setAutoProjectWisePortalUsersStatus({
-          state: 'ready',
-          fileName: data.fileName,
-          loadedAt: new Date(),
-          rowsCount: data.rows.length,
-          syncInfo,
-        });
-        return;
-      } catch (error) {
-        lastError = error;
-      }
-    }
-
-    const message =
-      lastError instanceof Error
-        ? lastError.message
-        : 'Não foi possível carregar a fonte automática de usuários do Portal Bentley.';
-
-    setAutoProjectWisePortalUsersStatus(hasHeaderError(message) ? { state: 'error', message } : { state: 'missing' });
   }
-
-  useEffect(() => {
-    if (isProjectWisePage && !hasSupabaseTicketsConfig()) {
-      void loadAutoTicketsSource();
-    }
-    // Carrega ao entrar na página ProjectWise. As funções loadAuto* são
-    // recriadas a cada renderização: incluí-las recarregaria sem parar.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isProjectWisePage]);
 
   useEffect(() => {
     if (!accessToken || !isProjectWisePage) {
@@ -1276,7 +919,8 @@ export function DashboardPage() {
     void readE365UsageFromDatabase()
       .then(setE365UsageRows)
       .catch((error) => console.error('Não foi possível carregar os dados E365.', error));
-    // Recarrega quando a sessão ou a página mudam (mesmo motivo do efeito acima).
+    // Recarrega quando a sessão ou a página mudam. As funções loadAuto* são
+    // recriadas a cada renderização: incluí-las recarregaria sem parar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, isProjectWisePage]);
 
@@ -1525,11 +1169,11 @@ export function DashboardPage() {
                     </p>
                     <p className="mt-2 text-sm text-surface-700">
                       {autoStorageStatus.state === 'loading'
-                        ? 'Atualizando a leitura no Supabase...'
+                        ? 'Atualizando a leitura no banco de dados...'
                         : autoStorageStatus.state === 'ready'
                           ? `Fonte carregada: ${autoStorageStatus.fileName} em ${formatLoadedAt(autoStorageStatus.loadedAt)}. ${autoStorageStatus.rowsCount} registros lidos.`
                           : autoStorageStatus.state === 'missing'
-                            ? 'Configure o Supabase ou mantenha uma fonte Excel em public/dados/armazenamento.xlsx.'
+                            ? 'Nenhuma leitura de armazenamento encontrada no banco de dados.'
                             : autoStorageStatus.state === 'error'
                               ? autoStorageStatus.message
                               : 'O painel vai tentar carregar os dados de armazenamento automaticamente.'}
@@ -1539,7 +1183,7 @@ export function DashboardPage() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => void loadAutoStorageSource({ syncBeforeRead: true })}
+                      onClick={() => void loadAutoStorageSource()}
                       disabled={autoStorageStatus.state === 'loading'}
                       className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
@@ -1600,41 +1244,6 @@ export function DashboardPage() {
                 ) : null}
 
                 <SourceUpdateProgress active={autoStorageStatus.state === 'loading'} steps={STORAGE_UPDATE_STEPS} />
-
-                {autoStorageStatus.state === 'ready' && autoStorageStatus.syncInfo ? (
-                  <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Sincronização</p>
-                      <p className="mt-1">{formatTechnicalDate(autoStorageStatus.syncInfo.syncedAt)}</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Fonte alterada</p>
-                      <p className="mt-1">{formatTechnicalDate(autoStorageStatus.syncInfo.sourceModifiedAt)}</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Linhas fonte/cópia</p>
-                      <p className="mt-1">
-                        {autoStorageStatus.syncInfo.sourceRowsCount} / {autoStorageStatus.syncInfo.destinationRowsCount}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Tamanho</p>
-                      <p className="mt-1">{formatBytes(autoStorageStatus.syncInfo.destinationSize)} bytes</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Assinatura</p>
-                      <p className="mt-1" title={autoStorageStatus.syncInfo.destinationHash}>
-                        {formatShortHash(autoStorageStatus.syncInfo.destinationHash)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Destino</p>
-                      <p className="mt-1 truncate" title={autoStorageStatus.syncInfo.destinationPath}>
-                        {autoStorageStatus.syncInfo.destinationPath}
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
               </section>
             ) : null}
 
@@ -1745,38 +1354,6 @@ export function DashboardPage() {
                       {projectWiseExplorerImportStatus.message}
                     </p>
                   ) : null}
-
-                  {autoProjectWiseUsersStatus.state === 'ready' && autoProjectWiseUsersStatus.syncInfo ? (
-                    <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Sincronização</p>
-                        <p className="mt-1">{formatTechnicalDate(autoProjectWiseUsersStatus.syncInfo.syncedAt)}</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Linhas fonte/cópia</p>
-                        <p className="mt-1">
-                          {autoProjectWiseUsersStatus.syncInfo.sourceRowsCount} /{' '}
-                          {autoProjectWiseUsersStatus.syncInfo.destinationRowsCount}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Tamanho</p>
-                        <p className="mt-1">{formatBytes(autoProjectWiseUsersStatus.syncInfo.destinationSize)} bytes</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Assinatura</p>
-                        <p className="mt-1" title={autoProjectWiseUsersStatus.syncInfo.destinationHash}>
-                          {formatShortHash(autoProjectWiseUsersStatus.syncInfo.destinationHash)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Destino</p>
-                        <p className="mt-1 truncate" title={autoProjectWiseUsersStatus.syncInfo.destinationPath}>
-                          {autoProjectWiseUsersStatus.syncInfo.destinationPath}
-                        </p>
-                      </div>
-                    </div>
-                  ) : null}
                 </section>
 
                 <section className="mt-4 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
@@ -1843,48 +1420,6 @@ export function DashboardPage() {
                     >
                       {projectWisePortalImportStatus.message}
                     </p>
-                  ) : null}
-
-                  {autoProjectWisePortalUsersStatus.state === 'ready' && autoProjectWisePortalUsersStatus.syncInfo ? (
-                    <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Sincronização</p>
-                        <p className="mt-1">
-                          {formatTechnicalDate(autoProjectWisePortalUsersStatus.syncInfo.syncedAt)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Fonte alterada</p>
-                        <p className="mt-1">
-                          {formatTechnicalDate(autoProjectWisePortalUsersStatus.syncInfo.sourceModifiedAt)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Linhas fonte/cópia</p>
-                        <p className="mt-1">
-                          {autoProjectWisePortalUsersStatus.syncInfo.sourceRowsCount} /{' '}
-                          {autoProjectWisePortalUsersStatus.syncInfo.destinationRowsCount}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Tamanho</p>
-                        <p className="mt-1">
-                          {formatBytes(autoProjectWisePortalUsersStatus.syncInfo.destinationSize)} bytes
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Assinatura</p>
-                        <p className="mt-1" title={autoProjectWisePortalUsersStatus.syncInfo.destinationHash}>
-                          {formatShortHash(autoProjectWisePortalUsersStatus.syncInfo.destinationHash)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Destino</p>
-                        <p className="mt-1 truncate" title={autoProjectWisePortalUsersStatus.syncInfo.destinationPath}>
-                          {autoProjectWisePortalUsersStatus.syncInfo.destinationPath}
-                        </p>
-                      </div>
-                    </div>
                   ) : null}
                 </section>
               </>
@@ -2240,73 +1775,6 @@ export function DashboardPage() {
                     </button>
                   </div>
                 </div>
-              </section>
-            ) : null}
-
-            {profile?.role === 'admin' && !hasSupabaseTicketsConfig() ? (
-              <section className="mt-6 rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Fonte de chamados</p>
-                    <p className="mt-2 text-sm text-surface-700">
-                      {autoTicketsStatus.state === 'loading'
-                        ? 'Atualizando a leitura da planilha de chamados...'
-                        : autoTicketsStatus.state === 'ready'
-                          ? `Fonte carregada: ${autoTicketsStatus.fileName} em ${formatLoadedAt(autoTicketsStatus.loadedAt)}. ${autoTicketsStatus.rowsCount} registros lidos.`
-                          : autoTicketsStatus.state === 'missing'
-                            ? 'Coloque a planilha de chamados em public/dados/chamados.xlsx.'
-                            : autoTicketsStatus.state === 'error'
-                              ? autoTicketsStatus.message
-                              : 'O painel vai tentar carregar a planilha de chamados automaticamente.'}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => void loadAutoTicketsSource({ syncBeforeRead: true })}
-                    disabled={autoTicketsStatus.state === 'loading'}
-                    className="inline-flex items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {autoTicketsStatus.state === 'loading' ? 'Atualizando...' : 'Atualizar'}
-                  </button>
-                </div>
-
-                <SourceUpdateProgress active={autoTicketsStatus.state === 'loading'} steps={TICKETS_UPDATE_STEPS} />
-
-                {autoTicketsStatus.state === 'ready' && autoTicketsStatus.syncInfo ? (
-                  <div className="mt-4 grid gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 text-xs text-surface-700 sm:grid-cols-2 xl:grid-cols-4">
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Sincronização</p>
-                      <p className="mt-1">{formatTechnicalDate(autoTicketsStatus.syncInfo.syncedAt)}</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Fonte alterada</p>
-                      <p className="mt-1">{formatTechnicalDate(autoTicketsStatus.syncInfo.sourceModifiedAt)}</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Linhas fonte/cópia</p>
-                      <p className="mt-1">
-                        {autoTicketsStatus.syncInfo.sourceRowsCount} / {autoTicketsStatus.syncInfo.destinationRowsCount}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Tamanho</p>
-                      <p className="mt-1">{formatBytes(autoTicketsStatus.syncInfo.destinationSize)} bytes</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Assinatura</p>
-                      <p className="mt-1" title={autoTicketsStatus.syncInfo.destinationHash}>
-                        {formatShortHash(autoTicketsStatus.syncInfo.destinationHash)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-brand-700">Destino</p>
-                      <p className="mt-1 truncate" title={autoTicketsStatus.syncInfo.destinationPath}>
-                        {autoTicketsStatus.syncInfo.destinationPath}
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
               </section>
             ) : null}
           </>

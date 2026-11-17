@@ -10,7 +10,7 @@ import {
   saveStoredSession,
   signInWithPassword,
   signOut,
-} from '@/services/supabaseRestClient';
+} from '@/services/apiClient';
 
 interface AuthContextValue {
   accessToken: string | null;
