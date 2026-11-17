@@ -3,14 +3,17 @@
  * Fonte única: https://api.kartado.com.br
  * Somente usuários ativos (active=true enviado em toda consulta).
  * Sem mock. Sem dados legados.
+ *
+ * Segurança: estas rotas usam a conta de serviço do Kartado. Não exponha
+ * rotas de depuração que aceitem caminhos/URLs arbitrários ou devolvam
+ * tokens (as antigas /inspect, /auth, /diagnose etc. foram removidas).
  */
 
 import { Router } from 'express';
 import {
   getToken, listCompanies, listUsers, listReportings, listReportingPage,
-  listInventoryCounts, listJobProgress, listMDRDays, listFirmCounts,
-  loadAllCompanies, runDiagnostics, validateProgramacoes, getReportingPhotos,
-  listPhotosForCompany, extractPage,
+  listInventoryCounts, listJobProgress, listFirmCounts,
+  loadAllCompanies, listPhotosForCompany,
 } from '../services/kartado.service.mjs';
 import { buildConcessaoDashboard, buildMultiDashboard, buildReportingMetrics } from '../services/kartado-analytics.service.mjs';
 
@@ -36,130 +39,6 @@ function makeLogger(label) {
   };
   return { log, add };
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /status
-// ─────────────────────────────────────────────────────────────────────────────
-kartadoRouter.get('/status', (_req, res) => res.json({
-  success: true, ...SOURCE,
-  endpoints: {
-    'GET  /status':     'Status da integração',
-    'POST /auth':       'Autentica e retorna info do usuário',
-    'POST /diagnose':   'Testa permissões + detecta formato das respostas',
-    'POST /inspect':    'Inspeciona resposta bruta de qualquer endpoint',
-    'POST /companies':  'Lista concessões ativas',
-    'POST /search':     'Busca usuários por nome/e-mail/username em uma concessão',
-    'POST /dashboard':              'Dashboard de uma concessão (users ativos + apontamentos)',
-    'POST /multi':                  'Dashboard consolidado de todas as concessões',
-    'POST /validate-programacoes':  'Valida estratégias de acesso a dados de programação por concessão',
-    'POST /reporting-photos':       'Busca fotos de um apontamento pelo UUID',
-  },
-}));
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /auth
-// ─────────────────────────────────────────────────────────────────────────────
-kartadoRouter.post('/auth', async (req, res) => {
-  const creds = requireCreds(req, res);
-  if (!creds) return;
-  try {
-    const { token, user, latencyMs } = await getToken(creds.username, creds.password);
-    res.json({ success: true, ...SOURCE, latencyMs, user: user || { username: creds.username }, tokenPreview: `${token.slice(0,30)}…` });
-  } catch (err) {
-    res.status(err.httpStatus || 500).json({ success: false, error: err.message });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /diagnose
-// Testa permissões e detecta o formato real das respostas da API
-// ─────────────────────────────────────────────────────────────────────────────
-kartadoRouter.post('/diagnose', async (req, res) => {
-  const creds = requireCreds(req, res);
-  if (!creds) return;
-  try {
-    const { token, user, latencyMs } = await getToken(creds.username, creds.password);
-    // Pega uma company real para testar
-    let sampleUuid = null;
-    try {
-      const cos = await listCompanies(token);
-      sampleUuid = cos[0]?.uuid || null;
-    } catch (_) {}
-
-    const diag = await runDiagnostics(token, sampleUuid);
-    const recs = [];
-    if (!diag.company?.ok)   recs.push({ endpoint: 'GET /Company/',               status: diag.company?.status,   action: 'Solicitar permissão ao suporte Kartado.' });
-    if (!diag.user?.ok)      recs.push({ endpoint: 'GET /User/?company=',         status: diag.user?.status,      action: 'Verificar permissão de leitura de usuários.' });
-    if (!diag.reporting?.ok) recs.push({ endpoint: 'GET /Reporting/Spreadsheet/', status: diag.reporting?.status, action: 'Solicitar permissão ao suporte Kartado para apontamentos.' });
-
-    res.json({
-      success: true, ...SOURCE,
-      auth: { latencyMs, user: user?.username || creds.username },
-      sampleCompanyUuid: sampleUuid,
-      diagnostics: diag,
-      recommendations: recs,
-      allOk: recs.length === 0,
-    });
-  } catch (err) {
-    res.status(err.httpStatus || 500).json({ success: false, error: err.message });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /inspect
-// Mostra a resposta bruta de qualquer endpoint (ferramenta de debug)
-// Body: { username, password, path, params }
-// ─────────────────────────────────────────────────────────────────────────────
-kartadoRouter.post('/inspect', async (req, res) => {
-  const creds = requireCreds(req, res);
-  if (!creds) return;
-  const { path: apiPath = '/Reporting/Spreadsheet/', params = {} } = req.body;
-  try {
-    const { token, user } = await getToken(creds.username, creds.password);
-    const clean = Object.fromEntries(Object.entries(params).filter(([,v]) => v != null && v !== ''));
-    const qs    = Object.keys(clean).length ? '?' + new URLSearchParams(clean) : '';
-    const url   = `https://api.kartado.com.br${apiPath}${qs}`;
-
-    console.log(`[inspect] → ${url}`);
-    const t0  = Date.now();
-    const raw = await fetch(url, { headers: { 'Authorization': `JWT ${token}`, 'Cache-Control': 'no-cache' } });
-    const ms  = Date.now() - t0;
-    const body = await raw.text();
-
-    let parsed; try { parsed = JSON.parse(body); } catch { parsed = null; }
-
-    // extractPage já trata os 4 formatos conhecidos do Kartado (A: Reporting
-    // com data.results aninhado, B: JSON:API, C: DRF plano, D: array direto).
-    // Sem isso, endpoints Formato A (ex.: /Reporting/Spreadsheet/, onde `data`
-    // é um objeto com `results` dentro, não um array) quebravam com
-    // "parsed?.data?.slice is not a function" ao tentar tratar `data` como array.
-    const extracted = parsed ? extractPage(parsed, 1) : null;
-
-    const info = parsed ? {
-      topLevelKeys:  Object.keys(parsed),
-      hasData:       'data'    in parsed,
-      hasResults:    'results' in parsed,
-      hasMeta:       'meta'    in parsed,
-      hasCount:      'count'   in parsed,
-      hasNext:       'next'    in parsed,
-      itemsLen:      extracted?.items.length ?? null,
-      totalCount:    extracted?.totalCount   ?? null,
-      totalPages:    extracted?.totalPages   ?? null,
-      firstItemKeys: extracted?.items?.[0] ? Object.keys(extracted.items[0]) : null,
-      firstAttrKeys: extracted?.items?.[0]?.attributes ? Object.keys(extracted.items[0].attributes) : null,
-    } : null;
-
-    res.json({
-      success: raw.ok, httpStatus: raw.status, url, latencyMs: ms,
-      auth: { user: user?.username || creds.username },
-      responseInfo: info,
-      sample: extracted?.items?.slice(0, 2) ?? parsed,
-      rawPreview: body.slice(0, 3000),
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /companies
@@ -669,150 +548,6 @@ kartadoRouter.post('/health', async (req, res) => {
   } catch (err) {
     add(err.step || 'error', 'err', err.message);
     return res.status((err.httpStatus || 500) < 500 ? 400 : 500).json({ success: false, error: err.message, log, ...SOURCE });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /validate-programacoes
-// Testa 4 estratégias de acesso a dados de programação para uma concessão.
-// Body: { username, password, companyUuid }
-// ─────────────────────────────────────────────────────────────────────────────
-// ── GET /sync-stream — sincronização em tempo real via Server-Sent Events ──────
-// Query: username, password, companyUuid, companyName
-// Emite eventos SSE à medida que cada fonte de dados é buscada em paralelo.
-kartadoRouter.get('/sync-stream', async (req, res) => {
-  const username = process.env.KARTADO_USERNAME;
-  const password = process.env.KARTADO_PASSWORD;
-  const { companyUuid, companyName } = req.query;
-
-  if (!username || !password || !companyUuid) {
-    return res.status(503).json({ error: 'Integração Kartado não configurada ou concessão ausente.' });
-  }
-
-  res.setHeader('Content-Type',       'text/event-stream');
-  res.setHeader('Cache-Control',       'no-cache');
-  res.setHeader('Connection',          'keep-alive');
-  res.setHeader('X-Accel-Buffering',   'no');
-  res.flushHeaders();
-
-  const emit = (event, data) => {
-    if (!res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  };
-
-  const now            = new Date();
-  const startOfMonth   = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const quinzeDias     = new Date(now.getTime() - 15 * 86_400_000).toISOString().split('T')[0];
-
-  try {
-    emit('step', { key: 'auth', status: 'loading', label: 'Autenticando no Kartado…', ts: Date.now() });
-    const auth = await getToken(username, password);
-    emit('step', { key: 'auth', status: 'ok', label: `Autenticado — ${auth.user?.username || username}`, latencyMs: auth.latencyMs, ts: Date.now() });
-
-    const selected = { uuid: companyUuid, name: companyName || companyUuid };
-
-    const TASKS = [
-      { key: 'usuarios',         label: 'Usuários',              fn: () => listUsers(auth.token, selected.uuid, { pageSize: 100 }) },
-      { key: 'apontamentos',     label: 'Apontamentos',          fn: () => listReportings(auth.token, selected.uuid, { pageSize: 100 }) },
-      { key: 'inventarios',      label: 'Inventários',           fn: () => listInventoryCounts(auth.token, selected.uuid) },
-      { key: 'programacoes',     label: 'Programações',          fn: () => listJobProgress(auth.token, selected.uuid) },
-      { key: 'equipes',          label: 'Equipes',               fn: () => listFirmCounts(auth.token, selected.uuid) },
-      { key: 'apontamentos-mes', label: 'Apontamentos do mês',   fn: () => listReportings(auth.token, selected.uuid, { foundAtAfter: startOfMonth,  pageSize: 100, maxPages: 3 }) },
-      { key: 'apontamentos-15d', label: 'Fotos — 15 dias',       fn: () => listPhotosForCompany(auth.token, selected.uuid, { foundAtAfter: quinzeDias, pageSize: 100, maxPages: 5 }) },
-    ];
-
-    // Emite todos como "aguardando" antes de iniciar
-    TASKS.forEach(t => emit('step', { key: t.key, status: 'waiting', label: t.label, ts: Date.now() }));
-
-    const results = {};
-    await Promise.all(TASKS.map(async ({ key, label, fn }) => {
-      emit('step', { key, status: 'loading', label, ts: Date.now() });
-      const t0 = Date.now();
-      try {
-        results[key] = await fn();
-        const count =
-          results[key]?.totalCount            ??
-          results[key]?.totalPhotos           ??
-          results[key]?.reportings?.length    ??
-          results[key]?.users?.length         ??
-          results[key]?.total                 ?? null;
-        emit('step', { key, status: 'ok', label, count, latencyMs: Date.now() - t0, ts: Date.now() });
-      } catch (e) {
-        results[key] = { error: e.message };
-        emit('step', { key, status: 'error', label, error: e.message, latencyMs: Date.now() - t0, ts: Date.now() });
-      }
-    }));
-
-    emit('done', {
-      ts: Date.now(),
-      company: selected,
-      summary: {
-        usuarios:        results.usuarios?.totalCount                          ?? 0,
-        apontamentos:    results.apontamentos?.totalCount                      ?? 0,
-        apontamentosMes: results['apontamentos-mes']?.totalCount               ?? 0,
-        apontamentos15d: results['apontamentos-15d']?.totalPhotos               ?? results['apontamentos-15d']?.totalCount ?? 0,
-        inventarios:     results.inventarios?.totalCount                       ?? null,
-        programacoes:    results.programacoes?.totalJobs                       ?? null,
-        equipes:         results.equipes?.total                                ?? null,
-      },
-    });
-
-  } catch (e) {
-    emit('error', { message: e.message, ts: Date.now() });
-  } finally {
-    res.end();
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /reporting-photos
-// Body: { username, password, reportingUuid }
-// ─────────────────────────────────────────────────────────────────────────────
-kartadoRouter.post('/reporting-photos', async (req, res) => {
-  const creds = requireCreds(req, res);
-  if (!creds) return;
-
-  const { reportingUuid } = req.body;
-  if (!reportingUuid) return res.status(400).json({ success: false, error: 'reportingUuid é obrigatório.' });
-
-  try {
-    const { token, user, latencyMs: authMs } = await getToken(creds.username, creds.password);
-    const result = await getReportingPhotos(token, reportingUuid);
-
-    return res.json({
-      success: true, ...SOURCE,
-      fetchedAt: new Date().toISOString(),
-      auth: { latencyMs: authMs, user: user?.username || creds.username },
-      reportingUuid,
-      ...result,
-    });
-  } catch (err) {
-    return res.status((err.httpStatus || 500) < 500 ? 400 : 500).json({ success: false, error: err.message });
-  }
-});
-
-kartadoRouter.post('/validate-programacoes', async (req, res) => {
-  const creds = requireCreds(req, res);
-  if (!creds) return;
-
-  const { companyUuid } = req.body;
-  if (!companyUuid) return res.status(400).json({ success: false, error: 'companyUuid é obrigatório.' });
-
-  try {
-    const { token, user, latencyMs: authMs } = await getToken(creds.username, creds.password);
-    const report = await validateProgramacoes(token, companyUuid);
-
-    return res.json({
-      success: true, ...SOURCE,
-      fetchedAt: new Date().toISOString(),
-      auth: { latencyMs: authMs, user: user?.username || creds.username },
-      companyUuid,
-      ...report,
-      interpretation: report.recomendada
-        ? `✓ Estratégia viável: "${report.recomendada.label}" → ${report.recomendada.totalCount} inventários (${report.recomendada.pctDoCadastro ?? '?'}% do cadastro). Utilize para calcular dimProgramacoes.`
-        : '✗ Nenhuma estratégia retornou dados utilizáveis. /Job/ pode não estar acessível ou os filtros não são suportados.',
-    });
-  } catch (err) {
-    return res.status((err.httpStatus || 500) < 500 ? 400 : 500).json({ success: false, error: err.message, ...SOURCE });
   }
 });
 

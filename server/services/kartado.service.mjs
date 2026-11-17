@@ -55,11 +55,27 @@ async function safeFetch(url, options = {}) {
   }
 }
 
+// ── Montagem segura de URL ────────────────────────────────────────────────────
+// As credenciais (JWT/Basic) só podem ir para a origem configurada do Kartado.
+// Concatenar um caminho sem "/" inicial (ex.: ".evil.com/x") trocaria o host
+// para "api.kartado.com.br.evil.com" e enviaria o token a terceiros.
+export function buildKartadoUrl(base, path, queryString = '') {
+  if (typeof path !== 'string' || !path.startsWith('/') || /[\u0000-\u001f\\]/.test(path)) {
+    throw { httpStatus: 400, message: 'Caminho da API Kartado inválido.' };
+  }
+  const expected = new URL(base);
+  const url = new URL(`${base}${path}${queryString}`);
+  if (url.origin !== expected.origin) {
+    throw { httpStatus: 400, message: 'Caminho da API Kartado fora da origem configurada.' };
+  }
+  return url.href;
+}
+
 // ── HTTP helper ───────────────────────────────────────────────────────────────
 async function apiFetch(token, path, params = {}) {
   const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''));
   const qs    = Object.keys(clean).length ? '?' + new URLSearchParams(clean) : '';
-  const url   = `${BASE}${path}${qs}`;
+  const url   = buildKartadoUrl(BASE, path, qs);
 
   const { ok, status, body, retryAfter } = await safeFetch(url, {
     headers: { 'Accept': ACCEPT, 'Authorization': `JWT ${token}` },
@@ -94,7 +110,7 @@ export async function apiFetchBasic(path, params = {}, env = process.env) {
   if (!env.KARTADO_USERNAME || !env.KARTADO_PASSWORD) throw { httpStatus: 503 };
   const base = (env.KARTADO_API_URL || 'https://api.kartado.com.br').replace(/\/$/, '');
   if (new URL(base).protocol !== 'https:') throw { httpStatus: 503 };
-  const url = `${base}${path}?${new URLSearchParams(params)}`;
+  const url = buildKartadoUrl(base, path, `?${new URLSearchParams(params)}`);
   const result = await safeFetch(url, {
     redirect: 'error',
     headers: { Accept: ACCEPT, Authorization: `Basic ${Buffer.from(`${env.KARTADO_USERNAME}:${env.KARTADO_PASSWORD}`).toString('base64')}` },
@@ -612,102 +628,6 @@ export async function listFirmCounts(token, companyUuid) {
   }
 }
 
-// ── Validação de programações — 4 estratégias em paralelo ────────────────────
-// Retorna um relatório indicando qual estratégia retornou dados válidos e pode
-// ser usada para calcular o indicador de programações no score de saúde.
-export async function validateProgramacoes(token, companyUuid) {
-  if (!companyUuid) throw { step: 'validate', httpStatus: 400, message: 'companyUuid obrigatório.' };
-
-  const t0    = Date.now();
-  const base  = { company: companyUuid, page: 1, page_size: 1 };
-  const today = new Date().toISOString().split('T')[0];
-  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-    .toISOString().split('T')[0];
-
-  // Estratégias testadas em paralelo — cada uma isolada para não bloquear as outras
-  const strategies = [
-    {
-      id:    'job_endpoint',
-      label: 'Endpoint /Job/',
-      desc:  'Busca programações diretamente no endpoint /Job/ — se existir, permite listar total e programadas no mês.',
-      path:  '/Job/',
-      params: base,
-    },
-    {
-      id:    'inventory_com_job_historico',
-      label: 'Inventários com job (histórico)',
-      desc:  'GET /Inventory/?job__start_date_after=2020-01-01 — conta todos os inventários vinculados a alguma programação.',
-      path:  '/Inventory/',
-      params: { ...base, job__start_date_after: '2020-01-01' },
-    },
-    {
-      id:    'inventory_com_job_mes',
-      label: 'Inventários com job (mês corrente)',
-      desc:  `GET /Inventory/?job__start_date_after=${startOfMonth} — inventários com programação iniciada no mês corrente.`,
-      path:  '/Inventory/',
-      params: { ...base, job__start_date_after: startOfMonth },
-    },
-    {
-      id:    'inventory_job_isnull',
-      label: 'Inventários com job via __isnull',
-      desc:  'GET /Inventory/?job__isnull=false — convenção Django REST para filtrar registros com campo não-nulo.',
-      path:  '/Inventory/',
-      params: { ...base, job__isnull: 'false' },
-    },
-  ];
-
-  // Busca o total bruto de inventários como referência de denominador
-  let totalInventarios = null;
-  try {
-    const tot = await apiFetch(token, '/Inventory/', base);
-    totalInventarios = extractPage(tot, 1).totalCount ?? null;
-  } catch { /* ignora — já obtido em listInventoryCounts */ }
-
-  const results = await Promise.all(
-    strategies.map(async s => {
-      try {
-        const payload = await apiFetch(token, s.path, s.params);
-        const { items, totalCount } = extractPage(payload, 1);
-        const firstItem   = items[0] || null;
-        const jobField    = firstItem?.job ?? firstItem?.attributes?.job ?? '(não inspecionado)';
-        const pctDoCadastro = totalInventarios && totalCount !== null
-          ? Math.round((totalCount / totalInventarios) * 100) : null;
-
-        return {
-          ...s,
-          ok:         true,
-          totalCount,
-          pctDoCadastro,
-          formato:    payload?.data?.results ? 'Reporting' : Array.isArray(payload?.data) ? 'JSON:API' : 'DRF',
-          chaves:     firstItem ? Object.keys(firstItem) : [],
-          jobField:   firstItem ? jobField : null,
-          utilizavel: totalCount !== null && totalCount > 0,
-        };
-      } catch (e) {
-        return {
-          ...s,
-          ok:         false,
-          totalCount: null,
-          utilizavel: false,
-          erro:       e.message || `HTTP ${e.httpStatus}`,
-        };
-      }
-    })
-  );
-
-  // Recomendação — primeira estratégia utilizável ganha
-  const recomendada = results.find(r => r.utilizavel) ?? null;
-
-  return {
-    totalInventarios,
-    strategies: results,
-    recomendada: recomendada
-      ? { id: recomendada.id, label: recomendada.label, totalCount: recomendada.totalCount, pctDoCadastro: recomendada.pctDoCadastro }
-      : null,
-    latencyMs: Date.now() - t0,
-  };
-}
-
 // ── Todas as fotos de uma concessão — fonte primária do pilar "c/ Foto" ──────
 // Tenta filtros diferentes até encontrar dados. Extrai o UUID do apontamento
 // via relationships.reporting.data.id (JSON:API) para contar distintos.
@@ -772,79 +692,6 @@ export async function listPhotosForCompany(token, companyUuid, { foundAtAfter = 
   // Todas as estratégias falharam por outros motivos (ex: 403, timeout)
   console.warn(`[Photos/co] ${companyUuid.slice(0,8)}… todas as estratégias falharam`);
   return { photos: [], reportingUuids: [], totalPhotos: null, totalFetched: 0, usedParams: null, latencyMs: Date.now() - t0, error: 'todas as estratégias falharam' };
-}
-
-// ── Fotos de um apontamento — tenta múltiplos endpoints Kartado ─────────────
-export async function getReportingPhotos(token, reportingUuid) {
-  if (!reportingUuid) throw { step: 'photos', httpStatus: 400, message: 'reportingUuid obrigatório.' };
-  const t0 = Date.now();
-
-  // Estratégias em ordem de probabilidade — para assim que encontrar resultados
-  const strategies = [
-    { path: '/Photo/', params: { reporting: reportingUuid, page_size: 50 } },
-    { path: '/Photo/', params: { reporting_uuid: reportingUuid, page_size: 50 } },
-    { path: '/Photo/', params: { object_id: reportingUuid, page_size: 50 } },
-  ];
-
-  for (const s of strategies) {
-    try {
-      const payload = await apiFetch(token, s.path, s.params);
-      const { items, totalCount } = extractPage(payload, 50);
-      if (items.length > 0) {
-        const photos = items.map(p => {
-          const a = p.attributes || p;
-          const url = a.url || a.imageUrl || a.image_url || a.link || a.src
-                   || a.file || a.fileUrl || a.file_url || null;
-          if (!url) return null;
-          return {
-            id:        p.id || a.uuid || a.id,
-            url,
-            thumbnail: a.thumbnailUrl || a.thumbnail_url || a.thumbnail || url,
-            caption:   a.caption || a.description || a.obs || null,
-          };
-        }).filter(Boolean);
-        if (photos.length > 0) {
-          return { photos, totalCount: totalCount || photos.length, strategy: Object.keys(s.params).join('+'), latencyMs: Date.now() - t0 };
-        }
-      }
-    } catch (e) {
-      if (e.httpStatus === 404) {
-        console.warn(`[Photos] /Photo/ retornou 404 — endpoint indisponível`);
-        break;
-      }
-      console.warn(`[Photos] estratégia ${JSON.stringify(s.params)} falhou: ${e.message}`);
-    }
-  }
-
-  return { photos: [], totalCount: 0, strategy: null, latencyMs: Date.now() - t0 };
-}
-
-// ── Diagnóstico — paralelo via semáforo ──────────────────────────────────────
-export async function runDiagnostics(token, sampleCompanyUuid = null) {
-  const tests = [
-    { key: 'company',   path: '/Company/',               params: { page: 1, page_size: 1 } },
-    { key: 'user',      path: '/User/',                  params: { page: 1, page_size: 1, ...(sampleCompanyUuid ? { company: sampleCompanyUuid, active: 'true' } : {}) } },
-    { key: 'reporting', path: '/Reporting/Spreadsheet/', params: { page: 1, page_size: 1, ...(sampleCompanyUuid ? { company: sampleCompanyUuid } : {}) } },
-  ];
-
-  const results = await Promise.all(
-    tests.map(async t => {
-      try {
-        const payload = await apiFetch(token, t.path, t.params);
-        const { items, totalCount } = extractPage(payload, 1);
-        return [t.key, {
-          status: 200, ok: true, totalCount,
-          format:        payload?.data?.results ? 'Reporting-format' : Array.isArray(payload?.data) ? 'JSON:API' : 'DRF',
-          topLevelKeys:  Object.keys(payload || {}),
-          firstItemKeys: items[0] ? Object.keys(items[0]) : [],
-        }];
-      } catch (e) {
-        return [t.key, { status: e.httpStatus || 0, ok: false, detail: e.message }];
-      }
-    })
-  );
-
-  return Object.fromEntries(results);
 }
 
 // Mantém a página lógica de 100 registros; isola HTTP 500 em blocos menores.

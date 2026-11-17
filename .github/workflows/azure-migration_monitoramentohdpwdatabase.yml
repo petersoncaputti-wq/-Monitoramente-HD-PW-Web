@@ -35,6 +35,9 @@ jobs:
       - name: Verify dependency URL policy
         run: npm run test:package-links && npm run audit:package-links
 
+      - name: Test Kartado router security
+        run: npm run test:kartado-router
+
       - name: Test audit reporting integration
         run: npm run test:kartado-audit
 
