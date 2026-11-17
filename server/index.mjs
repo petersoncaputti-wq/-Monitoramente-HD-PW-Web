@@ -7,6 +7,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { query } from './db.mjs';
 import { useBodyParsers } from './body-parsers.mjs';
+import { contentSecurityPolicy, cspReportRouter } from './csp.mjs';
 import authRouter from './routes/auth.mjs';
 import samlRouter from './routes/saml.mjs';
 import adminUsersRouter from './routes/admin-users.mjs';
@@ -34,10 +35,11 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: contentSecurityPolicy(),
     crossOriginResourcePolicy: { policy: 'same-origin' },
   }),
 );
+app.use('/api/csp-report', cspReportRouter);
 useBodyParsers(app);
 
 app.get('/api/health', async (_request, response) => {
