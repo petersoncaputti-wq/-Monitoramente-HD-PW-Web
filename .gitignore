@@ -5,5 +5,13 @@ dist/
 .env.*.local
 public/dados/*
 !public/dados/.gitkeep
-tmp/totvs-preview/
-tmp/kartado-audit-qa/
+
+# Dados extraídos de produção, documentos e saídas locais: nunca versionar.
+# Podem conter dados pessoais (LGPD) ou documentos confidenciais.
+exports/
+tmp/
+output/
+
+# Artefatos gerados
+*.log
+*.tsbuildinfo
