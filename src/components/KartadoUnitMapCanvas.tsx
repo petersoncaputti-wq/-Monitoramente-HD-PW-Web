@@ -37,6 +37,43 @@ const displayModes = [
   },
 ] as const;
 const imageryService = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer';
+// Visual do calor aprovado em 18/11/2026 (proposta 4): amarelo → laranja → vermelho, faixa fina
+// com a unidade inteira e mais larga ao aproximar, marcadores em anel branco sobre Mapa ou Satélite.
+const HEAT_GRADIENT = { 0.2: '#fef08a', 0.5: '#fb923c', 0.8: '#ef4444', 1: '#b91c1c' };
+const HEAT_RAMP = 'linear-gradient(to right,#fef08a,#fb923c,#ef4444,#b91c1c)';
+function heatShape(zoom: number) {
+  const radius = Math.round(Math.min(12, Math.max(4, 4 + (zoom - 11) * 1.6)));
+  return { radius, blur: Math.round(radius * 1.1) };
+}
+/**
+ * Intensidade máxima calibrada pelos pontos da tela: a célula do percentil 95 recebe a cor mais
+ * forte. Sem isso, o limite fixo deixava o calor uniforme com a unidade inteira e saturado ao aproximar.
+ */
+function calibratedMax(map: L.Map, points: [number, number, number][], size: number) {
+  const bounds = map.getBounds().pad(0.1);
+  const cell = Math.max(2, size / 2);
+  const grid = new Map<string, number>();
+  for (const [lat, lon, weight] of points) {
+    if (!bounds.contains([lat, lon])) continue;
+    const point = map.latLngToContainerPoint([lat, lon]);
+    const key = `${Math.floor(point.x / cell)},${Math.floor(point.y / cell)}`;
+    grid.set(key, (grid.get(key) || 0) + weight);
+  }
+  const values = [...grid.values()].sort((a, b) => a - b);
+  return Math.max(1, values[Math.floor((values.length - 1) * 0.95)] || 1);
+}
+const countLabel = (count: number) =>
+  count >= 1000 ? `${(count / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : String(count);
+/** Grupo com a quantidade de apontamentos: círculo translúcido com anel branco. */
+function bubbleIcon(count: number) {
+  const size = Math.round(Math.min(52, 28 + Math.log10(Math.max(1, count)) * 7));
+  return L.divIcon({
+    className: '',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<span class="kartado-map-bubble" style="width:${size}px;height:${size}px">${countLabel(count)}</span>`,
+  });
+}
 // Ficha resumida de um apontamento, usada nos marcadores e no clique sobre o calor.
 function reportingPopup(item: MapReporting, open: { current: (uuid: string) => void }) {
   const popup = document.createElement('div');
@@ -188,14 +225,14 @@ export default function KartadoUnitMapCanvas({
   useEffect(() => {
     if (!ready || !mapRef.current || !showHeat) return;
     const map = mapRef.current;
-    const layer = L.heatLayer(heat, {
-      radius: 28,
-      blur: 22,
-      minOpacity: 0.2,
-      maxZoom: 17,
-      max: 8,
-      gradient: { 0.15: '#fde047', 0.45: '#fb923c', 0.75: '#f97316', 1: '#ef4444' },
-    }).addTo(map);
+    const options = () => {
+      const shape = heatShape(map.getZoom());
+      return { ...shape, max: calibratedMax(map, heat, shape.radius + shape.blur) };
+    };
+    // maxZoom 0 desliga a redução de intensidade por nível de zoom do leaflet.heat.
+    const layer = L.heatLayer(heat, { ...options(), minOpacity: 0.3, maxZoom: 0, gradient: HEAT_GRADIENT }).addTo(map);
+    const recalibrate = () => layer.setOptions(options());
+    map.on('moveend', recalibrate);
     const selectRegion = (event: L.LeafletMouseEvent) => {
       const controller = new AbortController();
       const { x, y } = event.containerPoint;
@@ -244,6 +281,7 @@ export default function KartadoUnitMapCanvas({
     map.on('click', selectRegion);
     return () => {
       map.off('click', selectRegion);
+      map.off('moveend', recalibrate);
       map.closePopup();
       // O plugin mantém um redesenho agendado; cancela antes de remover o canvas.
       const pendingFrame = (layer as L.HeatLayer & { _frame?: number })._frame;
@@ -286,20 +324,12 @@ export default function KartadoUnitMapCanvas({
     const overHeat = displayMode !== 'points';
     const group = L.markerClusterGroup({
       chunkedLoading: false,
-      maxClusterRadius: overHeat ? 30 : 55,
+      maxClusterRadius: overHeat ? 40 : 55,
       showCoverageOnHover: false,
-      ...(overHeat && {
-        iconCreateFunction: (cluster: L.MarkerCluster) =>
-          L.divIcon({
-            className: '',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
-            html: `<span style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:2px solid white;border-radius:50%;background:#0f172a;color:white;font-size:11px;font-weight:700;box-shadow:0 1px 5px #0006">${cluster.getChildCount()}</span>`,
-          }),
-      }),
+      ...(overHeat && { iconCreateFunction: (cluster: L.MarkerCluster) => bubbleIcon(cluster.getChildCount()) }),
     });
     group.addTo(map);
-    const size = overHeat ? 14 : 20;
+    const size = overHeat ? 12 : 20;
     group.addLayers(
       areaPoints.items
         .filter((item) => item.coordinates)
@@ -315,7 +345,7 @@ export default function KartadoUnitMapCanvas({
               className: '',
               iconSize: [24, 24],
               iconAnchor: [12, 12],
-              html: `<span style="display:block;margin:${(24 - size) / 2}px;width:${size}px;height:${size}px;border:2px solid white;border-radius:50%;background:${overHeat ? '#0f172a' : colors[mapStatus(item.status)]};box-shadow:0 1px 5px #0008"></span>`,
+              html: `<span style="display:block;margin:${(24 - size) / 2}px;width:${size}px;height:${size}px;border:2px solid white;border-radius:50%;background:${colors[mapStatus(item.status)]};box-shadow:0 1px 5px #0008"></span>`,
             }),
           }).bindPopup(popup);
         }),
@@ -324,6 +354,38 @@ export default function KartadoUnitMapCanvas({
       if (map.hasLayer(group)) map.removeLayer(group);
     };
   }, [areaPoints, ready, displayMode]);
+  // Área com mais de 3.000 apontamentos: os grupos com contagem vêm das células do calor,
+  // sem carregar os pontos individuais. Clicar num grupo aproxima o mapa.
+  useEffect(() => {
+    if (!ready || !mapRef.current || !tooMany || !heat.length) return;
+    const map = mapRef.current;
+    const bounds = map.getBounds().pad(0.2);
+    const groups = new Map<string, { lat: number; lon: number; count: number }>();
+    for (const [lat, lon, weight] of heat) {
+      if (!bounds.contains([lat, lon])) continue;
+      const point = map.latLngToContainerPoint([lat, lon]);
+      const key = `${Math.floor(point.x / 80)},${Math.floor(point.y / 80)}`;
+      const group = groups.get(key) || { lat: 0, lon: 0, count: 0 };
+      group.lat += lat * weight;
+      group.lon += lon * weight;
+      group.count += weight;
+      groups.set(key, group);
+    }
+    const layer = L.layerGroup(
+      [...groups.values()].map(({ lat, lon, count }) => {
+        const center = L.latLng(lat / count, lon / count);
+        return L.marker(center, {
+          icon: bubbleIcon(count),
+          keyboard: true,
+          bubblingMouseEvents: false,
+          title: `${count.toLocaleString('pt-BR')} apontamentos. Clique para aproximar.`,
+        }).on('click', () => map.setView(center, Math.min(map.getZoom() + 2, 17)));
+      }),
+    ).addTo(map);
+    return () => {
+      layer.remove();
+    };
+  }, [ready, tooMany, heat, viewport]);
   useEffect(() => {
     userNavigated.current = false;
   }, [viewKey, displayMode]);
@@ -415,8 +477,9 @@ export default function KartadoUnitMapCanvas({
       </div>
       {tooMany ? (
         <p role="status" className="rounded-xl bg-brand-50 p-3 text-xs text-surface-700">
-          {areaPoints!.total.toLocaleString('pt-BR')} apontamentos nesta área do mapa. Aproxime o zoom para ver e clicar
-          nos pontos individuais (até {MAP_POINTS_LIMIT.toLocaleString('pt-BR')} por área)
+          {areaPoints!.total.toLocaleString('pt-BR')} apontamentos nesta área do mapa. Os círculos mostram a quantidade
+          de cada região; clique num deles ou aproxime o zoom para ver os pontos individuais (até{' '}
+          {MAP_POINTS_LIMIT.toLocaleString('pt-BR')} por área)
           {displayMode === 'points' ? '; até lá, o mapa mostra a concentração.' : '.'}
         </p>
       ) : null}
@@ -434,11 +497,7 @@ export default function KartadoUnitMapCanvas({
         <div className="rounded-xl bg-brand-50 px-3 py-2 text-xs leading-5 text-surface-700">
           <div className="flex flex-wrap items-center gap-2">
             <span>Menor concentração</span>
-            <span
-              aria-hidden="true"
-              className="h-2 w-28 rounded-full"
-              style={{ background: 'linear-gradient(to right,#fde047,#fb923c,#ef4444)' }}
-            />
+            <span aria-hidden="true" className="h-2 w-28 rounded-full" style={{ background: HEAT_RAMP }} />
             <span>Maior concentração</span>
             <strong className="sm:ml-auto">
               {heatTotal.toLocaleString('pt-BR')} {displayMode === 'pending' ? 'pendências' : 'apontamentos'} com

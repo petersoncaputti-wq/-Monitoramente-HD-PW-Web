@@ -24,3 +24,21 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* Grupo de apontamentos sobre o calor: legível tanto no Mapa quanto no Satélite. */
+.kartado-unit-map .kartado-map-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 45%);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 50%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 60%);
+  cursor: pointer;
+}
