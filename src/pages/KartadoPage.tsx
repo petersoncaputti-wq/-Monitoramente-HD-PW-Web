@@ -2,6 +2,7 @@ import { KartadoTicketsPage } from '@/pages/KartadoTicketsPage';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
+import { KartadoReportingTrends } from '@/components/KartadoReportingTrends';
 import { KartadoInventory } from '@/components/KartadoInventory';
 import { KartadoUnitMap } from '@/components/KartadoUnitMap';
 import type { MapCache } from '@/services/kartadoMapService';
@@ -1326,6 +1327,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                 name={selected.company.name}
                 cache={reportingMapCache}
               />
+              <KartadoReportingTrends key={`trends-${selectedUuid}`} company={selectedUuid} />
               <div className="grid gap-5 xl:grid-cols-2">
                 <ChartCard
                   title="Perfil dos usuários"

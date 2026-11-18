@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { AuditItem } from '@/services/kartadoAuditService';
-import { loadUnitReportings, loadUnitReportingPage } from '@/services/kartadoUnitReportings';
+import { useMemo, useState } from 'react';
+import { useUnitReportings } from '@/hooks/useUnitReportings';
 import { auditCounts, auditToday, emptyAuditFilters, filterAuditItems } from '@/utils/kartadoAudit';
 import { KartadoReportingDialog } from './KartadoReportingDialog';
 import { KartadoAuditCharts } from './KartadoAuditCharts';
@@ -8,8 +7,6 @@ import { KartadoAuditCharts } from './KartadoAuditCharts';
 const field = 'w-full rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm';
 const button = 'rounded-xl border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700 disabled:opacity-50';
 const number = (n: number) => n.toLocaleString('pt-BR');
-// Reabrir a aba reutiliza apenas consultas concluídas, por cinco minutos.
-const cache = new Map<string, { items: AuditItem[]; total: number; at: number }>();
 export function KartadoUnitReportings({
   company,
   name,
@@ -22,68 +19,12 @@ export function KartadoUnitReportings({
   const inventory = kind === 'inventory';
   const label = inventory ? 'Inventário' : 'Apontamentos';
   const recordLabel = inventory ? 'registros de inventário' : 'apontamentos';
-  const cacheKey = `${company}:${kind}`;
+  const { items, total, busy, error, progress, updated, partial, refresh } = useUnitReportings(company, kind);
   const [reportingUuid, setReportingUuid] = useState<string | null>(null);
-  const [items, setItems] = useState<AuditItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [busy, setBusy] = useState(true);
-  const [error, setError] = useState('');
-  const [progress, setProgress] = useState('');
-  const [reload, setReload] = useState(0);
-  const [updated, setUpdated] = useState(0);
   const [filters, setFilters] = useState({ ...emptyAuditFilters });
   const [origin, setOrigin] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [page, setPage] = useState(1);
-  useEffect(() => {
-    const controller = new AbortController();
-    const saved = cache.get(cacheKey);
-    if (!reload && saved && Date.now() - saved.at < 300_000) {
-      setItems(saved.items);
-      setTotal(saved.total);
-      setUpdated(saved.at);
-      setBusy(false);
-      return () => controller.abort();
-    }
-    setBusy(true);
-    setError('');
-    setItems([]);
-    setTotal(0);
-    setUpdated(0);
-    cache.delete(cacheKey);
-    void (async () => {
-      setProgress('Buscando a primeira página...');
-      const result = await loadUnitReportings(
-        company,
-        controller.signal,
-        (progress) => {
-          if (controller.signal.aborted) return;
-          setItems(progress.items);
-          setTotal(progress.total);
-          setProgress(
-            `${progress.processed} de ${progress.pages} páginas processadas · ${progress.failedPages.length} com falha · até 3 buscas simultâneas.`,
-          );
-        },
-        (unit, pageNumber, signal) => loadUnitReportingPage(unit, pageNumber, signal, kind),
-      );
-      if (controller.signal.aborted) return;
-      if (result.issue) {
-        setError(result.issue);
-        return;
-      }
-      const at = Date.now();
-      if (cache.size >= 5) cache.delete(cache.keys().next().value!);
-      cache.set(cacheKey, { items: result.items, total: result.total, at });
-      setUpdated(at);
-    })()
-      .catch((reason) => {
-        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Falha na consulta.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setBusy(false);
-      });
-    return () => controller.abort();
-  }, [company, kind, cacheKey, reload]);
   const visible = useMemo(
     () =>
       filterAuditItems(items, filters).filter(
@@ -102,7 +43,6 @@ export function KartadoUnitReportings({
     );
   const percent = (n: number, base = visible.length) =>
     `${(base ? (n / base) * 100 : 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
-  const partial = busy || Boolean(error) || items.length !== total;
   const pages = Math.max(1, Math.ceil(visible.length / 20));
   const safePage = Math.min(page, pages);
   return (
@@ -117,7 +57,7 @@ export function KartadoUnitReportings({
             Use os filtros para refinar os resultados.
           </p>
         </div>
-        <button type="button" className={button} disabled={busy} onClick={() => setReload((value) => value + 1)}>
+        <button type="button" className={button} disabled={busy} onClick={refresh}>
           Atualizar {label.toLowerCase()}
         </button>
       </div>
@@ -129,7 +69,7 @@ export function KartadoUnitReportings({
       {error ? (
         <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">
           {error} Os cards e gráficos consideram somente os registros recebidos.{' '}
-          <button type="button" className={button} onClick={() => setReload((value) => value + 1)}>
+          <button type="button" className={button} onClick={refresh}>
             Tentar novamente
           </button>
         </div>
@@ -288,7 +228,13 @@ export function KartadoUnitReportings({
         {number(visible.length - north - south)} sem sentido Norte/Sul identificado; {number(counts.other)} em outros
         status. Vencidos: pendentes com vencimento anterior a hoje, no horário de Brasília. Datas filtram a criação.
       </p>
-      <KartadoAuditCharts items={visible} partial={partial} sectionAvailable sectionLabel="sentido de tráfego" />
+      <KartadoAuditCharts
+        items={visible}
+        partial={partial}
+        sectionAvailable
+        sectionLabel="sentido de tráfego"
+        showMonthly={inventory}
+      />
       <div className="rounded-2xl border border-brand-100 bg-white p-4">
         <h4 className="mb-3 font-semibold">Tabela detalhada · {number(visible.length)} registros</h4>
         <div className="overflow-x-auto">

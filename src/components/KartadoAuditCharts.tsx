@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { AuditItem } from '@/services/kartadoAuditService';
+import { monthlyTrend } from '@/utils/kartadoTrends';
+import { KartadoTrendBars } from './KartadoTrendBars';
 
 type Bucket = { label: string; count: number };
 const number = (value: number) => value.toLocaleString('pt-BR');
@@ -69,39 +71,17 @@ export function KartadoAuditCharts({
   partial,
   sectionAvailable,
   sectionLabel = 'trecho',
+  showMonthly = true,
 }: {
   items: AuditItem[];
   partial: boolean;
   sectionAvailable: boolean;
   sectionLabel?: string;
+  /** Na unidade, a evolução mensal dos apontamentos fica na Visão geral. */
+  showMonthly?: boolean;
 }) {
   const data = useMemo(() => {
-    const months = new Map<string, number>();
-    let undated = 0;
-    for (const item of items) {
-      const date = item.dataCriacao;
-      if (
-        !date ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-        !Number.isFinite(Date.parse(date)) ||
-        new Date(date).toISOString().slice(0, 10) !== date
-      ) {
-        undated++;
-        continue;
-      }
-      const month = date.slice(0, 7);
-      months.set(month, (months.get(month) || 0) + 1);
-    }
-    const keys = [...months.keys()].sort();
-    const monthly: Bucket[] = [];
-    if (keys.length) {
-      const [firstYear, firstMonth] = keys[0].split('-').map(Number);
-      const [lastYear, lastMonth] = keys[keys.length - 1].split('-').map(Number);
-      for (let index = firstYear * 12 + firstMonth - 1; index <= lastYear * 12 + lastMonth - 1; index++) {
-        const key = `${String(Math.floor(index / 12)).padStart(4, '0')}-${String((index % 12) + 1).padStart(2, '0')}`;
-        monthly.push({ label: key, count: months.get(key) || 0 });
-      }
-    }
+    const { points: monthly, undated } = monthlyTrend(items);
     return {
       status: group(items, 'status'),
       nature: group(items, 'natureza'),
@@ -112,7 +92,6 @@ export function KartadoAuditCharts({
       undated,
     };
   }, [items]);
-  const max = Math.max(1, ...data.monthly.map((item) => item.count));
   return (
     <section aria-label="Gráficos dos apontamentos" className="space-y-4">
       <div>
@@ -186,78 +165,25 @@ export function KartadoAuditCharts({
               />
             ) : null}
           </div>
-          <section aria-label="Evolução mensal" className="min-w-0 rounded-2xl border border-brand-100 bg-white p-5">
-            <h5 className="font-semibold text-surface-900">Evolução mensal</h5>
-            <p className="mt-1 text-xs text-surface-600">
-              Apontamentos por mês de criação, do primeiro ao último mês encontrado no recorte. Meses intermediários sem
-              registros aparecem com zero.
-            </p>
-            {data.undated > 0 ? (
-              <p className="mt-2 text-xs text-amber-800">
-                {number(data.undated)} registro(s) sem data de criação válida não entram neste gráfico.
+          {showMonthly ? (
+            <section aria-label="Evolução mensal" className="min-w-0 rounded-2xl border border-brand-100 bg-white p-5">
+              <h5 className="font-semibold text-surface-900">Evolução mensal</h5>
+              <p className="mt-1 text-xs text-surface-600">
+                Apontamentos por mês de criação, do primeiro ao último mês encontrado no recorte. Meses intermediários
+                sem registros aparecem com zero.
               </p>
-            ) : null}
-            {!data.monthly.length ? (
-              <p className="mt-4 text-sm text-surface-600">Não há datas de criação válidas neste recorte.</p>
-            ) : (
-              <>
-                <div
-                  className="mt-5 overflow-x-auto pb-2"
-                  tabIndex={0}
-                  role="region"
-                  aria-label="Gráfico mensal; role horizontalmente para ver todos os meses"
-                >
-                  <div className="flex h-56 items-end gap-3" style={{ minWidth: `${data.monthly.length * 68}px` }}>
-                    {data.monthly.map((item) => (
-                      <div key={item.label} className="flex h-full min-w-14 flex-1 flex-col items-center justify-end">
-                        <div className="flex w-full flex-1 flex-col items-center justify-end">
-                          <span className="mb-1 text-xs font-semibold tabular-nums text-surface-700">
-                            {number(item.count)}
-                          </span>
-                          <div
-                            aria-hidden="true"
-                            className="w-8 rounded-t-md bg-brand-600"
-                            style={{ height: `${(item.count / max) * 80}%`, minHeight: item.count ? 3 : 0 }}
-                          />
-                        </div>
-                        <span className="mt-2 whitespace-nowrap text-xs text-surface-600">
-                          {item.label.slice(5)}/{item.label.slice(0, 4)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <details className="mt-3 text-xs text-surface-600">
-                  <summary className="cursor-pointer py-2">Ver dados mensais em tabela</summary>
-                  <div className="max-h-72 overflow-auto">
-                    <table className="mt-2 w-full text-left">
-                      <caption className="sr-only">Quantidade por mês de criação</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col" className="p-2">
-                            Mês
-                          </th>
-                          <th scope="col" className="p-2">
-                            Quantidade
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.monthly.map((item) => (
-                          <tr key={item.label} className="border-t border-brand-100">
-                            <th scope="row" className="p-2 font-normal">
-                              {item.label.slice(5)}/{item.label.slice(0, 4)}
-                            </th>
-                            <td className="p-2">{number(item.count)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </details>
-              </>
-            )}
-          </section>
+              {data.undated > 0 ? (
+                <p className="mt-2 text-xs text-amber-800">
+                  {number(data.undated)} registro(s) sem data de criação válida não entram neste gráfico.
+                </p>
+              ) : null}
+              {!data.monthly.length ? (
+                <p className="mt-4 text-sm text-surface-600">Não há datas de criação válidas neste recorte.</p>
+              ) : (
+                <KartadoTrendBars points={data.monthly} ariaLabel="Quantidade por mês de criação" column="Mês" />
+              )}
+            </section>
+          ) : null}
         </>
       )}
     </section>
