@@ -15,25 +15,15 @@ function getStatusBadge(status: unknown) {
         ? 'border-rose-200 bg-rose-50 text-rose-700'
         : 'border-surface-200 bg-surface-100 text-surface-700';
 
-  return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${style}`}>
-      {value}
-    </span>
-  );
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${style}`}>{value}</span>;
 }
 
 function getEligibilityBadge(value: unknown) {
   const label = String(value ?? '').trim() || '-';
   const style =
-    label === 'Sim'
-      ? 'border-yellow-200 bg-yellow-50 text-yellow-700'
-      : 'border-brand-100 bg-brand-50 text-brand-700';
+    label === 'Sim' ? 'border-yellow-200 bg-yellow-50 text-yellow-700' : 'border-brand-100 bg-brand-50 text-brand-700';
 
-  return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${style}`}>
-      {label}
-    </span>
-  );
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${style}`}>{label}</span>;
 }
 
 function normalizeSearchValue(value: unknown) {
@@ -69,9 +59,7 @@ function matchesSearchTerm(row: ProjectWiseUserRow, searchTerm: string, exactMat
 
   return getSearchFields(row).some((field) => {
     const normalizedField = normalizeSearchValue(field);
-    return exactMatch
-      ? normalizedField === normalizedTerm
-      : normalizedField.includes(normalizedTerm);
+    return exactMatch ? normalizedField === normalizedTerm : normalizedField.includes(normalizedTerm);
   });
 }
 
@@ -105,9 +93,7 @@ export function ProjectWiseUsersTable({ rows }: ProjectWiseUsersTableProps) {
   return (
     <div className="overflow-hidden rounded-[28px] border bg-white shadow-soft">
       <div className="border-b border-brand-100 px-6 py-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-          Lista operacional
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Lista operacional</p>
         <p className="mt-2 text-sm text-surface-700">
           Usuários elegíveis para exclusão aparecem primeiro para facilitar a tratativa.
         </p>
@@ -160,27 +146,15 @@ export function ProjectWiseUsersTable({ rows }: ProjectWiseUsersTableProps) {
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 first:pl-6">
                 Nome
               </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Email
-              </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Criado em
-              </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Descrição
-              </th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Email</th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Criado em</th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Descrição</th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
                 Último acesso
               </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Status
-              </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Elegível
-              </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Motivo
-              </th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Status</th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Elegível</th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Motivo</th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 last:pr-6">
                 Resultado
               </th>
@@ -220,4 +194,3 @@ export function ProjectWiseUsersTable({ rows }: ProjectWiseUsersTableProps) {
     </div>
   );
 }
-

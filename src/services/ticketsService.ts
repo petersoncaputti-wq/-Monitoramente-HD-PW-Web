@@ -9,7 +9,6 @@ export interface TicketRecord {
   closed_at: string | null;
   id: string;
   opened_at: string;
-  priority: string | null;
   reason: string | null;
   requested_for: string | null;
   requester: string | null;
@@ -29,7 +28,6 @@ export interface TicketInput {
   closedAt?: string;
   id?: string;
   openedAt: string;
-  priority?: string;
   reason?: string;
   requestedFor?: string;
   requester?: string;
@@ -47,7 +45,6 @@ const TICKET_HEADERS = [
   'Abertoem',
   'Atualizado',
   'Fechadoem',
-  'Prioridade',
   'Solicitante',
   'Organizaçãodosolicitante',
   'AgenteAtribuído',
@@ -58,10 +55,6 @@ const TICKET_HEADERS = [
   'Organizaçãodobeneficiário',
   'Solicitadopara',
 ];
-
-export function hasSupabaseTicketsConfig(): boolean {
-  return true;
-}
 
 function formatTicketDate(value: string | null): string {
   if (!value) {
@@ -101,7 +94,7 @@ export function mapTicketRecord(record: TicketRecord): TicketRow {
     'Organiza\u00e7\u00e3odobenefici\u00e1rio': record.beneficiary_organization ?? '',
     'Organiza\u00c3\u00a7\u00c3\u00a3odosolicitante': record.requester_organization ?? '',
     'Organiza\u00e7\u00e3odosolicitante': record.requester_organization ?? '',
-    Prioridade: record.priority ?? '',
+    Prioridade: '', // Shared TOTVS import field; not stored for ProjectWise.
     Solicitadopara: record.requested_for ?? '',
     Solicitante: record.requester ?? '',
     Status: record.status,
@@ -133,7 +126,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function readTicketsFromSupabase(_accessToken: string): Promise<ImportedWorkbookData> {
+export async function readTicketsFromDatabase(_accessToken: string): Promise<ImportedWorkbookData> {
   const response = await fetch('/api/data/tickets', { credentials: 'same-origin' });
   const records = await parseResponse<TicketRecord[]>(response);
 
@@ -145,11 +138,7 @@ export async function readTicketsFromSupabase(_accessToken: string): Promise<Imp
   };
 }
 
-async function ticketsRequest<T>(
-  accessToken: string,
-  method: 'POST' | 'PATCH' | 'DELETE',
-  body: unknown,
-): Promise<T> {
+async function ticketsRequest<T>(accessToken: string, method: 'POST' | 'PATCH' | 'DELETE', body: unknown): Promise<T> {
   const response = await fetch('/api/tickets', {
     body: JSON.stringify(body),
     headers: {

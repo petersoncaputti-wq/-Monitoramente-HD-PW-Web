@@ -15,12 +15,9 @@ const TONE_STYLES: Record<UsagePercentageResult['tone'], string> = {
 
 export function UsagePercentageCard({ usagePercentage }: UsagePercentageCardProps) {
   const statusStyles =
-    usagePercentage.status === 'invalid'
-      ? 'border-amber-200 bg-amber-50'
-      : 'border-brand-100 bg-white';
+    usagePercentage.status === 'invalid' ? 'border-amber-200 bg-amber-50' : 'border-brand-100 bg-white';
 
-  const valueStyles =
-    usagePercentage.status === 'ready' ? 'text-brand-700' : 'text-surface-700';
+  const valueStyles = usagePercentage.status === 'ready' ? 'text-brand-700' : 'text-surface-700';
 
   const badgeLabel =
     usagePercentage.tone === 'critical'
@@ -46,11 +43,8 @@ export function UsagePercentageCard({ usagePercentage }: UsagePercentageCardProp
           {badgeLabel}
         </span>
       </div>
-      <p className={`kpi-card-value ${valueStyles}`}>
-        {usagePercentage.value}
-      </p>
+      <p className={`kpi-card-value ${valueStyles}`}>{usagePercentage.value}</p>
       <p className="kpi-card-helper">{usagePercentage.helperText}</p>
     </article>
   );
 }
-

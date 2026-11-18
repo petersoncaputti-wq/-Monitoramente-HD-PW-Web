@@ -12,12 +12,7 @@ const TONE_STYLES: Record<NonNullable<ProjectWiseUserKpiCardProps['tone']>, stri
   warning: 'border-rose-200 bg-rose-50 text-rose-700',
 };
 
-export function ProjectWiseUserKpiCard({
-  title,
-  value,
-  helperText,
-  tone = 'default',
-}: ProjectWiseUserKpiCardProps) {
+export function ProjectWiseUserKpiCard({ title, value, helperText, tone = 'default' }: ProjectWiseUserKpiCardProps) {
   return (
     <article className={`kpi-card kpi-card-compact ${TONE_STYLES[tone]}`}>
       <p className="kpi-card-title">{title}</p>

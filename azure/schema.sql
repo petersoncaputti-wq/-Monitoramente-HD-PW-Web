@@ -17,6 +17,9 @@ create table if not exists app_users (
   updated_at timestamptz not null default now()
 );
 
+-- Definida quando o admin redefine a senha com "exigir troca no próximo acesso".
+alter table app_users add column if not exists must_change_password boolean not null default false;
+
 create table if not exists app_sessions (
   token_hash text primary key,
   user_id uuid not null references app_users(id) on delete cascade,
@@ -45,7 +48,7 @@ create table if not exists storage_readings (
 create table if not exists tickets (
   id uuid primary key default gen_random_uuid(), case_number text unique, status text not null default 'Novo',
   reason text, opened_at timestamptz not null, updated_at timestamptz, closed_at timestamptz,
-  priority text, requester text, requester_organization text, assigned_agent text, assigned_to text,
+  requester text, requester_organization text, assigned_agent text, assigned_to text,
   assigned_group text, ticket_type text, sla_status text, beneficiary_organization text,
   requested_for text, created_by uuid references app_users(id) on delete set null,
   updated_by uuid references app_users(id) on delete set null,

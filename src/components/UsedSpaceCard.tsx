@@ -6,13 +6,9 @@ interface UsedSpaceCardProps {
 }
 
 export function UsedSpaceCard({ usedSpace }: UsedSpaceCardProps) {
-  const statusStyles =
-    usedSpace.status === 'invalid'
-      ? 'border-amber-200 bg-amber-50'
-      : 'border-brand-100 bg-white';
+  const statusStyles = usedSpace.status === 'invalid' ? 'border-amber-200 bg-amber-50' : 'border-brand-100 bg-white';
 
-  const valueStyles =
-    usedSpace.status === 'ready' ? 'text-brand-700' : 'text-surface-700';
+  const valueStyles = usedSpace.status === 'ready' ? 'text-brand-700' : 'text-surface-700';
 
   return (
     <article className={`kpi-card ${statusStyles}`}>
@@ -20,11 +16,8 @@ export function UsedSpaceCard({ usedSpace }: UsedSpaceCardProps) {
         <p className="kpi-card-title">Espaço usado</p>
         <KpiInfoIcon tooltipKey="usedSpace" />
       </div>
-      <p className={`kpi-card-value ${valueStyles}`}>
-        {usedSpace.value}
-      </p>
+      <p className={`kpi-card-value ${valueStyles}`}>{usedSpace.value}</p>
       <p className="kpi-card-helper">{usedSpace.helperText}</p>
     </article>
   );
 }
-

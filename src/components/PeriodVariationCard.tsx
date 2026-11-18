@@ -19,24 +19,16 @@ const VALUE_STYLES: Record<PeriodVariationResult['tone'], string> = {
 
 export function PeriodVariationCard({ periodVariation }: PeriodVariationCardProps) {
   const statusStyles =
-    periodVariation.status === 'invalid'
-      ? 'border-amber-200 bg-amber-50'
-      : 'border-brand-100 bg-white';
+    periodVariation.status === 'invalid' ? 'border-amber-200 bg-amber-50' : 'border-brand-100 bg-white';
 
   const badgeLabel =
-    periodVariation.tone === 'positive'
-      ? 'Alta'
-      : periodVariation.tone === 'negative'
-        ? 'Redução'
-        : 'Estável';
+    periodVariation.tone === 'positive' ? 'Alta' : periodVariation.tone === 'negative' ? 'Redução' : 'Estável';
 
   return (
     <article className={`kpi-card ${statusStyles}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="kpi-card-title">
-            Variação no período
-          </p>
+          <p className="kpi-card-title">Variação no período</p>
           <KpiInfoIcon tooltipKey="periodVariation" />
         </div>
         <span
@@ -47,9 +39,7 @@ export function PeriodVariationCard({ periodVariation }: PeriodVariationCardProp
       </div>
       <p
         className={`kpi-card-value ${
-          periodVariation.status === 'ready'
-            ? VALUE_STYLES[periodVariation.tone]
-            : 'text-surface-700'
+          periodVariation.status === 'ready' ? VALUE_STYLES[periodVariation.tone] : 'text-surface-700'
         }`}
       >
         {periodVariation.value}
@@ -58,4 +48,3 @@ export function PeriodVariationCard({ periodVariation }: PeriodVariationCardProp
     </article>
   );
 }
-

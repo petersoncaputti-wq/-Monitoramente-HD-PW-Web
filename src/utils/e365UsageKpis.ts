@@ -48,9 +48,8 @@ function parseAmount(value: unknown): number {
   const text = normalize(value);
   if (!text) return 0;
 
-  const normalized = text.includes(',') && text.includes('.')
-    ? text.replace(/\./g, '').replace(',', '.')
-    : text.replace(',', '.');
+  const normalized =
+    text.includes(',') && text.includes('.') ? text.replace(/\./g, '').replace(',', '.') : text.replace(',', '.');
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -78,11 +77,7 @@ export function getE365RegistrationComparison(
     aliases.forEach((alias) => portalAliases.add(alias));
   });
 
-  const billedEmails = new Set(
-    quarterRows
-      .map((row) => normalize(row.UniquePersona).toLowerCase())
-      .filter(Boolean),
-  );
+  const billedEmails = new Set(quarterRows.map((row) => normalize(row.UniquePersona).toLowerCase()).filter(Boolean));
   const billedGroups = new Map<string, E365UsageRow[]>();
   for (const row of quarterRows) {
     const email = normalize(row.UniquePersona).toLowerCase();
@@ -90,11 +85,7 @@ export function getE365RegistrationComparison(
     billedGroups.set(email, [...(billedGroups.get(email) ?? []), row]);
   }
 
-  function comparedUser(
-    email: string,
-    usageRows: E365UsageRow[],
-    matched: boolean,
-  ): E365ComparedUser {
+  function comparedUser(email: string, usageRows: E365UsageRow[], matched: boolean): E365ComparedUser {
     return {
       applications: [...new Set(usageRows.map((row) => normalize(row.Product)).filter(Boolean))].sort(),
       email,
@@ -173,7 +164,10 @@ export function getE365QuarterSummaries(rows: E365UsageRow[]): E365QuarterSummar
           return { application, spend, users, costPerUser: users ? spend / users : 0 };
         })
         .sort((a, b) => b.spend - a.spend);
-      const dates = quarterRows.map((row) => normalize(row.UsageDate)).filter(Boolean).sort();
+      const dates = quarterRows
+        .map((row) => normalize(row.UsageDate))
+        .filter(Boolean)
+        .sort();
       const spend = quarterRows.reduce((total, row) => total + parseAmount(row.Net), 0);
       const users = new Set(quarterRows.map(uniqueUserKey).filter(Boolean)).size;
 
@@ -199,7 +193,5 @@ export function formatE365Currency(value: number, currency = 'BRL') {
 
 export function formatE365Date(value: string) {
   const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value || '-'
-    : new Intl.DateTimeFormat('pt-BR').format(date);
+  return Number.isNaN(date.getTime()) ? value || '-' : new Intl.DateTimeFormat('pt-BR').format(date);
 }

@@ -11,18 +11,13 @@ const TONE_STYLES: Record<PeakUsageResult['tone'], string> = {
 };
 
 export function PeakUsageCard({ peakUsage }: PeakUsageCardProps) {
-  const statusStyles =
-    peakUsage.status === 'invalid'
-      ? 'border-amber-200 bg-amber-50'
-      : 'border-brand-100 bg-white';
+  const statusStyles = peakUsage.status === 'invalid' ? 'border-amber-200 bg-amber-50' : 'border-brand-100 bg-white';
 
   return (
     <article className={`kpi-card ${statusStyles}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="kpi-card-title">
-            Pico de uso
-          </p>
+          <p className="kpi-card-title">Pico de uso</p>
           <KpiInfoIcon tooltipKey="peakUsage" />
         </div>
         <span
@@ -31,9 +26,7 @@ export function PeakUsageCard({ peakUsage }: PeakUsageCardProps) {
           Pico
         </span>
       </div>
-      <p className="kpi-card-value text-brand-700">
-        {peakUsage.value}
-      </p>
+      <p className="kpi-card-value text-brand-700">{peakUsage.value}</p>
       <p className="kpi-card-helper">{peakUsage.helperText}</p>
     </article>
   );

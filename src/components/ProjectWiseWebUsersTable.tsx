@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 import type { ProjectWiseWebUserRow } from '@/types/monitoring';
-import {
-  formatProjectWiseDate,
-  isProjectWiseWebUserActiveWithin180Days,
-} from '@/utils/projectWiseUsersKpis';
+import { formatProjectWiseDate, isProjectWiseWebUserActiveWithin180Days } from '@/utils/projectWiseUsersKpis';
 
 interface ProjectWiseWebUsersTableProps {
   rows: ProjectWiseWebUserRow[];
 }
 
 function getBooleanBadge(value: unknown, trueLabel: string, falseLabel: string) {
-  const isTrue = String(value ?? '').trim().toLowerCase() === 'true';
+  const isTrue =
+    String(value ?? '')
+      .trim()
+      .toLowerCase() === 'true';
   const style = isTrue
     ? 'border-yellow-200 bg-yellow-50 text-yellow-700'
     : 'border-brand-100 bg-brand-50 text-brand-700';
@@ -76,9 +76,7 @@ function matchesSearchTerm(row: ProjectWiseWebUserRow, searchTerm: string, exact
 
   return getSearchFields(row).some((field) => {
     const normalizedField = normalizeSearchValue(field);
-    return exactMatch
-      ? normalizedField === normalizedTerm
-      : normalizedField.includes(normalizedTerm);
+    return exactMatch ? normalizedField === normalizedTerm : normalizedField.includes(normalizedTerm);
   });
 }
 
@@ -112,9 +110,7 @@ export function ProjectWiseWebUsersTable({ rows }: ProjectWiseWebUsersTableProps
   return (
     <div className="overflow-hidden rounded-[28px] border bg-white shadow-soft">
       <div className="border-b border-brand-100 px-6 py-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-          Lista Portal Bentley
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Lista Portal Bentley</p>
         <p className="mt-2 text-sm text-surface-700">
           Usuários sem login recente nos últimos 180 dias aparecem primeiro para validação.
         </p>
@@ -167,24 +163,16 @@ export function ProjectWiseWebUsersTable({ rows }: ProjectWiseWebUsersTableProps
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 first:pl-6">
                 Email
               </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Nome
-              </th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Nome</th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
                 Entitlement
               </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Criação
-              </th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Criação</th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
                 Último login
               </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Situação
-              </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Bloqueado
-              </th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Situação</th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Bloqueado</th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 last:pr-6">
                 MFA
               </th>
@@ -210,9 +198,7 @@ export function ProjectWiseWebUsersTable({ rows }: ProjectWiseWebUsersTableProps
                 </td>
                 <td className="px-4 py-4">{getLoginStatusBadge(row)}</td>
                 <td className="px-4 py-4">{getBooleanBadge(row.Locked, 'Sim', 'Não')}</td>
-                <td className="px-4 py-4 last:pr-6">
-                  {getBooleanBadge(row.MFA, 'Ativo', 'Inativo')}
-                </td>
+                <td className="px-4 py-4 last:pr-6">{getBooleanBadge(row.MFA, 'Ativo', 'Inativo')}</td>
               </tr>
             ))}
           </tbody>
@@ -221,4 +207,3 @@ export function ProjectWiseWebUsersTable({ rows }: ProjectWiseWebUsersTableProps
     </div>
   );
 }
-

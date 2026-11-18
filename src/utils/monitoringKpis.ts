@@ -60,9 +60,7 @@ function parseDateValue(value: string | number | null | undefined): Date | null 
   return null;
 }
 
-function parseTimeValue(
-  value: string | number | null | undefined,
-): { hours: number; minutes: number } | null {
+function parseTimeValue(value: string | number | null | undefined): { hours: number; minutes: number } | null {
   if (value === null || value === undefined || value === '') {
     return null;
   }
@@ -137,9 +135,7 @@ function getValidRowsWithDateTime(rows: MonitoringRow[]) {
       row,
       dateTime: combineRowDateTime(row),
     }))
-    .filter(
-      (entry): entry is { row: MonitoringRow; dateTime: Date } => entry.dateTime instanceof Date,
-    );
+    .filter((entry): entry is { row: MonitoringRow; dateTime: Date } => entry.dateTime instanceof Date);
 }
 
 function getOrderedRowsWithUsedSpace(rows: MonitoringRow[]) {
@@ -148,12 +144,7 @@ function getOrderedRowsWithUsedSpace(rows: MonitoringRow[]) {
       ...entry,
       usedSpace: parseSpreadsheetNumber(entry.row.UsadoGB),
     }))
-    .filter(
-      (
-        entry,
-      ): entry is { row: MonitoringRow; dateTime: Date; usedSpace: number } =>
-        entry.usedSpace !== null,
-    )
+    .filter((entry): entry is { row: MonitoringRow; dateTime: Date; usedSpace: number } => entry.usedSpace !== null)
     .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 }
 
@@ -166,8 +157,7 @@ function getPeriodComparison(rows: MonitoringRow[]) {
 
   const firstEntry = orderedRows[0];
   const lastEntry = orderedRows[orderedRows.length - 1];
-  const elapsedHours =
-    (lastEntry.dateTime.getTime() - firstEntry.dateTime.getTime()) / (1000 * 60 * 60);
+  const elapsedHours = (lastEntry.dateTime.getTime() - firstEntry.dateTime.getTime()) / (1000 * 60 * 60);
 
   if (!Number.isFinite(elapsedHours) || elapsedHours <= 0) {
     return null;
@@ -242,39 +232,30 @@ export function getTotalCapacityKpi(rows: MonitoringRow[]): TotalCapacityResult 
     };
   }
 
-  const validCapacities = rows
-    .map((row) => parseSpreadsheetNumber(row.TotalGB))
-    .filter((value): value is number => value !== null);
+  const latestRow = getLatestValidRow(rows);
 
-  if (validCapacities.length === 0) {
+  if (!latestRow) {
     return {
       status: 'invalid',
       value: '-- GB',
-      helperText: 'TotalGB indisponível na planilha',
+      helperText: 'Data e hora indisponíveis na planilha',
     };
   }
 
-  const frequencyMap = new Map<string, { value: number; count: number }>();
+  const totalCapacity = parseSpreadsheetNumber(latestRow.TotalGB);
 
-  for (const capacity of validCapacities) {
-    const key = capacity.toFixed(2);
-    const current = frequencyMap.get(key);
-
-    if (current) {
-      current.count += 1;
-    } else {
-      frequencyMap.set(key, { value: capacity, count: 1 });
-    }
+  if (totalCapacity === null || totalCapacity <= 0) {
+    return {
+      status: 'invalid',
+      value: '-- GB',
+      helperText: 'TotalGB indisponível no registro mais recente',
+    };
   }
-
-  const selectedCapacity = [...frequencyMap.values()].reduce((best, candidate) =>
-    candidate.count > best.count ? candidate : best,
-  ).value;
 
   return {
     status: 'ready',
-    value: formatStorageValue(selectedCapacity),
-    helperText: 'Capacidade identificada na planilha',
+    value: formatStorageValue(totalCapacity),
+    helperText: 'Capacidade do registro mais recente',
   };
 }
 
@@ -451,8 +432,7 @@ export function getPeriodVariationKpi(rows: MonitoringRow[]): PeriodVariationRes
   const lastUsedSpace = orderedRows[orderedRows.length - 1].usedSpace;
   const variation = lastUsedSpace - firstUsedSpace;
   const sign = variation > 0 ? '+' : variation < 0 ? '-' : '';
-  const tone =
-    variation > 0 ? 'positive' : variation < 0 ? 'negative' : ('neutral' as const);
+  const tone = variation > 0 ? 'positive' : variation < 0 ? 'negative' : ('neutral' as const);
 
   return {
     status: 'ready',
@@ -486,8 +466,7 @@ export function getAverageGrowthRateKpi(rows: MonitoringRow[]): AverageGrowthRat
   const ratePerHour = comparison.variation / comparison.elapsedHours;
   const ratePerDay = ratePerHour * 24;
   const sign = ratePerHour > 0 ? '+' : ratePerHour < 0 ? '-' : '';
-  const tone =
-    ratePerHour > 0 ? 'positive' : ratePerHour < 0 ? 'negative' : ('neutral' as const);
+  const tone = ratePerHour > 0 ? 'positive' : ratePerHour < 0 ? 'negative' : ('neutral' as const);
 
   return {
     status: 'ready',
@@ -529,8 +508,7 @@ export function getTwelveMonthForecastKpi(rows: MonitoringRow[]): TwelveMonthFor
       totalCapacity !== null && projectedUsedSpace > totalCapacity
         ? 'Projeção linear acima da capacidade atual'
         : 'Projeção linear com base no histórico importado',
-    tone:
-      totalCapacity !== null && projectedUsedSpace > totalCapacity ? 'attention' : 'neutral',
+    tone: totalCapacity !== null && projectedUsedSpace > totalCapacity ? 'attention' : 'neutral',
   };
 }
 
@@ -633,12 +611,7 @@ export function getPeakUsageKpi(rows: MonitoringRow[]): PeakUsageResult {
       ...entry,
       usedSpace: parseSpreadsheetNumber(entry.row.UsadoGB),
     }))
-    .filter(
-      (
-        entry,
-      ): entry is { row: MonitoringRow; dateTime: Date; usedSpace: number } =>
-        entry.usedSpace !== null,
-    );
+    .filter((entry): entry is { row: MonitoringRow; dateTime: Date; usedSpace: number } => entry.usedSpace !== null);
 
   if (validRows.length === 0) {
     return {
@@ -676,12 +649,7 @@ export function getLowestFreeSpaceKpi(rows: MonitoringRow[]): LowestFreeSpaceRes
       ...entry,
       freeSpace: parseSpreadsheetNumber(entry.row.LivreGB),
     }))
-    .filter(
-      (
-        entry,
-      ): entry is { row: MonitoringRow; dateTime: Date; freeSpace: number } =>
-        entry.freeSpace !== null,
-    );
+    .filter((entry): entry is { row: MonitoringRow; dateTime: Date; freeSpace: number } => entry.freeSpace !== null);
 
   if (validRows.length === 0) {
     return {

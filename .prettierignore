@@ -1,0 +1,17 @@
+# Gerados, dependências e dados: não formatar.
+dist/
+deploy/
+node_modules/
+vendor/
+public/
+output/
+exports/
+tmp/
+package-lock.json
+package-link-audit.json
+src/data/
+vite.config.js
+vite.config.d.ts
+# Documentação e páginas estáticas mantêm a formatação própria.
+*.md
+*.html

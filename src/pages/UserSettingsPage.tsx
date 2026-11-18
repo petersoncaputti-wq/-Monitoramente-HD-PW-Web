@@ -4,10 +4,11 @@ import {
   createAdminUser,
   deleteAdminUser,
   listAdminUserProfiles,
+  resetAdminUserPassword,
   updateAdminUser,
   updateMyPassword,
   updateMyProfile,
-} from '@/services/supabaseRestClient';
+} from '@/services/apiClient';
 import type { AppRole, UserProfile } from '@/types/auth';
 
 interface UserFormState {
@@ -30,14 +31,14 @@ export function UserSettingsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userForm, setUserForm] = useState<UserFormState>(emptyUserForm);
   const [personalName, setPersonalName] = useState(profile?.full_name ?? '');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [personalPassword, setPersonalPassword] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetRequireChange, setResetRequireChange] = useState(true);
   const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
-  const selectedUser = useMemo(
-    () => users.find((user) => user.id === selectedUserId) ?? null,
-    [selectedUserId, users],
-  );
+  const selectedUser = useMemo(() => users.find((user) => user.id === selectedUserId) ?? null, [selectedUserId, users]);
 
   async function loadUsers() {
     if (!accessToken || profile?.role !== 'admin') {
@@ -59,11 +60,15 @@ export function UserSettingsPage() {
   function startCreateUser() {
     setSelectedUserId(null);
     setUserForm(emptyUserForm);
+    setResetPassword('');
+    setResetRequireChange(true);
     setMessage('');
   }
 
   function startEditUser(user: UserProfile) {
     setSelectedUserId(user.id);
+    setResetPassword('');
+    setResetRequireChange(true);
     setUserForm({
       email: user.email,
       fullName: user.full_name ?? '',
@@ -119,6 +124,40 @@ export function UserSettingsPage() {
     }
   }
 
+  async function handleResetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!accessToken || !selectedUser || selectedUser.id === profile?.id) {
+      return;
+    }
+
+    if (
+      !window.confirm(`Redefinir a senha de ${selectedUser.email}? As sessões abertas desse usuário serão encerradas.`)
+    ) {
+      return;
+    }
+
+    setStatus('saving');
+    setMessage('');
+
+    try {
+      await resetAdminUserPassword(accessToken, selectedUser.id, resetPassword, resetRequireChange);
+      setResetPassword('');
+      setStatus('idle');
+      setMessage(
+        `Senha de ${selectedUser.email} redefinida. Informe a nova senha ao usuário por um canal seguro.` +
+          (resetRequireChange ? ' O usuário deverá trocá-la no próximo acesso.' : ''),
+      );
+    } catch (error) {
+      setStatus('error');
+      setMessage(
+        error instanceof Error && error.message
+          ? `Não foi possível redefinir a senha: ${error.message}`
+          : 'Não foi possível redefinir a senha.',
+      );
+    }
+  }
+
   async function handleDeleteUser(user: UserProfile) {
     if (!accessToken || user.id === profile?.id) {
       return;
@@ -143,9 +182,13 @@ export function UserSettingsPage() {
 
       setStatus('idle');
       setMessage('Usuário excluído.');
-    } catch {
+    } catch (error) {
       setStatus('error');
-      setMessage('Não foi possível excluir o usuário.');
+      setMessage(
+        error instanceof Error && error.message
+          ? `Não foi possível excluir o usuário: ${error.message}`
+          : 'Não foi possível excluir o usuário.',
+      );
     }
   }
 
@@ -167,17 +210,27 @@ export function UserSettingsPage() {
         updatedProfile = await updateMyProfile(accessToken, normalizedPersonalName);
       }
 
-      if (personalPassword.trim()) {
-        await updateMyPassword(accessToken, personalPassword);
+      const changingPassword = Boolean(personalPassword.trim());
+      if (changingPassword) {
+        await updateMyPassword(accessToken, currentPassword, personalPassword);
+        setCurrentPassword('');
         setPersonalPassword('');
       }
 
       setProfile(updatedProfile);
       setStatus('idle');
-      setMessage('Dados pessoais atualizados.');
-    } catch {
+      setMessage(
+        changingPassword
+          ? 'Dados pessoais atualizados. Por segurança, as suas outras sessões foram encerradas.'
+          : 'Dados pessoais atualizados.',
+      );
+    } catch (error) {
       setStatus('error');
-      setMessage('Não foi possível atualizar seus dados.');
+      setMessage(
+        error instanceof Error && error.message
+          ? `Não foi possível atualizar seus dados: ${error.message}`
+          : 'Não foi possível atualizar seus dados.',
+      );
     }
   }
 
@@ -187,19 +240,19 @@ export function UserSettingsPage() {
 
   useEffect(() => {
     void loadUsers();
+    // `loadUsers` depende só de accessToken e profile.role, já listados.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, profile?.role]);
 
   return (
     <div className="mt-6 space-y-6">
       <section className="rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-            Minha conta
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Minha conta</p>
           <h2 className="mt-2 text-lg font-semibold text-surface-900">Dados pessoais</h2>
         </div>
 
-        <form className="mt-5 grid gap-4 md:grid-cols-3" onSubmit={handlePersonalSubmit}>
+        <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={handlePersonalSubmit}>
           <label className="block">
             <span className="text-sm font-medium text-surface-700">Email</span>
             <input
@@ -221,17 +274,34 @@ export function UserSettingsPage() {
           </label>
 
           <label className="block">
+            <span className="text-sm font-medium text-surface-700">Senha atual</span>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              required={Boolean(personalPassword)}
+              autoComplete="current-password"
+              className="mt-2 w-full rounded-2xl border border-brand-100 px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+            />
+          </label>
+
+          <label className="block">
             <span className="text-sm font-medium text-surface-700">Nova senha</span>
             <input
               type="password"
               value={personalPassword}
               onChange={(event) => setPersonalPassword(event.target.value)}
-              minLength={6}
+              minLength={12}
+              maxLength={72}
+              autoComplete="new-password"
               className="mt-2 w-full rounded-2xl border border-brand-100 px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
             />
+            <span className="mt-1 block text-xs text-surface-500">
+              Mínimo de 12 caracteres. Preencha só se quiser trocar a senha.
+            </span>
           </label>
 
-          <div className="md:col-span-3">
+          <div className="md:col-span-2">
             <button
               type="submit"
               disabled={status === 'saving'}
@@ -247,12 +317,8 @@ export function UserSettingsPage() {
         <section className="rounded-[24px] border border-brand-100 bg-white p-5 shadow-soft">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-                Configurações
-              </p>
-              <h2 className="mt-2 text-lg font-semibold text-surface-900">
-                Usuários e permissões
-              </h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Configurações</p>
+              <h2 className="mt-2 text-lg font-semibold text-surface-900">Usuários e permissões</h2>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -320,7 +386,7 @@ export function UserSettingsPage() {
                 onChange={(event) => setUserForm({ ...userForm, password: event.target.value })}
                 required={!selectedUser}
                 disabled={Boolean(selectedUser)}
-                minLength={6}
+                minLength={12}
                 className="mt-2 w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-surface-50 disabled:text-surface-500"
               />
             </label>
@@ -329,9 +395,7 @@ export function UserSettingsPage() {
               <span className="text-sm font-medium text-surface-700">Permissão</span>
               <select
                 value={userForm.role}
-                onChange={(event) =>
-                  setUserForm({ ...userForm, role: event.target.value as AppRole })
-                }
+                onChange={(event) => setUserForm({ ...userForm, role: event.target.value as AppRole })}
                 disabled={selectedUser?.id === profile.id}
                 className="mt-2 w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-surface-50 disabled:text-surface-500"
               >
@@ -360,6 +424,48 @@ export function UserSettingsPage() {
             </div>
           </form>
 
+          {selectedUser && selectedUser.id !== profile.id ? (
+            <form
+              className="mt-4 grid gap-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-4 md:grid-cols-4"
+              onSubmit={handleResetPassword}
+            >
+              <label className="block md:col-span-2">
+                <span className="text-sm font-medium text-surface-700">Redefinir senha de {selectedUser.email}</span>
+                <input
+                  type="password"
+                  value={resetPassword}
+                  onChange={(event) => setResetPassword(event.target.value)}
+                  required
+                  minLength={12}
+                  maxLength={72}
+                  autoComplete="new-password"
+                  className="mt-2 w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                />
+                <span className="mt-1 block text-xs text-surface-500">
+                  Mínimo de 12 caracteres. As sessões abertas do usuário serão encerradas.
+                </span>
+              </label>
+              <div className="flex flex-col items-start gap-3 md:col-span-2 md:pt-7">
+                <label className="inline-flex items-center gap-2 text-sm text-surface-700">
+                  <input
+                    type="checkbox"
+                    checked={resetRequireChange}
+                    onChange={(event) => setResetRequireChange(event.target.checked)}
+                    className="h-4 w-4 rounded border-brand-200 text-brand-700 focus:ring-brand-100"
+                  />
+                  Exigir troca de senha no próximo acesso
+                </label>
+                <button
+                  type="submit"
+                  disabled={status === 'saving'}
+                  className="inline-flex items-center justify-center rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {status === 'saving' ? 'Salvando...' : 'Redefinir senha'}
+                </button>
+              </div>
+            </form>
+          ) : null}
+
           <div className="mt-5 overflow-hidden rounded-2xl border border-brand-100">
             <table className="min-w-full divide-y divide-brand-100 text-left text-sm">
               <thead className="bg-brand-50 text-xs uppercase tracking-[0.14em] text-brand-700">
@@ -375,9 +481,7 @@ export function UserSettingsPage() {
                   <tr key={user.id}>
                     <td className="px-4 py-3">{user.email}</td>
                     <td className="px-4 py-3">{user.full_name || '-'}</td>
-                    <td className="px-4 py-3">
-                      {user.role === 'admin' ? 'Administrador' : 'Usuário padrão'}
-                    </td>
+                    <td className="px-4 py-3">{user.role === 'admin' ? 'Administrador' : 'Usuário padrão'}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <button

@@ -31,9 +31,7 @@ export function PeriodFilter({
     <div className="rounded-[28px] border border-brand-100 bg-white p-5 shadow-soft">
       <div>
         <p className="section-kicker">Período</p>
-        <h2 className="mt-3 text-lg font-semibold text-surface-900">
-          Filtrar dados por data
-        </h2>
+        <h2 className="mt-3 text-lg font-semibold text-surface-900">Filtrar dados por data</h2>
         <p className="mt-2 text-sm text-surface-700">
           {filteredRowsCount} de {totalRowsCount} registros exibidos
         </p>
@@ -64,7 +62,6 @@ export function PeriodFilter({
               className="h-11 rounded-2xl border border-brand-100 bg-brand-50/40 px-3 text-sm text-surface-900 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
-
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -95,4 +92,3 @@ export function PeriodFilter({
     </div>
   );
 }
-

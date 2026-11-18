@@ -1,3 +1,25 @@
+export function consolidateTotvsImports(rows) {
+  const detailed = rows.filter((row) => row.payload?.kind === 'detailed');
+  if (!detailed.length) return null;
+  const tickets = new Map();
+  // Rows are newest first; keep the latest imported version of each ticket.
+  for (const { payload } of detailed) {
+    for (const ticket of payload.tickets ?? []) {
+      const id = String(ticket['Caso n.º'] ?? '').trim();
+      if (id && !tickets.has(id)) tickets.set(id, ticket);
+    }
+  }
+  return {
+    id: 'consolidated',
+    payload: {
+      ...detailed[0].payload,
+      scope: detailed.some((row) => row.payload.scope === 'all') ? 'all' : 'mentions',
+      sourceCount: tickets.size,
+      tickets: [...tickets.values()],
+    },
+  };
+}
+
 // The XLSX importer stores Abertoem as local ISO text, without a time zone.
 // Preserve its calendar date rather than converting it through the server zone.
 export function normalizeTotvsOpenedAt(value) {
@@ -23,6 +45,7 @@ export function mapTotvsImports(rows) {
       opened_at: normalizeTotvsOpenedAt(row.opened_at),
     });
   }
-  return [...tickets.values()].sort((a, b) =>
-    (b.opened_at ?? '').localeCompare(a.opened_at ?? '') || a.ticket_id.localeCompare(b.ticket_id));
+  return [...tickets.values()].sort(
+    (a, b) => (b.opened_at ?? '').localeCompare(a.opened_at ?? '') || a.ticket_id.localeCompare(b.ticket_id),
+  );
 }

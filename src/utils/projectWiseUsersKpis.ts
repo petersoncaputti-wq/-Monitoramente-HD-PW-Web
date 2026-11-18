@@ -146,10 +146,7 @@ export function isProjectWiseWebUserActiveWithin180Days(
   return lastLoginDate >= getInactiveCutoffDate(referenceDate);
 }
 
-export function isProjectWiseWebUserRecentlyCreated(
-  row: ProjectWiseWebUserRow,
-  referenceDate = new Date(),
-): boolean {
+export function isProjectWiseWebUserRecentlyCreated(row: ProjectWiseWebUserRow, referenceDate = new Date()): boolean {
   const creationDate = parseDate(row.ProfileCreationDate);
 
   if (!creationDate) {
@@ -157,45 +154,35 @@ export function isProjectWiseWebUserRecentlyCreated(
   }
 
   return (
-    creationDate >= getRecentlyCreatedCutoffDate(referenceDate) &&
-    creationDate <= getReferenceEndDate(referenceDate)
+    creationDate >= getRecentlyCreatedCutoffDate(referenceDate) && creationDate <= getReferenceEndDate(referenceDate)
   );
 }
 
-function isProjectWiseExplorerUserRecentlyCreated(
-  row: ProjectWiseUserRow,
-  referenceDate = new Date(),
-): boolean {
+function isProjectWiseExplorerUserRecentlyCreated(row: ProjectWiseUserRow, referenceDate = new Date()): boolean {
   const dynamicCreationDateValue = Object.entries(row).find(([key]) =>
-    normalizeComparableText(key).replace(/[^a-z0-9]/g, '').startsWith('datacria'),
+    normalizeComparableText(key)
+      .replace(/[^a-z0-9]/g, '')
+      .startsWith('datacria'),
   )?.[1];
-  const creationDate = parseDate(
-    row.Datacriacao ?? row['Data criação'] ?? dynamicCreationDateValue,
-  );
+  const creationDate = parseDate(row.Datacriacao ?? row['Data criação'] ?? dynamicCreationDateValue);
 
   if (!creationDate) {
     return false;
   }
 
   return (
-    creationDate >= getRecentlyCreatedCutoffDate(referenceDate) &&
-    creationDate <= getReferenceEndDate(referenceDate)
+    creationDate >= getRecentlyCreatedCutoffDate(referenceDate) && creationDate <= getReferenceEndDate(referenceDate)
   );
 }
 
-export function isProjectWiseWebUserActive(
-  row: ProjectWiseWebUserRow,
-  referenceDate = new Date(),
-): boolean {
+export function isProjectWiseWebUserActive(row: ProjectWiseWebUserRow, referenceDate = new Date()): boolean {
   return (
     isProjectWiseWebUserActiveWithin180Days(row, referenceDate) ||
     isProjectWiseWebUserRecentlyCreated(row, referenceDate)
   );
 }
 
-export function getProjectWiseUsersSummary(
-  rows: ProjectWiseUserRow[],
-): ProjectWiseUsersSummary {
+export function getProjectWiseUsersSummary(rows: ProjectWiseUserRow[]): ProjectWiseUsersSummary {
   const totalUsers = rows.length;
   const activeUsers = rows.filter((row) => normalizeText(row.Status) === 'Ativo').length;
   const inactiveUsers = rows.filter((row) => normalizeText(row.Status) === 'Inativo').length;
@@ -204,12 +191,9 @@ export function getProjectWiseUsersSummary(
     (row) => normalizeText(row.Ultimoacesso).toLowerCase() === 'sem registro',
   ).length;
   const recentlyCreatedExceptions = rows.filter((row) =>
-    normalizeComparableText(row.Motivo)
-      .includes('usuario criado ha menos de 30 dias'),
+    normalizeComparableText(row.Motivo).includes('usuario criado ha menos de 30 dias'),
   ).length;
-  const recentlyCreatedUsers = rows.filter((row) =>
-    isProjectWiseExplorerUserRecentlyCreated(row),
-  ).length;
+  const recentlyCreatedUsers = rows.filter((row) => isProjectWiseExplorerUserRecentlyCreated(row)).length;
   const reasonMap = new Map<string, number>();
 
   for (const row of rows) {
@@ -234,10 +218,7 @@ export function getProjectWiseUsersSummary(
     inactivePercentage: formatPercentage(inactiveUsers, totalUsers),
     removalPercentage: formatPercentage(eligibleForRemoval, totalUsers),
     withoutAccessPercentage: formatPercentage(withoutAccessRecord, totalUsers),
-    recentlyCreatedExceptionsPercentage: formatPercentage(
-      recentlyCreatedExceptions,
-      totalUsers,
-    ),
+    recentlyCreatedExceptionsPercentage: formatPercentage(recentlyCreatedExceptions, totalUsers),
     recentlyCreatedUsersPercentage: formatPercentage(recentlyCreatedUsers, totalUsers),
     topReasons: [...reasonMap.entries()]
       .map(([reason, count]) => ({ reason, count }))
@@ -245,18 +226,12 @@ export function getProjectWiseUsersSummary(
   };
 }
 
-export function getProjectWiseWebUsersSummary(
-  rows: ProjectWiseWebUserRow[],
-): ProjectWiseWebUsersSummary {
+export function getProjectWiseWebUsersSummary(rows: ProjectWiseWebUserRow[]): ProjectWiseWebUsersSummary {
   const totalUsers = rows.length;
   const withLastLogin = rows.filter((row) => normalizeText(row.LastLoginDate)).length;
   const withoutLastLogin = totalUsers - withLastLogin;
-  const recentLastLogin = rows.filter((row) =>
-    isProjectWiseWebUserActiveWithin180Days(row),
-  ).length;
-  const recentlyCreatedUsers = rows.filter((row) =>
-    isProjectWiseWebUserRecentlyCreated(row),
-  ).length;
+  const recentLastLogin = rows.filter((row) => isProjectWiseWebUserActiveWithin180Days(row)).length;
+  const recentlyCreatedUsers = rows.filter((row) => isProjectWiseWebUserRecentlyCreated(row)).length;
   const activeUsers = rows.filter((row) => isProjectWiseWebUserActive(row)).length;
   const inactiveOver180Days = totalUsers - activeUsers;
   const lockedUsers = rows.filter((row) => isTrue(row.Locked)).length;
@@ -288,14 +263,10 @@ export function getProjectWiseUsersComparison(
   webRows: ProjectWiseWebUserRow[],
 ): ProjectWiseUsersComparison {
   const webByEmail = new Map(
-    webRows
-      .map((row) => [normalizeEmail(row.Email), row] as const)
-      .filter(([email]) => email.length > 0),
+    webRows.map((row) => [normalizeEmail(row.Email), row] as const).filter(([email]) => email.length > 0),
   );
   const explorerByEmail = new Map(
-    explorerRows
-      .map((row) => [normalizeEmail(row.Email), row] as const)
-      .filter(([email]) => email.length > 0),
+    explorerRows.map((row) => [normalizeEmail(row.Email), row] as const).filter(([email]) => email.length > 0),
   );
   const explorerOnlyRows = explorerRows.filter((row) => {
     const email = normalizeEmail(row.Email);
