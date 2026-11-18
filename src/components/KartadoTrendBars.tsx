@@ -41,7 +41,7 @@ export function KartadoTrendBars({
             {series}
           </li>
           <li>
-            <span aria-hidden="true" className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-blue-600" />
+            <span aria-hidden="true" className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-[#62c218]" />
             {series2}
           </li>
         </ul>
@@ -79,7 +79,7 @@ export function KartadoTrendBars({
                 {two ? (
                   <div
                     aria-hidden="true"
-                    className="w-[40%] max-w-8 rounded-t bg-blue-600"
+                    className="w-[40%] max-w-8 rounded-t bg-[#62c218]"
                     style={{ height: height(point.value2 || 0), minHeight: point.value2 ? 3 : 0 }}
                   />
                 ) : null}
