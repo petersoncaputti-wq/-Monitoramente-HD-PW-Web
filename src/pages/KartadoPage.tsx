@@ -5,7 +5,6 @@ import { KartadoUnitReportings } from '@/components/KartadoUnitReportings';
 import { KartadoReportingTrends } from '@/components/KartadoReportingTrends';
 import { KartadoInventory } from '@/components/KartadoInventory';
 import { KartadoUnitMap } from '@/components/KartadoUnitMap';
-import type { MapCache } from '@/services/kartadoMapService';
 import { InventoryCache, prefetchUnitInventory } from '@/services/kartadoInventoryService';
 import {
   loadKartadoCompanies,
@@ -724,7 +723,6 @@ function riskLabel(user: KartadoUser) {
 }
 
 export function KartadoPage({ area }: { area: KartadoArea }) {
-  const reportingMapCache = useMemo<MapCache>(() => new Map(), []);
   const inventoryCache = useMemo(() => new InventoryCache(), []);
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [companies, setCompanies] = useState<KartadoCompany[]>([]);
@@ -1321,12 +1319,7 @@ export function KartadoPage({ area }: { area: KartadoArea }) {
                   </button>
                 </div>
               ) : null}
-              <KartadoUnitMap
-                key={selectedUuid}
-                company={selectedUuid}
-                name={selected.company.name}
-                cache={reportingMapCache}
-              />
+              <KartadoUnitMap key={selectedUuid} company={selectedUuid} name={selected.company.name} />
               <KartadoReportingTrends key={`trends-${selectedUuid}`} company={selectedUuid} />
               <div className="grid gap-5 xl:grid-cols-2">
                 <ChartCard

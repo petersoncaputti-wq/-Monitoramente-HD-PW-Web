@@ -15,7 +15,7 @@ function validDate(value) {
     new Date(value).toISOString().slice(0, 10) === value
   );
 }
-export function mapParams(query) {
+export function mapParams(query, { maxPage = 100 } = {}) {
   const { company, from, to } = query;
   const classe = query.classe ?? '';
   const page = query.page || '1';
@@ -31,7 +31,7 @@ export function mapParams(query) {
     typeof page !== 'string' ||
     !/^\d+$/.test(page) ||
     Number(page) < 1 ||
-    Number(page) > 100
+    Number(page) > maxPage
   ) {
     throw new ReportingDetailError('Informe unidade, período de até 366 dias e página válidos.', 400);
   }
@@ -86,8 +86,9 @@ export function createReportingMapClient({ read = apiFetchBasic } = {}) {
     return promise;
   }
   return {
-    async page(query) {
-      const params = mapParams(query);
+    // A coleta da base do mapa usa páginas maiores e percorre todas as páginas.
+    async page(query, { pageSize = 200, maxPage = 100 } = {}) {
+      const params = mapParams(query, { maxPage });
       const [classes, statuses] = await catalog(params.company);
       const classIds = [...classes.names].filter(([, name]) => name === params.classe).map(([id]) => id);
       if (params.classe && !classIds.length)
@@ -98,7 +99,7 @@ export function createReportingMapClient({ read = apiFetchBasic } = {}) {
       const payload = await read('/Reporting/', {
         company: params.company,
         page: String(params.page),
-        page_size: '200',
+        page_size: String(pageSize),
         occurrence_kind: '90',
         ...(params.classe ? { occurrence_type: classIds.join(',') } : {}),
         ...(params.allHistory ? {} : { found_at_after: params.from, found_at_before: params.to }),

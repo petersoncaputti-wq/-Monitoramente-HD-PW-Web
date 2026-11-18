@@ -182,166 +182,141 @@ const partialCatalog = await createReportingMapClient({
 assert.deepEqual(partialCatalog.classes, ['Classe preservada']);
 assert.ok(partialCatalog.avisos.length);
 
+// A coleta da base do mapa usa páginas maiores e passa do limite de 100 páginas.
+let collectorQuery;
+await createReportingMapClient({
+  read: async (path, query) => {
+    if (path !== '/Reporting/') return read(path, query);
+    collectorQuery = query;
+    return { data: { results: [], meta: { pagination: { count: 0, pages: 0 } } } };
+  },
+}).page({ ...params, from: '', to: '', period: 'all', page: '250' }, { pageSize: 500, maxPage: Infinity });
+assert.equal(collectorQuery.page_size, '500');
+assert.equal(collectorQuery.page, '250');
+assert.throws(
+  () => mapParams({ ...params, page: '101' }),
+  (error) => error.status === 400,
+);
+
 const source = readFileSync(new URL('../src/services/kartadoMapService.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-const {
-  loadMapReportings,
-  mapStatus,
-  initialMapDates,
-  heatMapItems,
-  nearbyMapItems,
-  mapClassOptions,
-  matchesMapClass,
-  searchMapClasses,
-} = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
-assert.equal(matchesMapClass('  Monitoração   de Sinalização ', 'monitoracao de sinalizacao'), true);
-assert.equal(matchesMapClass('Implantação', 'Monitoração'), false);
-assert.equal(matchesMapClass('Implantação', ''), true);
+const { mapStatus, initialMapDates, heatCells, searchMapClasses, fetchMapPoints, fetchMapSummary } = await import(
+  'data:text/javascript;base64,' + Buffer.from(compiled).toString('base64')
+);
 assert.deepEqual(
   searchMapClasses(['Monitoração de Sinalização Vertical', 'Implantação de Placas'], 'sinalizacao MONITORACAO'),
   ['Monitoração de Sinalização Vertical'],
 );
 assert.deepEqual(searchMapClasses(['Monitoração'], 'inexistente'), []);
-assert.deepEqual(
-  mapClassOptions({
-    classes: ['Sem ocorrência', 'Monitoração'],
-    items: [{ classe: 'Monitoração' }, { classe: 'Classe não identificada' }],
-  }),
-  ['Classe não identificada', 'Monitoração', 'Sem ocorrência'],
-);
 assert.equal(mapStatus('Em execução'), 'progress');
 assert.equal(mapStatus('Executado'), 'completed');
 assert.equal(mapStatus('Programado'), 'pending');
 assert.equal(mapStatus('Cancelado'), 'other');
-const heatRecords = [
-  { uuid: 'completed', status: 'Executado', coordinates: [10, 10] },
-  { uuid: 'pending', status: 'Identificado', coordinates: [10, 10] },
-  { uuid: 'progress', status: 'Em execução', coordinates: [20, 10] },
-  { uuid: 'scheduled', status: 'Programado', coordinates: [60, 10] },
-  { uuid: 'missing', status: 'Pendente', coordinates: null },
-  { uuid: 'invalid', status: 'Pendente', coordinates: [181, 10] },
-  { uuid: 'cancelled', status: 'Cancelado', coordinates: [100, 10] },
+const cells = [
+  [-20, -43, 5, 2],
+  [-21, -44, 3, 0],
+  [91, -44, 1, 1], // fora da projeção do mapa
 ];
-const heat = heatMapItems(heatRecords);
-assert.equal(heat.length, 5); // Mantém a contagem de dois registros na mesma coordenada.
-assert.deepEqual(
-  heatMapItems(heatRecords, true).map((item) => item.uuid),
-  ['pending', 'progress', 'scheduled'],
-);
-const nearby = nearbyMapItems(heat, { x: 10, y: 10 }, (point) => ({ x: point[0], y: point[1] }), 50);
-assert.deepEqual(
-  nearby.map((item) => item.uuid),
-  ['completed', 'pending', 'progress', 'scheduled'],
-);
-assert.equal(nearbyMapItems(heat, { x: 0, y: 0 }, (point) => ({ x: point[0], y: point[1] }), 5).length, 0);
-assert.equal(heatMapItems([], true).length, 0);
+assert.deepEqual(heatCells(cells), [
+  [-20, -43, 5],
+  [-21, -44, 3],
+]);
+assert.deepEqual(heatCells(cells, true), [[-20, -43, 2]]);
 assert.equal((Date.parse(initialMapDates().to) - Date.parse(initialMapDates().from)) / 86400000, 29);
-let active = 0,
-  maximum = 0;
-const mockPage = async (_company, _from, _to, page) => {
-  active++;
-  maximum = Math.max(active, maximum);
-  await new Promise((resolve) => setImmediate(resolve));
-  active--;
-  return {
-    success: true,
-    company,
-    pagina: page,
-    paginas: 7,
-    total: 7,
-    classes: page === 1 ? ['Classe sem apontamentos'] : [],
-    items: [{ uuid: `id-${page}`, coordinates: [-41, -17] }],
-    avisos: [],
-  };
-};
-const complete = await loadMapReportings(
-  company,
-  params.from,
-  params.to,
-  new AbortController().signal,
-  () => {},
-  mockPage,
-);
-assert.equal(complete.items.length, 7);
-assert.equal(complete.partial, false);
-assert.equal(maximum, 3);
-assert.deepEqual(complete.classes, ['Classe sem apontamentos']);
-const classRequests = [];
-await loadMapReportings(
-  company,
-  params.from,
-  params.to,
-  new AbortController().signal,
-  () => {},
-  async (...args) => {
-    classRequests.push(args[5]);
-    return mockPage(...args);
-  },
-  'Roçada Cerca a Cerca',
-);
-assert.equal(classRequests.length, 7);
-assert.ok(classRequests.every((value) => value === 'Roçada Cerca a Cerca'));
-const partial = await loadMapReportings(
-  company,
-  params.from,
-  params.to,
-  new AbortController().signal,
-  () => {},
-  async (...args) => {
-    if (args[3] === 3) throw new Error('failed');
-    return mockPage(...args);
-  },
-);
-assert.equal(partial.partial, true);
-assert.equal(partial.items.length, 6);
-assert.ok(partial.warnings.some((w) => w.includes('3')));
-const controller = new AbortController();
-let reads = 0;
-await assert.rejects(
-  loadMapReportings(
-    company,
-    params.from,
-    params.to,
-    controller.signal,
-    () => controller.abort(),
-    async (...args) => {
-      reads++;
-      return mockPage(...args);
-    },
-  ),
-  (error) => error.name === 'AbortError',
-);
-assert.equal(reads, 1);
 
+// O navegador envia os filtros e a área ao servidor e valida a resposta.
+const realFetch = globalThis.fetch;
+let requested;
+try {
+  globalThis.fetch = async (url) => {
+    requested = new URL(url, 'http://localhost');
+    return Response.json({ success: true, total: 2, items: [] });
+  };
+  const filters = { from: '', to: '', status: 'Executado', classe: '', rodovia: 'MG-050' };
+  await fetchMapPoints(
+    params.company,
+    filters,
+    { west: -44, south: -21, east: -43, north: -20 },
+    { pendingOnly: true },
+  );
+  assert.equal(requested.pathname, '/api/kartado-reporting-map/pontos');
+  assert.equal(requested.searchParams.get('status'), 'Executado');
+  assert.equal(requested.searchParams.get('rodovia'), 'MG-050');
+  assert.equal(requested.searchParams.has('from'), false);
+  assert.equal(requested.searchParams.get('pendentes'), '1');
+  assert.equal(requested.searchParams.get('bbox'), '-44.000000,-21.000000,-43.000000,-20.000000');
+  globalThis.fetch = async () => Response.json({ success: true, total: 1 });
+  await assert.rejects(fetchMapSummary(params.company, filters), /inválida/);
+  globalThis.fetch = async () => Response.json({ success: false, error: 'Unidade inválida.' }, { status: 400 });
+  await assert.rejects(fetchMapSummary(params.company, filters), /Unidade inválida/);
+} finally {
+  globalThis.fetch = realFetch;
+}
+
+// Rotas: sessão obrigatória, validação e pedido de atualização.
 const app = express();
-let apiCalls = 0;
+const routeCalls = [];
+let ticks = 0;
+const sync = { state: 'ociosa', last_success_at: new Date(), next_run_at: new Date(), last_error: null };
 app.use(
   '/map',
   createReportingMapRouter({
     authenticate: (req, res, next) => (req.headers.authorization ? next() : res.sendStatus(401)),
-    client: {
-      page: async () => {
-        apiCalls++;
-        return result;
+    worker: { tick: async () => void ticks++ },
+    repository: {
+      ensure: async (company) => routeCalls.push(['ensure', company]),
+      sync: async () => sync,
+      summary: async (filters) => {
+        routeCalls.push(['summary', filters]);
+        return { total: 1, mapped: 1, cells: [[-20, -43, 1, 0]], options: { status: [], classes: [], rodovias: [] } };
       },
+      points: async (filters, bounds, options) => {
+        routeCalls.push(['points', bounds, options]);
+        return { total: 0, items: [] };
+      },
+      list: async (filters, page) => ({ total: 0, pages: 1, page, items: [] }),
+      requestRefresh: async () => true,
+      prioritize: async (company) => routeCalls.push(['prioritize', company]),
     },
   }),
 );
 const server = app.listen(0, '127.0.0.1');
 await new Promise((resolve) => server.once('listening', resolve));
 try {
-  const url = `http://127.0.0.1:${server.address().port}/map?${new URLSearchParams(params)}`;
-  assert.equal((await fetch(url)).status, 401);
-  assert.equal(apiCalls, 0);
-  const response = await fetch(url, { headers: { Authorization: 'test-session' } });
+  const base = `http://127.0.0.1:${server.address().port}/map`;
+  const auth = { headers: { Authorization: 'test-session' } };
+  const summaryUrl = `${base}/resumo?company=${params.company}`;
+  assert.equal((await fetch(summaryUrl)).status, 401);
+  assert.equal(routeCalls.length, 0);
+  const response = await fetch(summaryUrl, auth);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  const body = await response.json();
+  assert.equal(body.success, true);
+  assert.equal(body.coleta.estado, 'ociosa');
+  assert.deepEqual(body.cells, [[-20, -43, 1, 0]]);
+  assert.equal(ticks, 0); // base já coletada: não antecipa a coleta
+  assert.equal((await fetch(`${base}/resumo?company=x`, auth)).status, 400);
+  assert.equal((await fetch(`${summaryUrl}&from=2026-10-01`, auth)).status, 400);
+  assert.equal((await fetch(`${summaryUrl}&from=2026-10-02&to=2026-10-01`, auth)).status, 400);
+  assert.equal((await fetch(`${base}/pontos?company=${params.company}&bbox=1,2,3`, auth)).status, 400);
+  assert.equal((await fetch(`${base}/pontos?company=${params.company}&bbox=-44,-21,-43,-20&lat=x`, auth)).status, 400);
+  const points = await fetch(`${base}/pontos?company=${params.company}&bbox=-44,-21,-43,-20&limit=99999`, auth);
+  assert.equal(points.status, 200);
+  const [, bounds, options] = routeCalls.find(([kind]) => kind === 'points');
+  assert.deepEqual(bounds, { west: -44, south: -21, east: -43, north: -20 });
+  assert.equal(options.limit, 3000);
+  assert.equal((await fetch(`${base}/lista?company=${params.company}&page=0`, auth)).status, 400);
+  const refresh = await fetch(`${base}/atualizar?company=${params.company}`, { ...auth, method: 'POST' });
+  assert.equal(refresh.status, 200);
+  assert.equal((await refresh.json()).aceito, true);
+  assert.equal(ticks, 1);
 } finally {
   server.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
 }
 console.log(
-  'Mapa da unidade: período, coordenadas, catálogos, sessão, isolamento, paginação progressiva, concorrência e cancelamento OK.',
+  'Mapa da unidade: período, coordenadas, catálogos, isolamento, páginas da coleta, filtros, calor, sessão e rotas da base OK.',
 );

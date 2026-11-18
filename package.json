@@ -48,6 +48,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test:kartado-tickets": "node scripts/test-kartado-tickets.mjs",
+    "db:migrate-kartado-map": "node --env-file=.env.local scripts/migrate-kartado-map.mjs",
     "db:migrate-kartado-tickets": "node --env-file=.env.local scripts/migrate-kartado-tickets.mjs",
     "audit:package-links": "node scripts/audit-package-links.mjs"
   },

@@ -1,69 +1,72 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  fetchMapList,
+  fetchMapPoints,
+  fetchMapSummary,
   initialMapDates,
-  loadMapReportings,
-  mapClassOptions,
+  requestMapRefresh,
   searchMapClasses,
-  type MapCache,
-  type MapResult,
+  type MapFilters,
+  type MapList,
+  type MapSummary,
+  type MapSync,
 } from '@/services/kartadoMapService';
+import type { LoadPoints } from './KartadoUnitMapCanvas';
 import { KartadoReportingDialog } from './KartadoReportingDialog';
 const MapCanvas = lazy(() => import('./KartadoUnitMapCanvas'));
 const field = 'min-w-0 w-full rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-xs';
 const button =
   'rounded-xl border border-brand-200 px-4 py-2.5 text-xs font-semibold text-brand-700 disabled:opacity-40';
 const number = (value: number) => value.toLocaleString('pt-BR');
+const dateTime = (value: string) =>
+  new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' });
 
-export function KartadoUnitMap({ company, name, cache }: { company: string; name: string; cache: MapCache }) {
+function syncText(sync: MapSync) {
+  const progress = sync.paginasTotal
+    ? ` ${number(sync.paginas)} de ${number(sync.paginasTotal)} páginas coletadas.`
+    : ' Iniciando a coleta.';
+  if (sync.estado === 'em_andamento')
+    return sync.atualizadoEm
+      ? `Atualizando a base do mapa.${progress} Enquanto isso, o mapa mostra a base de ${dateTime(sync.atualizadoEm)}.`
+      : `Preparando a base do mapa pela primeira vez.${progress} As unidades maiores podem levar até meia hora.`;
+  if (sync.estado === 'aguardando')
+    return 'A base do mapa desta unidade ainda não foi coletada. Ela passou à frente da fila e a coleta começa em até 1 minuto.';
+  const next = sync.proximaEm ? ` Próxima atualização automática: ${dateTime(sync.proximaEm)}.` : '';
+  if (!sync.atualizadoEm) return `${sync.erro || 'Não foi possível preparar a base do mapa.'}${next}`;
+  return `Base do mapa atualizada em ${dateTime(sync.atualizadoEm)}.${next}${sync.erro ? ` ${sync.erro}` : ''}`;
+}
+
+export function KartadoUnitMap({ company, name }: { company: string; name: string }) {
   const [initial] = useState(initialMapDates);
   const [dates, setDates] = useState(initial);
-  const [applied, setApplied] = useState(initial);
-  const [allHistory, setAllHistory] = useState(false);
-  const [revision, setRevision] = useState(0);
-  const [result, setResult] = useState<MapResult | null>(null);
-  const [busy, setBusy] = useState(true);
-  const [error, setError] = useState('');
+  // O mapa abre com o histórico completo, para o calor refletir todos os apontamentos.
+  const [allHistory, setAllHistory] = useState(true);
+  const [period, setPeriod] = useState({ from: '', to: '' });
   const [status, setStatus] = useState('');
   const [classe, setClasse] = useState('');
   const [classSearch, setClassSearch] = useState('');
-  const [catalog, setCatalog] = useState<{ company: string; names: string[] }>({ company, names: [] });
   const [road, setRoad] = useState('');
+  const [summary, setSummary] = useState<MapSummary | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [poll, setPoll] = useState(0);
+  const [listOpen, setListOpen] = useState(false);
+  const [list, setList] = useState<MapList | null>(null);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
+  const filters = useMemo<MapFilters>(
+    () => ({ from: period.from, to: period.to, status, classe, rodovia: road }),
+    [period.from, period.to, status, classe, road],
+  );
+  const viewKey = JSON.stringify([company, filters]);
   useEffect(() => {
     const controller = new AbortController();
-    const key = `${company}:${applied.from}:${applied.to}:${classe}`;
-    const saved = cache.get(key);
-    if (!classe && !revision && saved && Date.now() - saved.at < 300000) {
-      setResult(saved.result);
-      setCatalog({ company, names: saved.result.classes });
-      setBusy(false);
-      return () => controller.abort();
-    }
     setBusy(true);
-    setError('');
-    setResult(null);
-    void loadMapReportings(
-      company,
-      applied.from,
-      applied.to,
-      controller.signal,
-      (value) => {
-        if (!controller.signal.aborted) {
-          setResult(value);
-          setCatalog({ company, names: value.classes });
-        }
-      },
-      undefined,
-      classe,
-    )
+    fetchMapSummary(company, filters, controller.signal)
       .then((value) => {
-        if (controller.signal.aborted) return;
-        setResult(value);
-        if (!value.partial) {
-          cache.set(key, { at: Date.now(), result: value });
-          if (cache.size > 5) cache.delete(cache.keys().next().value!);
-        }
+        setSummary(value);
+        setError('');
       })
       .catch((reason) => {
         if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Mapa indisponível.');
@@ -72,31 +75,37 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
         if (!controller.signal.aborted) setBusy(false);
       });
     return () => controller.abort();
-  }, [company, applied.from, applied.to, revision, cache, classe]);
+  }, [company, filters, poll]);
+  // Enquanto a base é coletada, consulta o progresso a cada 10 segundos.
+  const collecting = summary?.coleta.estado === 'em_andamento' || summary?.coleta.estado === 'aguardando';
+  useEffect(() => {
+    if (!collecting) return;
+    const timer = setTimeout(() => setPoll((value) => value + 1), 10_000);
+    return () => clearTimeout(timer);
+  }, [collecting, summary]);
   useEffect(() => {
     setPage(1);
-  }, [status, classe, road, applied]);
-  const visible = useMemo(
-    () =>
-      (result?.items || []).filter((item) => (!status || item.status === status) && (!road || item.rodovia === road)),
-    [result, status, road],
+  }, [viewKey]);
+  useEffect(() => {
+    if (!listOpen) return;
+    const controller = new AbortController();
+    fetchMapList(company, filters, page, controller.signal)
+      .then(setList)
+      .catch(() => {
+        if (!controller.signal.aborted) setList(null);
+      });
+    return () => controller.abort();
+  }, [company, filters, page, listOpen, summary?.coleta.atualizadoEm]);
+  const loadPoints = useCallback<LoadPoints>(
+    (bounds, options, signal) => fetchMapPoints(company, filters, bounds, options, signal),
+    [company, filters],
   );
-  const mapped = useMemo(() => visible.filter((item) => item.coordinates), [visible]);
-  const options = (key: 'status' | 'classe' | 'rodovia') =>
-    key === 'classe'
-      ? mapClassOptions({ items: [], classes: catalog.company === company ? catalog.names : [] })
-      : [
-          ...new Set((result?.items || []).map((item) => item[key]).filter((value): value is string => Boolean(value))),
-        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  const searchedClasses = searchMapClasses(options('classe'), classSearch);
+  const searchedClasses = searchMapClasses(summary?.options.classes || [], classSearch);
   const classOptions = [...searchedClasses];
   if (classe && !classOptions.includes(classe)) classOptions.unshift(classe);
-  const viewKey = JSON.stringify([company, applied.from, applied.to, status, classe, road]);
-  const pages = Math.max(1, Math.ceil(visible.length / 20)),
-    safePage = Math.min(page, pages);
-  const dirty = allHistory
-    ? Boolean(applied.from || applied.to)
-    : dates.from !== applied.from || dates.to !== applied.to;
+  const pages = list?.pages || 1;
+  const dirty = !allHistory && (dates.from !== period.from || dates.to !== period.to);
+  const mapped = summary?.mapped || 0;
   return (
     <section
       className="space-y-4 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5"
@@ -109,10 +118,36 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
             {name} · use o mapa de calor para localizar concentrações e clique para consultar os apontamentos.
           </p>
         </div>
-        <button type="button" className={button} disabled={busy} onClick={() => setRevision((value) => value + 1)}>
+        <button
+          type="button"
+          className={button}
+          disabled={!summary || collecting}
+          onClick={() => {
+            setNotice('');
+            requestMapRefresh(company)
+              .then((value) => {
+                setNotice(
+                  value.aceito
+                    ? 'Atualização da base iniciada. O mapa mostra os dados atuais até a coleta terminar.'
+                    : 'A base foi atualizada há poucos minutos ou já está sendo atualizada.',
+                );
+                setPoll((current) => current + 1);
+              })
+              .catch((reason) => setNotice(reason instanceof Error ? reason.message : 'Não foi possível atualizar.'));
+          }}
+        >
           Atualizar mapa
         </button>
       </header>
+      {summary ? (
+        <p
+          aria-live="polite"
+          className={`rounded-xl p-3 text-xs leading-5 ${summary.coleta.estado === 'falhou' || summary.coleta.estado === 'incompleta' ? 'bg-amber-50 text-amber-800' : 'bg-brand-50 text-surface-700'}`}
+        >
+          {syncText(summary.coleta)}
+          {notice ? ` ${notice}` : ''}
+        </p>
+      ) : null}
       <label className="flex items-center gap-2 text-xs text-surface-700">
         <input
           type="checkbox"
@@ -120,11 +155,8 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
           onChange={(event) => {
             const checked = event.target.checked;
             setAllHistory(checked);
-            if (!checked) setDates(initial);
-            setApplied(checked ? { from: '', to: '' } : { ...initial });
-            setRevision(0);
-            setStatus('');
-            setRoad('');
+            setDates(initial);
+            setPeriod(checked ? { from: '', to: '' } : { ...initial });
           }}
         />
         Histórico completo (todas as datas)
@@ -133,17 +165,11 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
         className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
         onSubmit={(event) => {
           event.preventDefault();
-          if (
-            !allHistory &&
-            (dates.from > dates.to || Date.parse(dates.to) - Date.parse(dates.from) > 365 * 86400000)
-          ) {
-            setError('Selecione um período de até 366 dias, com início anterior ao fim.');
+          if (allHistory || dates.from > dates.to) {
+            setError('Selecione um período com início anterior ao fim.');
             return;
           }
-          setApplied(allHistory ? { from: '', to: '' } : { ...dates });
-          setRevision(0);
-          setStatus('');
-          setRoad('');
+          setPeriod({ ...dates });
         }}
       >
         <label className="grid gap-1 text-xs text-surface-700">
@@ -176,17 +202,17 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
       </form>
       <p className="text-[11px] text-surface-600">
         Período do mapa:{' '}
-        {applied.from
-          ? `${applied.from.split('-').reverse().join('/')} a ${applied.to.split('-').reverse().join('/')}`
-          : 'Histórico completo, sem filtro de data'}{' '}
-        · data em que o apontamento foi encontrado. Inicialmente, últimos 30 dias.
+        {period.from
+          ? `${period.from.split('-').reverse().join('/')} a ${period.to.split('-').reverse().join('/')}`
+          : 'histórico completo, sem filtro de data'}{' '}
+        · data em que o apontamento foi encontrado. Desmarque o histórico completo para escolher um período.
       </p>
       <div className="grid gap-3 sm:grid-cols-3 sm:items-start">
         <label className="grid gap-1 text-xs text-surface-700">
           Status
           <select className={field} value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">Todos</option>
-            {options('status').map((option) => (
+            {(summary?.options.status || []).map((option) => (
               <option key={option}>{option}</option>
             ))}
           </select>
@@ -204,16 +230,7 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
           </label>
           <label className="grid gap-1 text-xs text-surface-700">
             Classe
-            <select
-              className={field}
-              value={classe}
-              onChange={(event) => {
-                setClasse(event.target.value);
-                setStatus('');
-                setRoad('');
-                setRevision(0);
-              }}
-            >
+            <select className={field} value={classe} onChange={(event) => setClasse(event.target.value)}>
               <option value="">Todas as classes</option>
               {classOptions.map((option) => (
                 <option key={option} value={option}>
@@ -222,16 +239,15 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
               ))}
             </select>
           </label>
-          <p className="text-[11px] text-surface-600">
-            Selecionar uma classe inicia uma nova consulta dos apontamentos dessa classe no período escolhido.
-            {!searchedClasses.length && classSearch ? ' Nenhuma classe encontrada para a pesquisa.' : ''}
-          </p>
+          {!searchedClasses.length && classSearch ? (
+            <p className="text-[11px] text-surface-600">Nenhuma classe encontrada para a pesquisa.</p>
+          ) : null}
         </div>
         <label className="grid gap-1 text-xs text-surface-700">
           Rodovia
           <select className={field} value={road} onChange={(event) => setRoad(event.target.value)}>
             <option value="">Todas</option>
-            {options('rodovia').map((option) => (
+            {(summary?.options.rodovias || []).map((option) => (
               <option key={option}>{option}</option>
             ))}
           </select>
@@ -243,23 +259,11 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
         </p>
       )}
       <div className="rounded-xl bg-brand-50 p-3 text-xs leading-6" aria-live="polite">
-        {number(result?.items.length || 0)} de {number(result?.total || 0)} registros recebidos no período.{' '}
-        {busy
-          ? `Carregando páginas: ${result?.processed || 0} de ${result?.pages || '…'}.`
-          : result?.partial || error
-            ? 'Consulta parcial.'
-            : 'Consulta completa.'}
-        <br />
-        Com os filtros selecionados: {number(mapped.length)} pontos no mapa · {number(visible.length - mapped.length)}{' '}
-        registros sem coordenadas válidas.
+        {busy && !summary
+          ? 'Carregando o mapa…'
+          : `Com os filtros selecionados: ${number(summary?.total || 0)} apontamentos · ${number(mapped)} com coordenadas · ${number((summary?.total || 0) - mapped)} sem coordenadas válidas.`}
       </div>
-      {result?.warnings.map((warning) => (
-        <p key={warning} className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
-          {warning}
-        </p>
-      ))}
-
-      {mapped.length ? (
+      {summary && mapped ? (
         <Suspense
           fallback={
             <p role="status" className="rounded-xl bg-brand-50 p-8 text-sm">
@@ -267,23 +271,27 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
             </p>
           }
         >
-          <MapCanvas items={mapped} onOpen={setSelected} viewKey={viewKey} />
+          <MapCanvas cells={summary.cells} loadPoints={loadPoints} onOpen={setSelected} viewKey={viewKey} />
         </Suspense>
       ) : (
         <p className="rounded-xl border border-dashed border-brand-200 p-8 text-center text-sm text-surface-600">
-          {busy
-            ? 'Aguardando pontos com coordenadas…'
-            : visible.length
+          {!summary || collecting
+            ? 'Aguardando a base do mapa…'
+            : summary.total
               ? 'Os apontamentos encontrados não possuem coordenadas válidas para exibição no mapa.'
-              : 'Nenhum apontamento recebido para esta classe e os demais filtros no período selecionado. Amplie o período ou limpe os filtros.'}
+              : 'Nenhum apontamento para os filtros selecionados. Amplie o período ou limpe os filtros.'}
         </p>
       )}
-      <details className="rounded-xl border border-brand-100 p-3">
+      <details
+        className="rounded-xl border border-brand-100 p-3"
+        onToggle={(event) => setListOpen(event.currentTarget.open)}
+      >
         <summary className="cursor-pointer text-sm font-semibold text-brand-700">
-          Ver registros em lista ({number(visible.length)})
+          Ver registros em lista ({number(summary?.total || 0)})
         </summary>
         <div className="mt-3 space-y-2">
-          {visible.slice((safePage - 1) * 20, safePage * 20).map((item) => (
+          {!list ? <p className="text-xs text-surface-600">Carregando registros…</p> : null}
+          {list?.items.map((item) => (
             <button
               key={item.uuid}
               type="button"
@@ -293,19 +301,20 @@ export function KartadoUnitMap({ company, name, cache }: { company: string; name
               <strong>{item.numero || item.uuid}</strong> · {item.status}
               <span className="mt-1 block text-surface-600">
                 {item.classe} · {item.rodovia || 'Rodovia não informada'} · km {item.km ?? '—'}
+                {item.encontradoEm ? ` · encontrado em ${item.encontradoEm.split('-').reverse().join('/')}` : ''}
                 {!item.coordinates ? ' · Sem coordenadas' : ''}
               </span>
             </button>
           ))}
         </div>
         <div className="mt-3 flex items-center justify-end gap-3">
-          <button className={button} type="button" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>
+          <button className={button} type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>
             Anterior
           </button>
           <span className="text-xs">
-            {safePage} / {pages}
+            {page} / {pages}
           </span>
-          <button className={button} type="button" disabled={safePage >= pages} onClick={() => setPage(safePage + 1)}>
+          <button className={button} type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}>
             Próxima
           </button>
         </div>

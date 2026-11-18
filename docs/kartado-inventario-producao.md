@@ -92,6 +92,20 @@ As contagens distinguem recebidos/total no período, pontos após filtros e regi
 
 Validação real em 23/10/2026, período 24/09 a 23/10: Ecovias das Gerais retornou 20 registros com coordenadas e nomes resolvidos; Ecovias Capixaba informou 12.170 registros em 61 páginas e retornou 200 pontos na primeira página em aproximadamente 3,4 segundos na execução local. Isso mede a primeira página e os catálogos, não toda a consulta nem o tempo de renderização do navegador. `scripts/test-kartado-reporting-map.mjs` cobre parâmetros, isolamento, coordenadas, catálogos, concorrência, paginação progressiva, falha parcial, cancelamento e autenticação, e faz parte de `npm run test:kartado-inventory`.
 
+### Base do mapa (18/11/2026)
+
+Substitui a consulta direta descrita acima (30 dias, até 100 páginas por consulta no navegador). O mapa abre com o **histórico completo** e lê uma cópia local dos apontamentos (`kartado_map_points`), só com os campos do mapa, mantida pelo worker do servidor (`server/services/kartado-map-snapshots.mjs`):
+
+- Recoleta inteira de cada unidade **todo dia às 04:00 de Brasília** e pelo botão **Atualizar mapa** (intervalo mínimo de 5 minutos). Páginas de 500 registros, até 2 chamadas simultâneas ao Kartado (o limite global é 5).
+- Coleta em etapas de 20 páginas: a unidade aberta no mapa sem base, ou com atualização pedida, passa à frente da fila. Uma coleta interrompida (reinício, deploy) retoma da página em que parou.
+- Lease com token em `kartado_map_sync`: réplicas não coletam a mesma unidade. Coleta completa remove os apontamentos excluídos na origem; coleta com falha preserva a base anterior e tenta de novo em 1 hora.
+- O calor chega agregado em células de ~11 m; os pontos individuais são carregados só para a área visível (até 3.000); a lista é paginada no servidor. Filtros de período, status, classe e rodovia são aplicados no banco.
+- `KARTADO_MAP_SNAPSHOTS=false` desativa o worker.
+
+Medições locais em 18/11/2026: Raposo Castello (20.678) em 3 min 15 s; Ecovias das Gerais (10.775) em 84 s; Capixaba (59.971) em ~19 min; Rio Minas (~211 mil) estimada em ~35 min. O resumo da Raposo Castello tem 263 KB e responde em ~0,1 s.
+
+**Migração (obrigatória antes de usar o mapa):** `scripts/migrate-kartado-map.mjs` cria `kartado_map_sync` e `kartado_map_points` e concede acesso ao usuário da aplicação. Pode ser executada mais de uma vez. Como o banco está em rede privada, roda pelo SSH do App Service; o script e o SQL vão no pacote de deploy. Localmente: `npm run db:migrate-kartado-map`. Sem a tabela, o mapa informa que a base está indisponível e o worker registra um aviso no log.
+
 ### Consulta da ficha
 
 No histórico de um ativo, **Ver ficha do apontamento** abre informações e arquivos no próprio painel. O número na tabela da aba Apontamentos e o botão da consulta de auditoria também abrem essa ficha em um modal interno, usando a unidade do resultado consultado. O modal fecha por botão ou Esc e restaura o foco e a posição da tela anterior. A consulta detalhada usa a API pública `GET /Reporting/` com Basic, `company`, `uuid`, `page=1` e `page_size=1`. O endpoint direto `/Reporting/{uuid}/` retornou 403 na verificação, enquanto a listagem filtrada retornou o registro correto. O parâmetro `include` não é suportado; equipe, classe/formulário, status e inventário são resolvidos por listagens filtradas, com limite global de cinco chamadas. A autenticação JWT das consultas anteriores não foi alterada.

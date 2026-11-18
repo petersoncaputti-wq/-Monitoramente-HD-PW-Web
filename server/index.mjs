@@ -26,6 +26,7 @@ import reportingDetailsRouter from './routes/kartado-reporting-details.mjs';
 import reportingMapRouter from './routes/kartado-reporting-map.mjs';
 import { auditWorker } from './services/kartado-audit-jobs.mjs';
 import { persistentInventory } from './services/kartado-inventory-snapshots.mjs';
+import { mapWorker } from './services/kartado-map-snapshots.mjs';
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -80,6 +81,7 @@ app.use('/api/kartado-reporting-details', reportingDetailsRouter);
 app.use('/api/kartado-reporting-map', reportingMapRouter);
 auditWorker.start();
 persistentInventory.start();
+mapWorker.start();
 
 if (existsSync(distPath)) {
   app.use(express.static(distPath, { index: false }));

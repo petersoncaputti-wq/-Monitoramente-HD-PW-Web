@@ -6,7 +6,15 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import './KartadoUnitMapCanvas.css';
-import { heatMapItems, mapStatus, nearbyMapItems, type MapReporting } from '@/services/kartadoMapService';
+import {
+  heatCells,
+  MAP_POINTS_LIMIT,
+  mapStatus,
+  type MapBounds,
+  type MapCell,
+  type MapPoints,
+  type MapReporting,
+} from '@/services/kartadoMapService';
 
 const colors = { completed: '#15803d', progress: '#2563eb', pending: '#d97706', other: '#64748b' };
 type Basemap = 'map' | 'satellite';
@@ -29,12 +37,47 @@ const displayModes = [
   },
 ] as const;
 const imageryService = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer';
+// Ficha resumida de um apontamento, usada nos marcadores e no clique sobre o calor.
+function reportingPopup(item: MapReporting, open: { current: (uuid: string) => void }) {
+  const popup = document.createElement('div');
+  for (const value of [
+    item.numero || 'Apontamento',
+    item.classe,
+    item.status,
+    `${item.rodovia || 'Rodovia não informada'} · km ${item.km ?? '—'}`,
+  ]) {
+    const line = document.createElement('p');
+    line.textContent = value;
+    popup.append(line);
+  }
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = 'Ver ficha completa';
+  button.className = 'mt-2 rounded-lg bg-brand-700 px-3 py-2 text-xs font-semibold text-white';
+  button.onclick = () => open.current(item.uuid);
+  popup.append(button);
+  return popup;
+}
+export type LoadPoints = (
+  bounds: MapBounds,
+  options: { pendingOnly?: boolean; limit?: number; center?: { lat: number; lon: number } },
+  signal: AbortSignal,
+) => Promise<MapPoints>;
+const boundsOf = (value: L.LatLngBounds): MapBounds => ({
+  west: Math.max(-180, value.getWest()),
+  south: Math.max(-90, value.getSouth()),
+  east: Math.min(180, value.getEast()),
+  north: Math.min(90, value.getNorth()),
+});
 export default function KartadoUnitMapCanvas({
-  items,
+  cells,
+  loadPoints,
   onOpen,
   viewKey = '',
 }: {
-  items: MapReporting[];
+  cells: MapCell[];
+  /** Pontos individuais de uma área, lidos da base do mapa no servidor. */
+  loadPoints: LoadPoints;
   onOpen: (uuid: string) => void;
   viewKey?: string;
 }) {
@@ -51,16 +94,21 @@ export default function KartadoUnitMapCanvas({
   const [displayMode, setDisplayMode] = useState<DisplayMode>('heat');
   const [tooltip, setTooltip] = useState<DisplayMode | null>(null);
   const tooltipId = useId();
-  const heatItems = useMemo(() => heatMapItems(items, displayMode === 'pending'), [items, displayMode]);
+  const [areaPoints, setAreaPoints] = useState<{ total: number; items: MapReporting[] } | null>(null);
+  const [areaError, setAreaError] = useState('');
+  const [viewport, setViewport] = useState(0);
+  const heat = useMemo(() => heatCells(cells, displayMode === 'pending'), [cells, displayMode]);
+  const heatTotal = useMemo(() => heat.reduce((sum, cell) => sum + cell[2], 0), [heat]);
   function fitVisiblePoints() {
     const map = mapRef.current;
-    if (!map || !heatItems.length) return;
+    if (!map || !heat.length) return;
     automaticView.current = true;
     try {
-      map.fitBounds(
-        L.latLngBounds(heatItems.map((item) => [item.coordinates![1], item.coordinates![0]] as L.LatLngTuple)),
-        { padding: [35, 35], maxZoom: 16, animate: false },
-      );
+      map.fitBounds(L.latLngBounds(heat.map(([lat, lon]) => [lat, lon] as L.LatLngTuple)), {
+        padding: [35, 35],
+        maxZoom: 16,
+        animate: false,
+      });
     } finally {
       automaticView.current = false;
     }
@@ -91,6 +139,7 @@ export default function KartadoUnitMapCanvas({
           if (!automaticView.current) userNavigated.current = true;
         };
         map.on('dragstart zoomstart popupopen keydown', rememberNavigation);
+        map.on('moveend', () => setViewport((value) => value + 1));
         resize = new ResizeObserver(() => map.invalidateSize());
         resize.observe(element.current);
         setReady(true);
@@ -133,71 +182,106 @@ export default function KartadoUnitMapCanvas({
       background.remove();
     };
   }, [basemap, ready]);
+  // Com muitos registros na área, os pontos individuais não são carregados: o calor dá o contexto.
+  const tooMany = Boolean(areaPoints && areaPoints.total > MAP_POINTS_LIMIT);
+  const showHeat = displayMode !== 'points' || tooMany;
   useEffect(() => {
-    if (!ready || !mapRef.current || displayMode === 'points') return;
+    if (!ready || !mapRef.current || !showHeat) return;
     const map = mapRef.current;
-    const heat = L.heatLayer(
-      heatItems.map((item) => [item.coordinates![1], item.coordinates![0], 1]),
-      {
-        radius: 28,
-        blur: 22,
-        minOpacity: 0.2,
-        maxZoom: 17,
-        max: 8,
-        gradient: { 0.15: '#fde047', 0.45: '#fb923c', 0.75: '#f97316', 1: '#ef4444' },
-      },
-    ).addTo(map);
+    const layer = L.heatLayer(heat, {
+      radius: 28,
+      blur: 22,
+      minOpacity: 0.2,
+      maxZoom: 17,
+      max: 8,
+      gradient: { 0.15: '#fde047', 0.45: '#fb923c', 0.75: '#f97316', 1: '#ef4444' },
+    }).addTo(map);
     const selectRegion = (event: L.LeafletMouseEvent) => {
-      const nearby = nearbyMapItems(
-        heatItems,
-        event.containerPoint,
-        (point) => map.latLngToContainerPoint([point[1], point[0]]),
-        50,
+      const controller = new AbortController();
+      const { x, y } = event.containerPoint;
+      const area = L.latLngBounds(
+        map.containerPointToLatLng([x - 50, y + 50]),
+        map.containerPointToLatLng([x + 50, y - 50]),
       );
-      if (!nearby.length) {
-        map.closePopup();
-        return;
-      }
       const popup = document.createElement('div');
-      const title = document.createElement('strong');
-      title.textContent = `${nearby.length.toLocaleString('pt-BR')} apontamento(s) próximos ao clique`;
-      popup.append(title);
-      for (const item of nearby.slice(0, 5)) {
-        const block = document.createElement('div');
-        block.className = 'mt-3 border-t border-brand-100 pt-2';
-        const text = document.createElement('p');
-        text.textContent = `${item.numero || 'Apontamento'} · ${item.classe} · ${item.status}`;
-        block.append(text);
-        const location = document.createElement('p');
-        location.textContent = `${item.rodovia || 'Rodovia não informada'} · km ${item.km ?? '—'}`;
-        block.append(location);
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = 'Ver ficha completa';
-        button.className = 'mt-1 rounded-lg bg-brand-700 px-3 py-2 text-xs font-semibold text-white';
-        button.onclick = () => onOpenRef.current(item.uuid);
-        block.append(button);
-        popup.append(block);
-      }
-      if (nearby.length > 5) {
-        const note = document.createElement('p');
-        note.textContent = 'Exibindo os 5 mais próximos. Aproxime o zoom ou use Pontos para selecionar os demais.';
-        popup.append(note);
-      }
-      L.popup({ maxWidth: 340, maxHeight: 320 }).setLatLng(event.latlng).setContent(popup).openOn(map);
+      popup.textContent = 'Consultando apontamentos próximos…';
+      const bubble = L.popup({ maxWidth: 340, maxHeight: 320 }).setLatLng(event.latlng).setContent(popup).openOn(map);
+      bubble.on('remove', () => controller.abort());
+      loadPoints(
+        boundsOf(area),
+        {
+          pendingOnly: displayMode === 'pending',
+          limit: 5,
+          center: { lat: event.latlng.lat, lon: event.latlng.lng },
+        },
+        controller.signal,
+      )
+        .then(({ total, items }) => {
+          if (!total) {
+            map.closePopup(bubble);
+            return;
+          }
+          popup.textContent = '';
+          const title = document.createElement('strong');
+          title.textContent = `${total.toLocaleString('pt-BR')} apontamento(s) próximos ao clique`;
+          popup.append(title);
+          for (const item of items) {
+            const block = reportingPopup(item, onOpenRef);
+            block.className = 'mt-3 border-t border-brand-100 pt-2';
+            popup.append(block);
+          }
+          if (total > items.length) {
+            const note = document.createElement('p');
+            note.textContent = `Exibindo os ${items.length} mais próximos. Aproxime o zoom ou use Pontos para selecionar os demais.`;
+            popup.append(note);
+          }
+          bubble.update();
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) popup.textContent = 'Não foi possível consultar os apontamentos desta área.';
+        });
     };
     map.on('click', selectRegion);
     return () => {
       map.off('click', selectRegion);
       map.closePopup();
       // O plugin mantém um redesenho agendado; cancela antes de remover o canvas.
-      const pendingFrame = (heat as L.HeatLayer & { _frame?: number })._frame;
+      const pendingFrame = (layer as L.HeatLayer & { _frame?: number })._frame;
       if (pendingFrame) L.Util.cancelAnimFrame(pendingFrame);
-      if (map.hasLayer(heat)) map.removeLayer(heat);
+      if (map.hasLayer(layer)) map.removeLayer(layer);
     };
-  }, [heatItems, ready, displayMode]);
+  }, [heat, ready, displayMode, showHeat, loadPoints]);
+  // Pontos individuais da área visível. Carrega uma área maior que a tela e só recarrega
+  // ao sair dela ou ao aproximar com muitos registros, para não fechar balões abertos.
+  const loaded = useRef<{ key: string; bounds: L.LatLngBounds; total: number } | null>(null);
   useEffect(() => {
     if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+    const pendingOnly = displayMode === 'pending';
+    const key = `${viewKey}|${pendingOnly}|${cells.length}`;
+    const current = loaded.current;
+    if (current && current.key === key && current.total <= MAP_POINTS_LIMIT && current.bounds.contains(map.getBounds()))
+      return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      const bounds = map.getBounds().pad(0.5);
+      loadPoints(boundsOf(bounds), { pendingOnly }, controller.signal)
+        .then((value) => {
+          loaded.current = { key, bounds, total: value.total };
+          setAreaPoints(value);
+          setAreaError('');
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setAreaError('Não foi possível carregar os pontos desta área do mapa.');
+        });
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [ready, viewport, displayMode, viewKey, cells, loadPoints]);
+  useEffect(() => {
+    if (!ready || !mapRef.current || !areaPoints || areaPoints.total > MAP_POINTS_LIMIT) return;
     const map = mapRef.current;
     const overHeat = displayMode !== 'points';
     const group = L.markerClusterGroup({
@@ -215,75 +299,48 @@ export default function KartadoUnitMapCanvas({
       }),
     });
     group.addTo(map);
-    // Os marcadores e o calor usam exatamente o mesmo recorte, inclusive em Pendências.
-    const points = heatItems;
-    let index = 0,
-      cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const addChunk = () => {
-      if (cancelled) return;
-      const markers = points.slice(index, index + 300).map((item) => {
-        const [lng, lat] = item.coordinates!;
-        const popup = document.createElement('div');
-        popup.style.minWidth = '180px';
-        for (const value of [
-          item.numero || 'Apontamento',
-          item.classe,
-          item.status,
-          `${item.rodovia || 'Rodovia não informada'} · km ${item.km ?? '—'}`,
-        ]) {
-          const line = document.createElement('p');
-          line.textContent = value;
-          popup.append(line);
-        }
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = 'Ver ficha completa';
-        button.className = 'mt-2 rounded-lg bg-brand-700 px-3 py-2 text-xs font-semibold text-white';
-        button.onclick = () => onOpenRef.current(item.uuid);
-        popup.append(button);
-        const size = overHeat ? 14 : 20;
-        return L.marker([lat, lng], {
-          title: `${item.numero || 'Apontamento'} · ${item.status}`,
-          keyboard: true,
-          bubblingMouseEvents: false,
-          icon: L.divIcon({
-            className: '',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
-            html: `<span style="display:block;margin:${(24 - size) / 2}px;width:${size}px;height:${size}px;border:2px solid white;border-radius:50%;background:${overHeat ? '#0f172a' : colors[mapStatus(item.status)]};box-shadow:0 1px 5px #0008"></span>`,
-          }),
-        }).bindPopup(popup);
-      });
-      group.addLayers(markers);
-      index += 300;
-      if (index < points.length) timer = setTimeout(addChunk, 20);
-    };
-    addChunk();
+    const size = overHeat ? 14 : 20;
+    group.addLayers(
+      areaPoints.items
+        .filter((item) => item.coordinates)
+        .map((item) => {
+          const [lng, lat] = item.coordinates!;
+          const popup = reportingPopup(item, onOpenRef);
+          popup.style.minWidth = '180px';
+          return L.marker([lat, lng], {
+            title: `${item.numero || 'Apontamento'} · ${item.status}`,
+            keyboard: true,
+            bubblingMouseEvents: false,
+            icon: L.divIcon({
+              className: '',
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
+              html: `<span style="display:block;margin:${(24 - size) / 2}px;width:${size}px;height:${size}px;border:2px solid white;border-radius:50%;background:${overHeat ? '#0f172a' : colors[mapStatus(item.status)]};box-shadow:0 1px 5px #0008"></span>`,
+            }),
+          }).bindPopup(popup);
+        }),
+    );
     return () => {
-      cancelled = true;
-      clearTimeout(timer);
-      map.closePopup();
       if (map.hasLayer(group)) map.removeLayer(group);
     };
-  }, [heatItems, ready, displayMode]);
+  }, [areaPoints, ready, displayMode]);
   useEffect(() => {
     userNavigated.current = false;
   }, [viewKey, displayMode]);
   useEffect(() => {
     const map = mapRef.current;
-    const points = heatItems;
-    if (!ready || !map || !points.length || userNavigated.current) return;
+    if (!ready || !map || !heat.length || userNavigated.current) return;
     automaticView.current = true;
     try {
-      map.fitBounds(
-        L.latLngBounds(points.map((item) => [item.coordinates![1], item.coordinates![0]] as L.LatLngTuple)),
-        { padding: [35, 35], maxZoom: 16, animate: false },
-      );
+      map.fitBounds(L.latLngBounds(heat.map(([lat, lon]) => [lat, lon] as L.LatLngTuple)), {
+        padding: [35, 35],
+        maxZoom: 16,
+        animate: false,
+      });
     } finally {
       automaticView.current = false;
     }
-  }, [heatItems, ready, viewKey, displayMode]);
+  }, [heat, ready, viewKey, displayMode]);
   return (
     <div className="space-y-2">
       <div role="group" aria-label="Camada de fundo do mapa" className="flex flex-wrap items-center gap-2">
@@ -349,16 +406,23 @@ export default function KartadoUnitMapCanvas({
         </p>
         <button
           type="button"
-          disabled={!ready || !heatItems.length}
+          disabled={!ready || !heat.length}
           onClick={fitVisiblePoints}
           className="rounded-xl border border-brand-100 bg-white px-4 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-40"
         >
           Enquadrar pontos
         </button>
       </div>
-      {(error || layerError) && (
+      {tooMany ? (
+        <p role="status" className="rounded-xl bg-brand-50 p-3 text-xs text-surface-700">
+          {areaPoints!.total.toLocaleString('pt-BR')} apontamentos nesta área do mapa. Aproxime o zoom para ver e clicar
+          nos pontos individuais (até {MAP_POINTS_LIMIT.toLocaleString('pt-BR')} por área)
+          {displayMode === 'points' ? '; até lá, o mapa mostra a concentração.' : '.'}
+        </p>
+      ) : null}
+      {(error || layerError || areaError) && (
         <p role="status" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
-          {error || layerError}
+          {error || layerError || areaError}
         </p>
       )}
       <div
@@ -377,7 +441,7 @@ export default function KartadoUnitMapCanvas({
             />
             <span>Maior concentração</span>
             <strong className="sm:ml-auto">
-              {heatItems.length.toLocaleString('pt-BR')} {displayMode === 'pending' ? 'pendências' : 'apontamentos'} com
+              {heatTotal.toLocaleString('pt-BR')} {displayMode === 'pending' ? 'pendências' : 'apontamentos'} com
               coordenadas
             </strong>
           </div>
@@ -386,7 +450,7 @@ export default function KartadoUnitMapCanvas({
             apontamento ou numa área para consultar registros próximos. Grupos numerados indicam a quantidade de pontos.
             {displayMode === 'pending' ? ' Inclui identificados, abertos, pendentes, programados e em andamento.' : ''}
           </p>
-          {!heatItems.length && (
+          {!heat.length && (
             <p className="mt-1 font-medium">Nenhum registro para esta visualização nos dados carregados.</p>
           )}
         </div>

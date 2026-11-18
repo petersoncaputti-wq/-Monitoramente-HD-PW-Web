@@ -1,3 +1,5 @@
+// Mapa de apontamentos da unidade. Os dados vêm da base do mapa no servidor
+// (cópia do Kartado recoletada todo dia às 04:00), já filtrados e agregados.
 export interface MapReporting {
   uuid: string;
   numero: string | null;
@@ -8,84 +10,119 @@ export interface MapReporting {
   status: string;
   coordinates: [number, number] | null;
 }
-export interface MapResult {
-  items: MapReporting[];
-  classes: string[];
-  total: number;
-  partial: boolean;
-  warnings: string[];
-  pages: number;
-  processed: number;
+export interface MapFilters {
+  from: string;
+  to: string;
+  status: string;
+  classe: string;
+  rodovia: string;
 }
-export type MapCache = Map<string, { at: number; result: MapResult }>;
-interface MapPage {
-  success: boolean;
-  company: string;
-  items: MapReporting[];
-  classes?: string[];
-  total: number;
+export interface MapSync {
+  estado: 'aguardando' | 'em_andamento' | 'ociosa' | 'incompleta' | 'falhou';
+  atualizadoEm: string | null;
+  proximaEm: string | null;
   paginas: number;
-  pagina: number;
-  avisos: string[];
+  paginasTotal: number;
+  erro: string | null;
 }
-export function mapClassOptions(result: (Pick<MapResult, 'items'> & { classes?: string[] }) | null) {
-  return [
-    ...new Set([...(result?.classes || []), ...(result?.items || []).map((item) => item.classe)].filter(Boolean)),
-  ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+/** [latitude, longitude, apontamentos, pendências] de uma célula de ~11 m. */
+export type MapCell = [number, number, number, number];
+export interface MapSummary {
+  coleta: MapSync;
+  total: number;
+  mapped: number;
+  cells: MapCell[];
+  options: { status: string[]; classes: string[]; rodovias: string[] };
 }
+export interface MapPoints {
+  total: number;
+  items: MapReporting[];
+}
+export interface MapList extends MapPoints {
+  pages: number;
+}
+export type MapBounds = { west: number; south: number; east: number; north: number };
+export const MAP_POINTS_LIMIT = 3000;
+
+function mapQuery(company: string, filters: MapFilters, extra: Record<string, string> = {}) {
+  const query = new URLSearchParams({ company });
+  for (const [key, value] of Object.entries({ ...filters, ...extra })) if (value) query.set(key, value);
+  return query;
+}
+async function request<T>(path: string, query: URLSearchParams, signal?: AbortSignal, method = 'GET'): Promise<T> {
+  const response = await fetch(`/api/kartado-reporting-map/${path}?${query}`, {
+    method,
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+    signal,
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || data?.success !== true) throw new Error(data?.error || 'Não foi possível carregar o mapa.');
+  return data as T;
+}
+const isCount = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0;
+
+export async function fetchMapSummary(company: string, filters: MapFilters, signal?: AbortSignal) {
+  const data = await request<MapSummary>('resumo', mapQuery(company, filters), signal);
+  if (!isCount(data.total) || !isCount(data.mapped) || !Array.isArray(data.cells) || !data.coleta || !data.options)
+    throw new Error('Resposta inválida da base do mapa.');
+  return data;
+}
+export async function fetchMapPoints(
+  company: string,
+  filters: MapFilters,
+  bounds: MapBounds,
+  options: { pendingOnly?: boolean; limit?: number; center?: { lat: number; lon: number } } = {},
+  signal?: AbortSignal,
+) {
+  const extra: Record<string, string> = {
+    bbox: [bounds.west, bounds.south, bounds.east, bounds.north].map((value) => value.toFixed(6)).join(','),
+    limit: String(options.limit ?? MAP_POINTS_LIMIT),
+  };
+  if (options.pendingOnly) extra.pendentes = '1';
+  if (options.center) {
+    extra.lat = options.center.lat.toFixed(6);
+    extra.lon = options.center.lon.toFixed(6);
+  }
+  const data = await request<MapPoints>('pontos', mapQuery(company, filters, extra), signal);
+  if (!isCount(data.total) || !Array.isArray(data.items)) throw new Error('Resposta inválida da base do mapa.');
+  return data;
+}
+export async function fetchMapList(company: string, filters: MapFilters, page: number, signal?: AbortSignal) {
+  const data = await request<MapList>('lista', mapQuery(company, filters, { page: String(page) }), signal);
+  if (!isCount(data.total) || !isCount(data.pages) || !Array.isArray(data.items))
+    throw new Error('Resposta inválida da base do mapa.');
+  return data;
+}
+export async function requestMapRefresh(company: string) {
+  return request<{ aceito: boolean; coleta: MapSync }>(
+    'atualizar',
+    new URLSearchParams({ company }),
+    undefined,
+    'POST',
+  );
+}
+
 export function normalizeMapClass(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('pt-BR')
-    .trim()
-    .replace(/\s+/g, ' ');
-}
-export function matchesMapClass(value: string, selected: string) {
-  return !selected || normalizeMapClass(value) === normalizeMapClass(selected);
+  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('pt-BR').trim().replace(/\s+/g, ' ');
 }
 export function searchMapClasses(options: string[], search: string) {
   const terms = normalizeMapClass(search).split(' ').filter(Boolean);
   return options.filter((option) => terms.every((term) => normalizeMapClass(option).includes(term)));
 }
 export function mapStatus(status: string): 'completed' | 'progress' | 'pending' | 'other' {
-  const key = status
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+  const key = status.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   if (['executado', 'concluido', 'encerrado', 'finalizado'].includes(key)) return 'completed';
   if (['em execucao', 'em andamento'].includes(key)) return 'progress';
   if (['aberto', 'identificado', 'pendente', 'programado'].includes(key)) return 'pending';
   return 'other';
 }
-export function heatMapItems(items: MapReporting[], pendingOnly = false) {
-  return items.filter((item) => {
-    const point = item.coordinates;
-    return (
-      point &&
-      point.every(Number.isFinite) &&
-      Math.abs(point[0]) <= 180 &&
-      Math.abs(point[1]) <= 85.05112878 &&
-      (!pendingOnly || ['pending', 'progress'].includes(mapStatus(item.status)))
-    );
-  });
-}
-export function nearbyMapItems(
-  items: MapReporting[],
-  center: { x: number; y: number },
-  project: (point: [number, number]) => { x: number; y: number },
-  radius = 40,
-) {
-  return items
-    .filter((item) => item.coordinates)
-    .map((item) => {
-      const point = project(item.coordinates!);
-      return { item, distance: (point.x - center.x) ** 2 + (point.y - center.y) ** 2 };
-    })
-    .filter((value) => value.distance <= radius ** 2)
-    .sort((a, b) => a.distance - b.distance)
-    .map((value) => value.item);
+/** Células com peso para o calor: todos os apontamentos ou só as pendências. */
+export function heatCells(cells: MapCell[], pendingOnly = false): [number, number, number][] {
+  return cells
+    .map(([lat, lon, total, pending]): [number, number, number] => [lat, lon, pendingOnly ? pending : total])
+    .filter(([lat, lon, weight]) => weight > 0 && Math.abs(lat) <= 85.05112878 && Math.abs(lon) <= 180);
 }
 export function initialMapDates() {
   const to = new Intl.DateTimeFormat('en-CA', {
@@ -97,100 +134,4 @@ export function initialMapDates() {
   const from = new Date(`${to}T12:00:00Z`);
   from.setUTCDate(from.getUTCDate() - 29);
   return { from: from.toISOString().slice(0, 10), to };
-}
-export async function requestMapPage(
-  company: string,
-  from: string,
-  to: string,
-  page: number,
-  signal: AbortSignal,
-  classe = '',
-): Promise<MapPage> {
-  const query = new URLSearchParams({ company, from, to, page: String(page) });
-  if (!from && !to) query.set('period', 'all');
-  if (classe) query.set('classe', classe);
-  const response = await fetch(`/api/kartado-reporting-map?${query}`, {
-    credentials: 'same-origin',
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
-    signal,
-  });
-  const data = await response.json().catch(() => null);
-  if (!response.ok || data?.success !== true)
-    throw new Error(data?.error || 'Não foi possível carregar os pontos do mapa.');
-  if (
-    data.company !== company ||
-    data.pagina !== page ||
-    !Array.isArray(data.items) ||
-    !Number.isSafeInteger(data.total) ||
-    data.total < 0 ||
-    !Number.isSafeInteger(data.paginas) ||
-    data.paginas < 1
-  )
-    throw new Error('Resposta inválida na consulta dos pontos.');
-  return data;
-}
-export async function loadMapReportings(
-  company: string,
-  from: string,
-  to: string,
-  signal: AbortSignal,
-  onProgress: (result: MapResult) => void,
-  read = requestMapPage,
-  classe = '',
-): Promise<MapResult> {
-  const first = await read(company, from, to, 1, signal, classe);
-  signal.throwIfAborted();
-  const items = new Map<string, MapReporting>();
-  const warnings = new Set<string>();
-  const classes = new Set<string>();
-  let processed = 0,
-    partial = first.paginas > 100;
-  if (partial) warnings.add('Limite de 100 páginas atingido. Reduza o período para consultar os demais registros.');
-  const accept = (page: MapPage) => {
-    if (page.total !== first.total || page.paginas !== first.paginas) {
-      partial = true;
-      warnings.add('O total da origem mudou durante a consulta. Atualize o mapa.');
-    }
-    for (const item of page.items) {
-      if (items.has(item.uuid)) {
-        partial = true;
-        warnings.add('A origem retornou registros repetidos entre páginas.');
-      }
-      items.set(item.uuid, item);
-    }
-    for (const warning of page.avisos || []) warnings.add(warning);
-    for (const name of page.classes || []) if (typeof name === 'string' && name.trim()) classes.add(name);
-    processed++;
-  };
-  const result = (): MapResult => ({
-    items: [...items.values()],
-    classes: [...classes],
-    total: first.total,
-    partial,
-    warnings: [...warnings],
-    pages: first.paginas,
-    processed,
-  });
-  accept(first);
-  onProgress(result());
-  for (let start = 2; start <= Math.min(100, first.paginas); start += 3) {
-    signal.throwIfAborted();
-    const pages = Array.from(
-      { length: Math.min(3, Math.min(100, first.paginas) - start + 1) },
-      (_, index) => start + index,
-    );
-    const batch = await Promise.allSettled(pages.map((page) => read(company, from, to, page, signal, classe)));
-    signal.throwIfAborted();
-    batch.forEach((response, index) => {
-      if (response.status === 'fulfilled') accept(response.value);
-      else {
-        partial = true;
-        warnings.add(`Falha na página ${pages[index]}. Atualize o mapa para tentar novamente.`);
-      }
-    });
-    onProgress(result());
-  }
-  if (items.size !== first.total) partial = true;
-  return result();
 }

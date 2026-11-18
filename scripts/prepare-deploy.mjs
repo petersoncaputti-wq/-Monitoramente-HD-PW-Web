@@ -23,6 +23,10 @@ const RUNTIME_PATHS = [
   // "npm ci --omit=dev" a cada inicialização e o npm 12 recusa pacotes por
   // URL (EALLOWREMOTE); o arquivo local precisa estar no pacote.
   'vendor',
+  // Migração da base do mapa: o banco fica em rede privada, então ela é executada
+  // pelo SSH do App Service (node scripts/migrate-kartado-map.mjs).
+  'scripts/migrate-kartado-map.mjs',
+  'azure/kartado-map-schema.sql',
 ];
 
 if (!existsSync(join(root, 'dist', 'index.html'))) {
