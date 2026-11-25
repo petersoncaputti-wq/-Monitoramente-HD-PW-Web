@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import express from 'express';
 import { createDataRouter } from '../server/routes/data.mjs';
-import { normalizeTotvsOpenedAt, mapTotvsImports } from '../server/services/totvs-data.service.mjs';
+import {
+  normalizeTotvsOpenedAt,
+  mapTotvsImports,
+  consolidateTotvsImports,
+  mentionsTotvs,
+} from '../server/services/totvs-data.service.mjs';
 
 assert.equal(normalizeTotvsOpenedAt('2026-03-14T23:59:59'), '2026-03-14');
 assert.equal(normalizeTotvsOpenedAt('2024-02-29'), '2024-02-29');
@@ -30,11 +35,83 @@ const expected = [
     description: 'Atualizado',
     requester_organization: 'Ecovias Rio Minas',
     opened_at: '2026-03-14',
+    mentions_totvs: false,
   },
-  { ticket_id: '67890', description: 'Sem data', requester_organization: '', opened_at: null },
+  { ticket_id: '67890', description: 'Sem data', requester_organization: '', opened_at: null, mentions_totvs: false },
 ];
 assert.deepEqual(mapTotvsImports(rows), expected);
 assert.deepEqual(mapTotvsImports([]), []);
+
+// Importação mais nova sem a organização (relatório sem as colunas do solicitante):
+// a organização da importação anterior é preservada; o resto vem da mais nova.
+const merged = mapTotvsImports([
+  { ticket_id: '1-1', description: 'Erro TCOP', requester_organization: '', opened_at: '2026-10-02', reason: '' },
+  { ticket_id: '1-1', description: 'Antigo', requester_organization: 'Eco101', opened_at: '2026-10-01' },
+  {
+    ticket_id: '2-2',
+    description: 'Acesso MGI',
+    requester_organization: null,
+    opened_at: '2026-10-03',
+    reason: 'TOTVS',
+  },
+  { ticket_id: '3-3', description: 'Impressora', requester_organization: 'Ecosul', opened_at: '2026-10-04' },
+]);
+assert.deepEqual(
+  merged.find((t) => t.ticket_id === '1-1'),
+  {
+    ticket_id: '1-1',
+    description: 'Erro TCOP',
+    requester_organization: 'Eco101',
+    opened_at: '2026-10-02',
+    mentions_totvs: true,
+  },
+);
+assert.equal(merged.find((t) => t.ticket_id === '2-2').mentions_totvs, true, 'Motivo também conta como menção');
+assert.deepEqual(
+  mapTotvsImports(
+    [
+      { ticket_id: '2-2', description: 'Acesso MGI', reason: 'TOTVS', opened_at: '2026-10-03' },
+      { ticket_id: '3-3', description: 'Impressora', opened_at: '2026-10-04' },
+    ],
+    { system: 'totvs' },
+  ).map((t) => t.ticket_id),
+  ['2-2'],
+);
+assert.equal(mentionsTotvs('Falha no totvs'), true);
+assert.equal(mentionsTotvs('Protheus', 'TCOP'), true);
+assert.equal(mentionsTotvs('totvsx sem palavra'), false);
+
+// Consolidação da tela: campos estáveis vazios vêm da importação anterior; os de ciclo
+// de vida (Status, Fechadoem) seguem a mais recente, mesmo vazios.
+const consolidated = consolidateTotvsImports([
+  {
+    payload: {
+      kind: 'detailed',
+      scope: 'all',
+      tickets: [
+        { 'Caso n.º': '9-9', Status: 'Pendente', Fechadoem: '', Solicitante: '', Organizaçãodosolicitante: '' },
+      ],
+    },
+  },
+  {
+    payload: {
+      kind: 'detailed',
+      scope: 'all',
+      tickets: [
+        {
+          'Caso n.º': '9-9',
+          Status: 'Fechado',
+          Fechadoem: '2026-09-01T10:00:00',
+          Solicitante: 'Fulano',
+          Organizaçãodosolicitante: 'Ecovias',
+        },
+      ],
+    },
+  },
+]);
+assert.deepEqual(consolidated.payload.tickets, [
+  { 'Caso n.º': '9-9', Status: 'Pendente', Fechadoem: '', Solicitante: 'Fulano', Organizaçãodosolicitante: 'Ecovias' },
+]);
 
 let calls = 0,
   databaseRows = rows;
@@ -57,6 +134,7 @@ app.use(
       assert.match(sql, /public\.totvs_imports/);
       assert.match(sql, /jsonb_array_elements/);
       assert.match(sql, /importacao\.imported_at desc, importacao\.id desc/);
+      assert.match(sql, /'Motivo' as reason/);
       return { rows: databaseRows };
     },
   }),
@@ -73,10 +151,15 @@ try {
   const response = await fetch(url, { headers: { Cookie: 'test-session=valid' } });
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), expected);
+  const totvsOnly = await fetch(`${url}?sistema=totvs`, { headers: { Cookie: 'test-session=valid' } });
+  assert.equal(totvsOnly.status, 200);
+  assert.deepEqual(await totvsOnly.json(), []);
+  const invalidSystem = await fetch(`${url}?sistema=sap`, { headers: { Cookie: 'test-session=valid' } });
+  assert.equal(invalidSystem.status, 400);
   databaseRows = [];
   assert.deepEqual(await (await fetch(url, { headers: { Cookie: 'test-session=valid' } })).json(), []);
   console.log(
-    'OK: endpoint, autenticação substituída em teste, formato, datas, duplicatas, dados ausentes e retorno vazio; banco simulado.',
+    'OK: endpoint, autenticação substituída em teste, formato, datas, duplicatas, dados ausentes, junção sem apagar organização, filtro TOTVS e retorno vazio; banco simulado.',
   );
 } finally {
   await new Promise((resolve) => server.close(resolve));

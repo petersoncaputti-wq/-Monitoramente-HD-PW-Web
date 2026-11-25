@@ -29,12 +29,17 @@ export function createDataRouter({ execute = query, authenticate = requireUser }
     response.json(result.rows);
   });
 
-  router.get('/totvs-imports', async (_request, response) => {
+  // ?sistema=totvs → só os chamados que mencionam TOTVS/TCOP (mentions_totvs).
+  router.get('/totvs-imports', async (request, response) => {
+    const system = String(request.query.sistema ?? '').toLowerCase();
+    if (system && system !== 'totvs')
+      return response.status(400).json({ error: 'Filtro de sistema inválido. Use sistema=totvs ou omita.' });
     const result = await query(
       `select ticket->>'Caso n.º' as ticket_id,
             ticket->>'Resumo' as description,
             ticket->>'Organizaçãodosolicitante' as requester_organization,
-            ticket->>'Abertoem' as opened_at
+            ticket->>'Abertoem' as opened_at,
+            ticket->>'Motivo' as reason
        from public.totvs_imports as importacao
       cross join lateral jsonb_array_elements(
         case when jsonb_typeof(importacao.payload->'tickets') = 'array'
@@ -42,7 +47,7 @@ export function createDataRouter({ execute = query, authenticate = requireUser }
       ) with ordinality as items(ticket, position)
       order by importacao.imported_at desc, importacao.id desc, items.position desc`,
     );
-    response.json(mapTotvsImports(result.rows));
+    response.json(mapTotvsImports(result.rows, { system }));
   });
 
   router.get('/pw-users/:sourceKind', async (request, response) => {

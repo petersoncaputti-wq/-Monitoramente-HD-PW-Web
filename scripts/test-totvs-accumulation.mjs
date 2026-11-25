@@ -57,27 +57,36 @@ const headers = {
   'x-test-role': 'admin',
   'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
-function xlsx(tickets) {
+// requester = false reproduz o relatório quinzenal exportado sem as colunas do solicitante.
+function xlsx(tickets, { requester = true } = {}) {
   const book = XLSX.utils.book_new();
+  const base = ['ID do ticket', 'Data de criacao', 'Data de resolucao', 'Status', 'Descricao', 'Atribuir ao grupo'];
   XLSX.utils.book_append_sheet(
     book,
     XLSX.utils.aoa_to_sheet([
-      ['ID do ticket', 'Data de criacao', 'Data de resolucao', 'Status', 'Descricao', 'Atribuir ao grupo'],
-      ...tickets.map(([id, status = 'Pending', opened = 46280, description = 'TOTVS teste']) => [
-        id,
-        opened,
-        '',
-        status,
-        description,
-        'Suporte',
-      ]),
+      requester ? [...base, 'Solicitante', 'Organização do solicitante'] : base,
+      ...tickets.map(
+        ([id, status = 'Pending', opened = 46280, description = 'TOTVS teste', organization = 'Ecovias']) => [
+          id,
+          opened,
+          '',
+          status,
+          description,
+          'Suporte',
+          ...(requester ? ['Usuário', organization] : []),
+        ],
+      ),
     ]),
     'Chamados',
   );
   return XLSX.write(book, { type: 'buffer', bookType: 'xlsx' });
 }
-async function upload(tickets, scope = 'mentions') {
-  const response = await fetch(`${url}?scope=${scope}`, { method: 'POST', headers, body: xlsx(tickets) });
+async function upload(tickets, scope = 'mentions', { requester = true, allow = false } = {}) {
+  const response = await fetch(`${url}?scope=${scope}${allow ? '&allowMissingRequester=1' : ''}`, {
+    method: 'POST',
+    headers,
+    body: xlsx(tickets, { requester }),
+  });
   const result = await response.json();
   assert.equal(response.status, 200, JSON.stringify(result));
   return result;
@@ -123,6 +132,32 @@ try {
   assert.equal(invalid.status, 400);
   assert.equal((await accumulated()).tickets.length, 7);
 
+  // Relatório sem as colunas do solicitante: recusado sem confirmação, nada é gravado.
+  const before = (await db.query('SELECT count(*)::int AS count FROM totvs_imports')).rows[0].count;
+  const refused = await fetch(url, { method: 'POST', headers, body: xlsx([['2-2', 'Closed']], { requester: false }) });
+  assert.equal(refused.status, 422);
+  const refusedBody = await refused.json();
+  assert.equal(refusedBody.code, 'MISSING_REQUESTER_COLUMNS');
+  assert.deepEqual(refusedBody.missingColumns, ['Solicitante', 'Organização do solicitante']);
+  assert.equal((await db.query('SELECT count(*)::int AS count FROM totvs_imports')).rows[0].count, before);
+  // Confirmado: grava, informa a falta, e a organização anterior do 2-2 é preservada.
+  const allowed = await upload([['2-2', 'Resolved'], ['8-8']], 'mentions', { requester: false, allow: true });
+  assert.deepEqual(allowed.payload.missingColumns, ['Solicitante', 'Organização do solicitante']);
+  assert.ok(allowed.payload.sourceHeaders.includes('ID do ticket'));
+  payload = await accumulated();
+  const kept = payload.tickets.find((row) => row['Caso n.º'] === '2-2');
+  assert.equal(kept.Status, 'Resolvido', 'Status segue a importação mais recente');
+  assert.equal(kept.Organizaçãodosolicitante, 'Ecovias', 'Organização anterior não é apagada');
+  assert.equal(kept.Solicitante, 'Usuário');
+  assert.equal(payload.tickets.find((row) => row['Caso n.º'] === '8-8').Organizaçãodosolicitante, '');
+  // Reimportação completa preenche quem nunca teve organização.
+  await upload([['8-8', 'Pending', 46280, 'TOTVS teste', 'Eco101']]);
+  assert.equal(
+    (await accumulated()).tickets.find((row) => row['Caso n.º'] === '8-8').Organizaçãodosolicitante,
+    'Eco101',
+  );
+  assert.equal((await accumulated()).tickets.length, 8);
+
   // ZIP is an aggregate monthly snapshot, and must never replace XLSX rows.
   const zip = (count) =>
     zipSync(
@@ -142,7 +177,7 @@ try {
     });
     assert.equal(response.status, 200, await response.text());
   }
-  assert.equal((await accumulated()).tickets.length, 7);
+  assert.equal((await accumulated()).tickets.length, 8);
   const zipRows = await db.query(
     "SELECT payload FROM totvs_imports WHERE payload->>'kind' IS DISTINCT FROM 'detailed'",
   );
@@ -156,7 +191,7 @@ try {
   assert.equal(cleared.status, 200);
   assert.equal(await accumulated(), null);
   console.log(
-    'OK: PostgreSQL migration, preservation, same/different months, deduplication, updates, scopes, concurrency, ZIP isolation, authentication and clearing.',
+    'OK: PostgreSQL migration, preservation, same/different months, deduplication, updates, scopes, concurrency, missing requester columns (refusal, confirmation, organization preserved), ZIP isolation, authentication and clearing.',
   );
 } finally {
   await new Promise((resolve) => server.close(resolve));

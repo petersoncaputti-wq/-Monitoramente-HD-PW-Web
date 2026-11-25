@@ -62,6 +62,19 @@ export function createTotvsRouter({ execute = query, authenticate = requireUser,
       } catch (error) {
         return response.status(400).json({ error: error.message || 'ZIP inválido.' });
       }
+      // Relatório sem as colunas do solicitante: recusa, salvo confirmação explícita
+      // (allowMissingRequester=1). Mesmo confirmado, a consolidação preserva a
+      // organização já gravada por importações anteriores.
+      if (payload.missingColumns?.length && request.query.allowMissingRequester !== '1') {
+        return response.status(422).json({
+          code: 'MISSING_REQUESTER_COLUMNS',
+          missingColumns: payload.missingColumns,
+          error:
+            `O relatório não tem a(s) coluna(s) ${payload.missingColumns.join(' e ')}. ` +
+            'Sem elas, os chamados ficam sem solicitante e organização. Exporte o relatório com essas colunas ' +
+            'ou confirme a importação assim mesmo.',
+        });
+      }
       const result = await query(
         `insert into totvs_imports (report_period, source_updated_at, imported_by, payload)
      values ($1,$2,$3,$4) ${

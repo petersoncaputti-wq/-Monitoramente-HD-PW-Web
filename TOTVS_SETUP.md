@@ -6,16 +6,25 @@
 
 GET /api/data/totvs-imports usa o mesmo requireUser de /api/data/tickets:
 sessao pelo cookie monitoramento_session, sem API key adicional. Retorna um
-array JSON diretamente, com ticket_id, description, requester_organization
-e opened_at. A chave de origem da data e Abertoem, gravada pelo importador
+array JSON diretamente, com ticket_id, description, requester_organization,
+opened_at e mentions_totvs. A chave de origem da data e Abertoem, gravada pelo importador
 como YYYY-MM-DDTHH:mm:ss (sem fuso); a resposta preserva o dia como YYYY-MM-DD.
 Datas ausentes ou fora desse formato ISO retornam null, sem inferir datas.
 
-A consulta expande payload.tickets de todos os imports, sem filtro adicional
-de sistema ou periodo. Imports ZIP sem tickets nao geram linhas. Cada ID
-aparece uma vez, usando a importacao mais recente por imported_at, com desempate
-por id da importacao e posicao do ticket. Chamados sem ID sao ignorados.
-Descricao e organizacao ausentes retornam string vazia. A resposta e ordenada
+A consulta expande payload.tickets de todos os imports, sem filtro de periodo.
+Imports ZIP sem tickets nao geram linhas. Cada ID aparece uma vez, usando a
+importacao mais recente por imported_at, com desempate por id da importacao e
+posicao do ticket. Se a importacao mais recente trouxer descricao ou organizacao
+vazia, vale o ultimo valor preenchido de uma importacao anterior: um relatorio
+sem as colunas do solicitante nao apaga a organizacao. Chamados sem ID sao
+ignorados. Descricao e organizacao ausentes em todas as importacoes retornam
+string vazia.
+
+mentions_totvs indica se o resumo ou o motivo citam TOTVS ou TCOP (mesmo
+criterio do recorte por mencoes do importador; e um filtro textual, nao uma
+classificacao definitiva do sistema). GET /api/data/totvs-imports?sistema=totvs
+devolve so esses chamados; outro valor em sistema retorna 400. Sem o parametro,
+a resposta continua com todos os chamados, como antes. A resposta e ordenada
 por abertura decrescente (datas ausentes no final) e ticket_id; sem dados, [].
 Esse endpoint consolidado e independente da selecao de versao no painel.
 
@@ -30,10 +39,22 @@ definitiva. O total numerico final do Excel nao e um ticket. IDs duplicados,
 datas invalidas, arquivos acima de 10 MB e conteudo acima de 30 MB sao rejeitados.
 Os textos integrais de detalhes nao sao armazenados.
 
+As colunas Solicitante e Organizacao do solicitante nao sao obrigatorias para ler
+o relatorio, mas sem elas os chamados ficam sem solicitante e organizacao. Por
+isso a importacao de um XLSX sem essas colunas e recusada (HTTP 422, codigo
+MISSING_REQUESTER_COLUMNS, com a lista em missingColumns). A tela explica a falta
+e pede confirmacao; confirmado, reenvia com allowMissingRequester=1 e avisa ao
+final. A importacao guarda missingColumns, missingFields e sourceHeaders
+(cabecalhos originais do arquivo) para diagnosticar o modelo exportado.
+
 Cada XLSX e preservado como uma importacao independente, inclusive no mesmo mes.
 O painel abre por padrao Todos os chamados importados (XLSX), reunindo os IDs
 unicos de todos os arquivos. Para IDs repetidos, prevalece a importacao mais
-recente por imported_at e id. Chamados ausentes no novo arquivo sao preservados.
+recente por imported_at e id, exceto nos campos que descrevem o chamado e nao
+mudam (Resumo, Solicitante, Organizacao do solicitante e do beneficiario,
+Origem): neles vale o ultimo valor preenchido. Status, datas, motivo e
+responsavel seguem sempre a importacao mais recente, mesmo vazios. Chamados
+ausentes no novo arquivo sao preservados.
 Arquivos individuais continuam disponiveis no seletor. Recortes mistos sao
 rotulados como multiplos sistemas se algum arquivo usar o recorte completo.
 GET /api/totvs/consolidated retorna essa base sem limite de meses/importacoes;
@@ -69,6 +90,26 @@ A evolucao mensal mostra ate 12 meses terminando no mes selecionado, usando
 somente o acumulado de categorias TOTVS salvo por mes. Lacunas aparecem como
 sem importacao, nunca zero. Reimportacoes substituem a coluna mensal e nao
 geram novos pontos. O historico misto do ZIP nao alimenta este grafico.
+
+### Reimportacao dos relatorios sem solicitante (ago-nov/2026)
+
+As importacoes de 11 e 13/11/2026 (aberturas de 03/08 a 12/11) vieram de um
+relatorio sem as colunas Solicitante e Organizacao do solicitante. Antes desta
+correcao, a base consolidada apagava a organizacao de quem ja a tinha. Com a
+juncao por campo, esses chamados recuperam a organizacao das importacoes
+anteriores sem nenhuma acao. Os chamados abertos so nesse periodo continuam sem
+organizacao ate uma nova importacao completa:
+
+1. No relatorio do TOTVS/Jasper, incluir as colunas Solicitante e Organizacao do
+   solicitante (com esses nomes; acentos e maiusculas nao importam).
+2. Exportar o periodo de 01/08/2026 ate hoje e importar o XLSX no painel. A
+   importacao nao deve pedir confirmacao; se pedir, o modelo ainda esta sem as
+   colunas: confira os nomes em sourceHeaders da importacao.
+3. Conferir em GET /api/data/totvs-imports que requester_organization voltou a
+   vir preenchido nos chamados desse periodo.
+
+Nao e preciso apagar as importacoes antigas: a nova passa a ser a mais recente e
+completa os campos.
 
 ## Banco e atualizacao
 

@@ -15,6 +15,7 @@ const selected = parseTotvsXlsx(buffer, 'mentions');
 assert.equal(parseTotvsXlsx(buffer).tickets.length, 1716);
 assert.equal(all.sourceCount, 1716);
 assert.equal(all.tickets.length, 1716);
+assert.deepEqual(all.missingColumns, [], 'O relatório de referência traz as colunas do solicitante');
 assert.equal(selected.tickets.length, 860);
 assert.equal(new Set(all.tickets.map((r) => r['Caso n.º'])).size, 1716);
 assert.equal(all.tickets.filter((r) => r.Status === 'Fechado').length, 1607);

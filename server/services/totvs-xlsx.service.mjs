@@ -17,6 +17,18 @@ function date(value, date1904) {
   return `${d.y}-${pad(d.m)}-${pad(d.d)}T${pad(d.H)}:${pad(d.M)}:${pad(Math.floor(d.S))}`;
 }
 
+// Colunas do solicitante: não impedem a leitura do relatório, mas sem elas os chamados
+// ficam sem solicitante e sem organização. O parser só informa a falta (missingColumns e
+// missingFields); a rota de importação recusa, salvo confirmação do administrador.
+export const REQUESTER_COLUMNS = [
+  { header: 'solicitante', label: 'Solicitante', fields: ['Solicitante'] },
+  {
+    header: 'organizacao do solicitante',
+    label: 'Organização do solicitante',
+    fields: ['Organizaçãodosolicitante', 'Organizaçãodobeneficiário'],
+  },
+];
+
 export function parseTotvsXlsx(buffer, scope = 'all') {
   if (!['mentions', 'all'].includes(scope)) throw new Error('Recorte inválido.');
   if (!buffer.length || buffer.length > 10 * 1024 * 1024) throw new Error('Selecione um XLSX de até 10 MB.');
@@ -33,10 +45,12 @@ export function parseTotvsXlsx(buffer, scope = 'all') {
   const book = XLSX.read(buffer, { type: 'buffer' });
   if (book.SheetNames.length !== 1) throw new Error('O relatório deve conter uma única aba.');
   const matrix = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1, defval: '' });
-  const headers = (matrix.shift() ?? []).map(header);
+  const sourceHeaders = (matrix.shift() ?? []).map(clean);
+  const headers = sourceHeaders.map(header);
   const required = ['id do ticket', 'data de criacao', 'data de resolucao', 'status', 'descricao', 'atribuir ao grupo'];
   if (required.some((name) => !headers.includes(name)) || new Set(headers).size !== headers.length)
     throw new Error('Cabeçalhos incompatíveis com o relatório detalhado.');
+  const missing = REQUESTER_COLUMNS.filter((column) => !headers.includes(column.header));
   const records = [],
     ids = new Set();
   for (const [index, cells] of matrix.entries()) {
@@ -95,5 +109,9 @@ export function parseTotvsXlsx(buffer, scope = 'all') {
     sourceUpdatedAt: new Date().toISOString(),
     lists: { categories: [] },
     tickets: records,
+    // Diagnóstico do modelo exportado: colunas do solicitante ausentes e cabeçalhos originais.
+    missingColumns: missing.map((column) => column.label),
+    missingFields: missing.flatMap((column) => column.fields),
+    sourceHeaders: sourceHeaders.filter(Boolean),
   };
 }

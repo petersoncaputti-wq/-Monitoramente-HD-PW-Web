@@ -14,6 +14,7 @@ interface TotvsData {
   scope?: string;
   sourceCount?: number;
   tickets?: TicketRow[];
+  missingColumns?: string[];
 }
 interface Snapshot {
   id: string;
@@ -31,10 +32,19 @@ const sourceLabel = (value: string) =>
   `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)} ${value.slice(11)}`;
 const inputClass =
   'h-11 rounded-2xl border border-brand-100 bg-white px-3 text-sm text-surface-900 focus:outline-none focus:ring-2 focus:ring-brand-300';
+class RequestError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/totvs${path}`, { ...init, credentials: 'same-origin' });
   const body = await response.json().catch(() => null);
-  if (!response.ok || !body) throw new Error(body?.error || 'Não foi possível acessar os dados do MGI.');
+  if (!response.ok || !body)
+    throw new RequestError(body?.error || 'Não foi possível acessar os dados do MGI.', body?.code);
   return body;
 }
 const chartColors = ['#28734c', '#438bcc', '#d4a21b', '#7c65b5', '#38999b'];
@@ -203,25 +213,43 @@ export function TotvsPage({ canManage }: { canManage: boolean }) {
     try {
       if ((!isXlsx && !file.name.toLowerCase().endsWith('.zip')) || file.size > 10 * 1024 * 1024)
         throw new Error('Selecione um XLSX ou ZIP de até 10 MB.');
-      const result = await request<{ id: string; payload: TotvsData }>(
-        `?period=${encodeURIComponent(reportPeriod)}&scope=all`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': isXlsx
-              ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-              : 'application/zip',
+      const send = (allowMissingRequester = false) =>
+        request<{ id: string; payload: TotvsData }>(
+          `?period=${encodeURIComponent(reportPeriod)}&scope=all${allowMissingRequester ? '&allowMissingRequester=1' : ''}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': isXlsx
+                ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                : 'application/zip',
+            },
+            body: file,
           },
-          body: file,
-        },
-      );
+        );
+      let result: { id: string; payload: TotvsData };
+      try {
+        result = await send();
+      } catch (cause) {
+        // Relatório sem as colunas do solicitante: o servidor recusa e o administrador decide.
+        if (!(cause instanceof RequestError) || cause.code !== 'MISSING_REQUESTER_COLUMNS') throw cause;
+        const confirmed = window.confirm(
+          `${cause.message}\n\nImportar mesmo assim? As organizações já gravadas por importações anteriores ` +
+            'são preservadas; só os chamados novos ficam sem organização.',
+        );
+        if (!confirmed) throw new Error('Importação cancelada. Exporte o relatório com as colunas do solicitante.');
+        result = await send(true);
+      }
       const displayed = isXlsx ? await request<{ id: string; payload: TotvsData }>('/consolidated') : result;
       setData(displayed.payload);
       setSnapshotId(displayed.id);
       if (isXlsx) setHasDetailed(true);
+      const missing = result.payload.missingColumns ?? [];
+      const warning = missing.length
+        ? ` Atenção: o relatório veio sem ${missing.join(' e ')}; os valores já gravados foram mantidos.`
+        : '';
       setMessage(
         isXlsx
-          ? 'Relatório adicionado ao histórico. Novos chamados foram incluídos e IDs repetidos foram atualizados sem duplicação.'
+          ? `Relatório adicionado ao histórico. Novos chamados foram incluídos e IDs repetidos foram atualizados sem duplicação.${warning}`
           : 'Mês atualizado. O acumulado anterior deste mês foi substituído; somente categorias identificadas como TOTVS são salvas.',
       );
       setSnapshots(await request<Snapshot[]>(''));
