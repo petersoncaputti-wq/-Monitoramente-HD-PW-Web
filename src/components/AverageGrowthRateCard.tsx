@@ -17,28 +17,18 @@ const VALUE_STYLES: Record<AverageGrowthRateResult['tone'], string> = {
   negative: 'text-amber-700',
 };
 
-export function AverageGrowthRateCard({
-  averageGrowthRate,
-}: AverageGrowthRateCardProps) {
+export function AverageGrowthRateCard({ averageGrowthRate }: AverageGrowthRateCardProps) {
   const statusStyles =
-    averageGrowthRate.status === 'invalid'
-      ? 'border-amber-200 bg-amber-50'
-      : 'border-brand-100 bg-white';
+    averageGrowthRate.status === 'invalid' ? 'border-amber-200 bg-amber-50' : 'border-brand-100 bg-white';
 
   const badgeLabel =
-    averageGrowthRate.tone === 'positive'
-      ? 'Alta'
-      : averageGrowthRate.tone === 'negative'
-        ? 'Redução'
-        : 'Estável';
+    averageGrowthRate.tone === 'positive' ? 'Alta' : averageGrowthRate.tone === 'negative' ? 'Redução' : 'Estável';
 
   return (
     <article className={`kpi-card ${statusStyles}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="kpi-card-title">
-            Taxa média de crescimento
-          </p>
+          <p className="kpi-card-title">Taxa média de crescimento</p>
           <KpiInfoIcon tooltipKey="averageGrowthRate" />
         </div>
         <span
@@ -49,9 +39,7 @@ export function AverageGrowthRateCard({
       </div>
       <p
         className={`kpi-card-value ${
-          averageGrowthRate.status === 'ready'
-            ? VALUE_STYLES[averageGrowthRate.tone]
-            : 'text-surface-700'
+          averageGrowthRate.status === 'ready' ? VALUE_STYLES[averageGrowthRate.tone] : 'text-surface-700'
         }`}
       >
         {averageGrowthRate.value}
@@ -60,4 +48,3 @@ export function AverageGrowthRateCard({
     </article>
   );
 }
-

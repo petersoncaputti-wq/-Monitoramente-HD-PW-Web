@@ -23,19 +23,9 @@ const PROJECT_WISE_USER_HEADERS = [
   'Elegivelexclusao',
 ];
 
-const PROJECT_WISE_WEB_USER_HEADERS = [
-  'Email',
-  'Locked',
-  'ProfileCreationDate',
-  'LastLoginDate',
-];
+const PROJECT_WISE_WEB_USER_HEADERS = ['Email', 'Locked', 'ProfileCreationDate', 'LastLoginDate'];
 
-const TICKET_HEADERS = [
-  'Status',
-  'Abertoem',
-  'Tipodeticket',
-  'StatusdoSLA',
-];
+const TICKET_HEADERS = ['Status', 'Abertoem', 'Tipodeticket', 'StatusdoSLA'];
 
 const DISPLAY_HEADER_LABELS: Record<string, string> = {
   Data: 'Data',
@@ -249,9 +239,9 @@ export function formatStorageRateValue(valueInGb: number, period: string): strin
 
 export function formatGigabytesValue(value: number): string {
   return `${formatNumber(value, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })} GB`;
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} GB`;
 }
 
 export function formatPreviewValue(header: string, value: unknown): string {
@@ -304,4 +294,3 @@ export function formatPercentageValue(value: number): string {
     maximumFractionDigits: 2,
   })}%`;
 }
-

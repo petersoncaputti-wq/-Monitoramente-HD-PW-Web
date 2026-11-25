@@ -1,12 +1,17 @@
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { ForcePasswordChangePage } from '@/pages/ForcePasswordChangePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { BrowserRouter } from 'react-router-dom';
 
 function AuthenticatedApp() {
-  const { status } = useAuth();
+  const { profile, status } = useAuth();
 
-  if (import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true' || (import.meta.env.DEV && import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')) {
+  // Prévias visuais sem login: somente no servidor de desenvolvimento, nunca no build.
+  if (
+    import.meta.env.DEV &&
+    (import.meta.env.VITE_E365_LOCAL_PREVIEW === 'true' || import.meta.env.VITE_TOTVS_LOCAL_PREVIEW === 'true')
+  ) {
     return <DashboardPage />;
   }
 
@@ -22,6 +27,10 @@ function AuthenticatedApp() {
 
   if (status === 'unauthenticated') {
     return <LoginPage />;
+  }
+
+  if (profile?.must_change_password) {
+    return <ForcePasswordChangePage />;
   }
 
   return <DashboardPage />;

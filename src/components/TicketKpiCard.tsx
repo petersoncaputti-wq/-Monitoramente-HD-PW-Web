@@ -12,12 +12,7 @@ const TONE_STYLES: Record<NonNullable<TicketKpiCardProps['tone']>, string> = {
   warning: 'border-rose-200 bg-rose-50 text-rose-700',
 };
 
-export function TicketKpiCard({
-  title,
-  value,
-  helperText,
-  tone = 'default',
-}: TicketKpiCardProps) {
+export function TicketKpiCard({ title, value, helperText, tone = 'default' }: TicketKpiCardProps) {
   return (
     <article className={`kpi-card ${TONE_STYLES[tone]}`}>
       <p className="kpi-card-title">{title}</p>

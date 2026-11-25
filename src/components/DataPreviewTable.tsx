@@ -1,9 +1,5 @@
 import type { ImportedWorkbookData } from '@/types/monitoring';
-import {
-  formatPreviewValue,
-  getDisplayHeaderLabel,
-  isValidHeader,
-} from '@/utils/excel';
+import { formatPreviewValue, getDisplayHeaderLabel, isValidHeader } from '@/utils/excel';
 
 interface DataPreviewTableProps {
   data: ImportedWorkbookData;
@@ -24,9 +20,7 @@ export function DataPreviewTable({ data }: DataPreviewTableProps) {
   return (
     <div className="overflow-hidden rounded-[28px] border bg-white shadow-soft">
       <div className="border-b border-brand-100 px-6 py-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-          Prévia dos dados importados
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Prévia dos dados importados</p>
         <p className="mt-2 text-sm text-surface-700">
           Exibindo as colunas válidas encontradas na planilha e os primeiros registros lidos.
         </p>
@@ -53,10 +47,7 @@ export function DataPreviewTable({ data }: DataPreviewTableProps) {
                 className="transition hover:bg-brand-50/60"
               >
                 {visibleHeaders.map((header) => (
-                  <td
-                    key={`${header}-${index}`}
-                    className="px-4 py-4 text-surface-900 first:pl-6 last:pr-6"
-                  >
+                  <td key={`${header}-${index}`} className="px-4 py-4 text-surface-900 first:pl-6 last:pr-6">
                     {formatPreviewValue(header, row[header])}
                   </td>
                 ))}
@@ -74,4 +65,3 @@ export function DataPreviewTable({ data }: DataPreviewTableProps) {
     </div>
   );
 }
-

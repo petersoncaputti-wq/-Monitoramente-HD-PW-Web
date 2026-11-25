@@ -1,13 +1,7 @@
 import * as XLSX from 'xlsx';
 import type { E365UsageRow } from '@/types/monitoring';
 
-const REQUIRED_HEADERS = [
-  'Product',
-  'ImsID',
-  'UniquePersona',
-  'UsageQuarter',
-  'Net',
-] as const;
+const REQUIRED_HEADERS = ['Product', 'ImsID', 'UniquePersona', 'UsageQuarter', 'Net'] as const;
 
 export async function readE365UsageFile(file: File): Promise<E365UsageRow[]> {
   const workbook = XLSX.read(await file.arrayBuffer(), {
@@ -46,15 +40,16 @@ export async function readE365UsageFile(file: File): Promise<E365UsageRow[]> {
   return rows as E365UsageRow[];
 }
 
-export function mergeE365UsageRows(
-  currentRows: E365UsageRow[],
-  importedRows: E365UsageRow[],
-): E365UsageRow[] {
+export function mergeE365UsageRows(currentRows: E365UsageRow[], importedRows: E365UsageRow[]): E365UsageRow[] {
   const rowsByKey = new Map<string, E365UsageRow>();
 
   for (const row of [...currentRows, ...importedRows]) {
     const key = [row.UsageQuarter, row.ImsID, row.ProductID || row.Product]
-      .map((value) => String(value ?? '').trim().toLowerCase())
+      .map((value) =>
+        String(value ?? '')
+          .trim()
+          .toLowerCase(),
+      )
       .join('|');
 
     if (key.replace(/\|/g, '')) {

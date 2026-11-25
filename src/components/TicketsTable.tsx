@@ -16,11 +16,7 @@ function getStatusBadge(status: unknown) {
           ? 'border-sky-200 bg-sky-50 text-sky-700'
           : 'border-surface-200 bg-surface-100 text-surface-700';
 
-  return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${style}`}>
-      {label}
-    </span>
-  );
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${style}`}>{label}</span>;
 }
 
 function getSlaBadge(status: unknown) {
@@ -31,17 +27,21 @@ function getSlaBadge(status: unknown) {
       ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
       : 'border-surface-200 bg-surface-100 text-surface-700';
 
-  return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${style}`}>
-      {label}
-    </span>
-  );
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${style}`}>{label}</span>;
 }
 
 export function TicketsTable({ rows }: TicketsTableProps) {
   const sortedRows = [...rows].sort((a, b) => {
-    const aViolated = String(a.StatusdoSLA ?? '').toLowerCase().includes('violado') ? 0 : 1;
-    const bViolated = String(b.StatusdoSLA ?? '').toLowerCase().includes('violado') ? 0 : 1;
+    const aViolated = String(a.StatusdoSLA ?? '')
+      .toLowerCase()
+      .includes('violado')
+      ? 0
+      : 1;
+    const bViolated = String(b.StatusdoSLA ?? '')
+      .toLowerCase()
+      .includes('violado')
+      ? 0
+      : 1;
 
     if (aViolated !== bViolated) {
       return aViolated - bViolated;
@@ -61,9 +61,7 @@ export function TicketsTable({ rows }: TicketsTableProps) {
   return (
     <div className="overflow-hidden rounded-[28px] border bg-white shadow-soft">
       <div className="border-b border-brand-100 px-6 py-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
-          Lista de chamados
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Lista de chamados</p>
         <p className="mt-2 text-sm text-surface-700">
           Casos com SLA violado aparecem primeiro para facilitar a análise.
         </p>
@@ -76,43 +74,28 @@ export function TicketsTable({ rows }: TicketsTableProps) {
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 first:pl-6">
                 Caso
               </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Status
-              </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                SLA
-              </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Aberto em
-              </th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Status</th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">SLA</th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Aberto em</th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
                 Organização
               </th>
               <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
                 Solicitante
               </th>
-              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-                Categoria
-              </th>
+              <th className="px-4 py-4 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Categoria</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-50">
             {sortedRows.map((row, index) => (
-              <tr
-                key={`${row['Caso n.º'] ?? row['Cason.º']}-${index}`}
-                className="transition hover:bg-brand-50/60"
-              >
+              <tr key={`${row['Caso n.º'] ?? row['Cason.º']}-${index}`} className="transition hover:bg-brand-50/60">
                 <td className="whitespace-nowrap px-4 py-4 font-medium text-surface-900 first:pl-6">
                   {row['Caso n.º'] || row['Cason.º'] || '-'}
                 </td>
                 <td className="px-4 py-4">{getStatusBadge(row.Status)}</td>
                 <td className="px-4 py-4">{getSlaBadge(row.StatusdoSLA)}</td>
-                <td className="whitespace-nowrap px-4 py-4 text-surface-900">
-                  {formatTicketDate(row.Abertoem)}
-                </td>
-                <td className="px-4 py-4 text-surface-700">
-                  {row.Organizaçãodobeneficiário || '-'}
-                </td>
+                <td className="whitespace-nowrap px-4 py-4 text-surface-900">{formatTicketDate(row.Abertoem)}</td>
+                <td className="px-4 py-4 text-surface-700">{row.Organizaçãodobeneficiário || '-'}</td>
                 <td className="max-w-[220px] px-4 py-4 text-surface-700">
                   <span className="line-clamp-2">{row.Solicitante || '-'}</span>
                 </td>
@@ -127,4 +110,3 @@ export function TicketsTable({ rows }: TicketsTableProps) {
     </div>
   );
 }
-

@@ -83,9 +83,7 @@ export async function deleteE365Quarter(usageQuarter: string): Promise<E365Delet
 }
 
 export async function readE365UsageFromDatabase(): Promise<E365UsageRow[]> {
-  const records = await parseResponse<E365UsageRecord[]>(
-    await fetch('/api/data/e365', { credentials: 'same-origin' }),
-  );
+  const records = await parseResponse<E365UsageRecord[]>(await fetch('/api/data/e365', { credentials: 'same-origin' }));
 
   return records.map((record) => ({
     AccountName: record.account_name ?? '',

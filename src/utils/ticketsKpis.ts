@@ -53,10 +53,7 @@ function normalizeComparable(value: unknown): string {
 }
 
 const TICKET_FIELDS = {
-  beneficiaryOrganization: [
-    'Organiza\u00e7\u00e3odobenefici\u00e1rio',
-    'Organiza\u00e7\u00e3odosolicitante',
-  ],
+  beneficiaryOrganization: ['Organiza\u00e7\u00e3odobenefici\u00e1rio', 'Organiza\u00e7\u00e3odosolicitante'],
   category: ['Tipodeticket'],
   reason: ['Motivo'],
   requesterOrganization: ['Organiza\u00e7\u00e3odosolicitante'],
@@ -94,7 +91,7 @@ function formatPercentage(count: number, total: number): string {
   })}%`;
 }
 
-function isClosedStatus(status: unknown): boolean {
+export function isClosedStatus(status: unknown): boolean {
   const normalized = normalizeComparable(status);
   return normalized === 'fechado' || normalized === 'resolvido';
 }
@@ -151,14 +148,7 @@ function parseTicketDate(value: unknown): Date | null {
     const dateCode = XLSX.SSF.parse_date_code(numericValue);
 
     if (dateCode) {
-      return new Date(
-        dateCode.y,
-        dateCode.m - 1,
-        dateCode.d,
-        dateCode.H,
-        dateCode.M,
-        Math.floor(dateCode.S),
-      );
+      return new Date(dateCode.y, dateCode.m - 1, dateCode.d, dateCode.H, dateCode.M, Math.floor(dateCode.S));
     }
   }
 
@@ -168,9 +158,7 @@ function parseTicketDate(value: unknown): Date | null {
     return null;
   }
 
-  const match = text.match(
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
-  );
+  const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
 
   if (match) {
     const [, day, month, year, hours = '0', minutes = '0', seconds = '0'] = match;
@@ -259,17 +247,8 @@ function countAging(rows: TicketRow[]) {
 
   for (const row of rows) {
     const openedAt = parseTicketDate(row.Abertoem);
-    const daysOpen = openedAt
-      ? Math.max(0, Math.floor((now.getTime() - openedAt.getTime()) / 86400000))
-      : 0;
-    const label =
-      daysOpen <= 2
-        ? '0-2 dias'
-        : daysOpen <= 5
-          ? '3-5 dias'
-          : daysOpen <= 10
-            ? '6-10 dias'
-            : '10+ dias';
+    const daysOpen = openedAt ? Math.max(0, Math.floor((now.getTime() - openedAt.getTime()) / 86400000)) : 0;
+    const label = daysOpen <= 2 ? '0-2 dias' : daysOpen <= 5 ? '3-5 dias' : daysOpen <= 10 ? '6-10 dias' : '10+ dias';
 
     buckets.set(label, (buckets.get(label) ?? 0) + 1);
   }
@@ -278,7 +257,10 @@ function countAging(rows: TicketRow[]) {
 }
 
 function formatDuration(milliseconds: number | null, elapsed = false): string {
-  if (elapsed) return milliseconds === null ? 'Não disponível' : `${formatNumber(milliseconds / 3600000, { maximumFractionDigits: 1 })} h`;
+  if (elapsed)
+    return milliseconds === null
+      ? 'Não disponível'
+      : `${formatNumber(milliseconds / 3600000, { maximumFractionDigits: 1 })} h`;
   if (milliseconds === null || milliseconds <= 0) {
     return '-';
   }
@@ -323,8 +305,7 @@ function countResolutionTimeBuckets(durations: number[]) {
 
   for (const duration of durations) {
     const hours = duration / 3600000;
-    const label =
-      hours <= 8 ? '0-8h' : hours <= 24 ? '8-24h' : hours <= 72 ? '1-3 dias' : '3+ dias';
+    const label = hours <= 8 ? '0-8h' : hours <= 24 ? '8-24h' : hours <= 72 ? '1-3 dias' : '3+ dias';
 
     buckets.set(label, (buckets.get(label) ?? 0) + 1);
   }
@@ -351,9 +332,7 @@ function countMonthlyVolume(openedRows: TicketRow[], closedRows: TicketRow[]) {
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(-12)
     .map((item) => ({
-      label: new Intl.DateTimeFormat('pt-BR', { month: 'short', year: '2-digit' })
-        .format(item.date)
-        .replace('.', ''),
+      label: new Intl.DateTimeFormat('pt-BR', { month: 'short', year: '2-digit' }).format(item.date).replace('.', ''),
       opened: item.opened,
       closed: item.closed,
     }));
@@ -395,13 +374,9 @@ export function getTicketsSummary(
   const newTickets = rows.filter((row) => normalizeText(row.Status) === 'Novo').length;
   const queuedTickets = rows.filter((row) => normalizeText(row.Status) === 'Na fila').length;
   const openTickets = totalTickets - attendedTickets;
-  const openedRows = rows.filter((row) =>
-    isDateInRange(parseTicketDate(row.Abertoem), startDate, endDate),
-  );
+  const openedRows = rows.filter((row) => isDateInRange(parseTicketDate(row.Abertoem), startDate, endDate));
   const closedRows = rows.filter(
-    (row) =>
-      isClosedStatus(row.Status) &&
-      isDateInRange(parseTicketDate(getClosedAt(row)), startDate, endDate),
+    (row) => isClosedStatus(row.Status) && isDateInRange(parseTicketDate(getClosedAt(row)), startDate, endDate),
   );
   const pendingRows = rows.filter((row) => {
     if (isClosedStatus(row.Status)) {
@@ -420,9 +395,7 @@ export function getTicketsSummary(
   });
   const slaApplicableTickets = slaRows.length;
   const inSla = slaRows.filter((row) => normalizeText(row.StatusdoSLA) === 'No SLA').length;
-  const violatedSla = slaRows.filter(
-    (row) => normalizeComparable(row.StatusdoSLA) === 'sla violado',
-  ).length;
+  const violatedSla = slaRows.filter((row) => normalizeComparable(row.StatusdoSLA) === 'sla violado').length;
   const resolutionDurations = closedRows
     .map((row) => {
       const openedAt = parseTicketDate(row.Abertoem);
@@ -432,16 +405,16 @@ export function getTicketsSummary(
         return null;
       }
 
-      return options.elapsed ? updatedAt.getTime() - openedAt.getTime() : getBusinessHoursBetween(openedAt, updatedAt) * 3600000;
+      return options.elapsed
+        ? updatedAt.getTime() - openedAt.getTime()
+        : getBusinessHoursBetween(openedAt, updatedAt) * 3600000;
     })
     .filter((value): value is number => typeof value === 'number');
   const averageResolution =
     resolutionDurations.length > 0
-      ? resolutionDurations.reduce((total, value) => total + value, 0) /
-        resolutionDurations.length
+      ? resolutionDurations.reduce((total, value) => total + value, 0) / resolutionDurations.length
       : null;
-  const averageResolutionHours =
-    averageResolution === null ? null : averageResolution / 3600000;
+  const averageResolutionHours = averageResolution === null ? null : averageResolution / 3600000;
   const medianResolution = getMedian(resolutionDurations);
   const selectedServiceRows =
     selectedService && selectedService !== 'Todos os servicos'
@@ -466,8 +439,7 @@ export function getTicketsSummary(
     attendedPercentage: formatPercentage(attendedTickets, totalTickets),
     violatedSlaPercentage: formatPercentage(violatedSla, openedRows.length),
     averageResolutionHours,
-    averageResolutionTime:
-      averageResolution === null ? '-' : formatDuration(averageResolution, options.elapsed),
+    averageResolutionTime: averageResolution === null ? '-' : formatDuration(averageResolution, options.elapsed),
     medianResolutionTime: formatDuration(medianResolution, options.elapsed),
     resolutionTimeBuckets: countResolutionTimeBuckets(resolutionDurations),
     selectedService: selectedService || 'Todos os servicos',

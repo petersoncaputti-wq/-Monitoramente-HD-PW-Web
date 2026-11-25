@@ -24,10 +24,7 @@ export function ExcelUploader({ onDataLoaded }: ExcelUploaderProps) {
       const parsedData = await readMonitoringWorkbook(selectedFile);
       onDataLoaded(parsedData);
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível ler o arquivo informado.';
+      const message = error instanceof Error ? error.message : 'Não foi possível ler o arquivo informado.';
       setErrorMessage(message);
     } finally {
       setIsLoading(false);
@@ -39,16 +36,12 @@ export function ExcelUploader({ onDataLoaded }: ExcelUploaderProps) {
     <div className="window-accent rounded-[28px] border border-brand-100 bg-white p-6 shadow-panel">
       <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-2xl">
-          <p className="section-kicker">
-            Importação de planilha
-          </p>
-          <h3 className="mt-4 text-2xl font-semibold text-surface-900">
-            Selecione a planilha de monitoramento
-          </h3>
+          <p className="section-kicker">Importação de planilha</p>
+          <h3 className="mt-4 text-2xl font-semibold text-surface-900">Selecione a planilha de monitoramento</h3>
           <p className="mt-3 max-w-xl text-sm leading-7 text-surface-700">
-            O sistema identifica planilhas de armazenamento ou de usuários ProjectWise,
-            converte os dados para indicadores e direciona automaticamente para a aba
-            correspondente. São aceitos arquivos `.xlsx`, `.xls`, `.csv` e `.xml`.
+            O sistema identifica planilhas de armazenamento ou de usuários ProjectWise, converte os dados para
+            indicadores e direciona automaticamente para a aba correspondente. São aceitos arquivos `.xlsx`, `.xls`,
+            `.csv` e `.xml`.
           </p>
         </div>
 
@@ -84,4 +77,3 @@ export function ExcelUploader({ onDataLoaded }: ExcelUploaderProps) {
     </div>
   );
 }
-

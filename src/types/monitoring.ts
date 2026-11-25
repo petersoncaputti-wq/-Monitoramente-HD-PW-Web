@@ -73,6 +73,7 @@ export interface E365UsageRow {
 }
 
 export interface TicketRow {
+  Origem?: string;
   'Caso n.º': string;
   Status: string;
   Motivo: string;
@@ -93,12 +94,7 @@ export interface TicketRow {
   [key: string]: string | number | null | undefined;
 }
 
-export type WorkbookKind =
-  | 'storage'
-  | 'projectWiseUsers'
-  | 'projectWiseWebUsers'
-  | 'tickets'
-  | 'unknown';
+export type WorkbookKind = 'storage' | 'projectWiseUsers' | 'projectWiseWebUsers' | 'tickets' | 'unknown';
 
 export interface ImportedWorkbookData {
   fileName: string;
@@ -179,4 +175,3 @@ export interface DaysUntilFullResult {
   helperText: string;
   tone: 'neutral' | 'attention' | 'warning' | 'critical';
 }
-

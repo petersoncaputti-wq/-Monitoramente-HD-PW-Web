@@ -15,17 +15,12 @@ function requireEnvironment(name) {
 function getCredentials({ migration = false } = {}) {
   const prefix = migration ? 'DB_MIGRATION_' : 'DB_';
   const user =
-    process.env[`${prefix}USER`]?.trim() ||
-    process.env.DB_USER?.trim() ||
-    process.env.DB_MIGRATION_USER?.trim();
-  const password =
-    process.env[`${prefix}PASSWORD`] || process.env.DB_PASSWORD || process.env.DB_MIGRATION_PASSWORD;
+    process.env[`${prefix}USER`]?.trim() || process.env.DB_USER?.trim() || process.env.DB_MIGRATION_USER?.trim();
+  const password = process.env[`${prefix}PASSWORD`] || process.env.DB_PASSWORD || process.env.DB_MIGRATION_PASSWORD;
 
   if (!user || !password) {
     throw new Error(
-      migration
-        ? 'Configure DB_MIGRATION_USER e DB_MIGRATION_PASSWORD.'
-        : 'Configure DB_USER e DB_PASSWORD.',
+      migration ? 'Configure DB_MIGRATION_USER e DB_MIGRATION_PASSWORD.' : 'Configure DB_USER e DB_PASSWORD.',
     );
   }
 
